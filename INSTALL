@@ -1,0 +1,27 @@
+Requires ocaml, csdp (no Debian package), ocaml-glpk (no Debian package)
+
+To install Csdp:
+* download it from https://projects.coin-or.org/Csdp/
+  http://www.coin-or.org/download/source/Csdp/Csdp-6.1.1.tgz
+* Apply our patchs (modified install target and enable the use of global
+param.csdp)
+  cd Csdp-6.1.1.tgz
+  for i in path_to_osdp/external/csdp_*.patch; do patch -p0 < $i; done
+* install dependencies:
+  * libatlas-base-dev
+  * libatlas-dev
+  * libblas-dev
+  * gfortran
+* type make, sudo make install
+
+To install OCaml-GLPK:
+* download it from http://ocaml-glpk.sourceforge.net/
+* install dependencies:
+  * libglpk-dev
+* type make opt, sudo make install
+
+To compile:
+% make
+
+To install (optional):
+# make install

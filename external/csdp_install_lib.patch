@@ -1,0 +1,33 @@
+Index: Makefile
+===================================================================
+--- Makefile	(revision 52)
++++ Makefile	(working copy)
+@@ -24,7 +24,7 @@
+ # Install the executables in /usr/local/bin.
+ #
+ 
+-install:
++install-bin:
+ 	cp -f solver/csdp /usr/local/bin
+ 	cp -f theta/theta /usr/local/bin
+ 	cp -f theta/graphtoprob /usr/local/bin
+@@ -32,6 +32,19 @@
+ 	cp -f theta/rand_graph /usr/local/bin
+ 
+ #
++# Install the libs and include in /usr/local/{lib, include}.
++#
++
++install-lib:
++	mkdir -p /usr/local/lib/csdp
++	cp -f lib/*.o /usr/local/lib/csdp
++	cp -f lib/*.a /usr/local/lib/csdp
++	mkdir -p /usr/local/include/csdp
++	cp -f include/*.h /usr/local/include/csdp
++
++install: install-bin install-lib
++
++#
+ # Clean out all of the directories.
+ # 
+ 

@@ -1,0 +1,35 @@
+OCAMLC=../revert_cclib.sh ocamlc
+OCAMLOPT=../revert_cclib.sh ocamlopt
+OCAMLBUILD=@OCAMLBUILD@ -classic-display -no-links \
+-ocamlc "${OCAMLC}" -ocamlopt "${OCAMLOPT}"
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+bindir=@bindir@
+datarootdir=@datarootdir@
+sharedir=@datadir@
+
+LOCAL_BINDIR=.
+LOCAL_LIBCDIR=lib
+
+osdp:
+	$(OCAMLBUILD) TODO
+	mkdir -p $(LOCAL_LIBDIR)
+
+
+
+clean:
+	$(OCAMLBUILD) -clean
+	rm -f *~ sdp/*~ 
+
+dist-clean: clean
+	rm -f Makefile myocamlbuild.ml global.ml Makefile config.log config.status configure
+
+/usr/local/share/csdp/param.csdp:
+	mkdir -p /usr/local/share/csdp/
+	cp external/param.csdp /usr/local/share/csdp/
+
+install-deps: /usr/local/share/csdp/param.csdp
+
+
+.PHONY: osdp clean install install-deps dist-clean
