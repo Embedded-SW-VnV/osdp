@@ -1,5 +1,6 @@
 Requires ocaml, csdp (no Debian package), ocaml-glpk (no Debian package)
 
+
 To install Csdp:
 * download it from https://projects.coin-or.org/Csdp/
   http://www.coin-or.org/download/source/Csdp/Csdp-6.1.1.tgz
@@ -14,14 +15,29 @@ param.csdp)
   * gfortran
 * type make, sudo make install
 
+
 To install OCaml-GLPK:
 * download it from http://ocaml-glpk.sourceforge.net/
 * install dependencies:
-  * libglpk-dev
+  * libglpk-dev from http://www.gnu.org/software/glpk/ (the version 4.35)
 * type make opt, sudo make install
+
+
+Autoconf :
+% autoconf
+
+
+Configure :
+% ./configure
+or
+% ./configure --with-csdp-lib-path=PATH --with-csdp-inc-path=PATH --with-glpk-path=PATH
+
+the default path is /usr/local/
+
 
 To compile:
 % make
+
 
 To install (optional):
 # make install

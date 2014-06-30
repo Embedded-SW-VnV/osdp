@@ -23,7 +23,7 @@ AC_SUBST(GLPK_PATH)
 
 AC_ARG_WITH([csdp-lib-path],
 	[AS_HELP_STRING([--with-csdp-lib-path],
-	      [specify the path of CSDP library. libsdp.a should be in csdp-lib-path @<:@default=/usr/local/lib/csdp@:>@])],
+	      [specify the path of CSDP library. libsdp.a should be in csdp-lib-path @<:@default=~/prefix//lib/csdp@:>@])],
 	[AS_IF([test "x$with_csdp_lib_path" = xno],
 		[AC_MSG_ERROR([CSDP library is needed])],
 		[test "x$with_csdp_lib_path" = xyes],
@@ -36,7 +36,7 @@ AC_SUBST(CSDP_LIBPATH)
 
 AC_ARG_WITH([csdp-inc-path],
 	[AS_HELP_STRING([--with-csdp-inc-path],
-	      [specify the path of CSDP lirary includes. @<:@default=/usr/local/include/csdp@:>@])],
+	      [specify the path of CSDP lirary includes. @<:@default=~/prefix/include/csdp@:>@])],
 	[AS_IF([test "x$with_csdp_inc_path" = xno],
 		[AC_MSG_ERROR([CSDP library is needed])],
 		[test "x$with_csdp_inc_path" = xyes],

@@ -17,8 +17,8 @@ sig
     (positive_sign, v) denotes the value v if positive_sign is true, -v
     otherwise. *)
   type lmi_obj_t = (objKind * ident) option
-    
-    
+
+
 (** Printers for LMI *)
  val pp_matrix_expr : Format.formatter -> matrix_expr -> unit
     
