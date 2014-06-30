@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_INIT([OSDP], [0.1], [ploc@garoche.net])
-AC_CONFIG_SRCDIR([global.ml])
+AC_CONFIG_SRCDIR([Makefile])
 
 
 # default prefix is /usr/local
@@ -104,8 +104,7 @@ AC_DEFINE_DIR([abs_datadir], [datadir])
 
 # Instanciation
 AC_CONFIG_FILES([Makefile
-		 myocamlbuild.ml
-		 global.ml])
+		 myocamlbuild.ml])
 
 AC_OUTPUT
 

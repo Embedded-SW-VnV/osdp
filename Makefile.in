@@ -16,7 +16,8 @@ osdp:
 	$(OCAMLBUILD) TODO
 	mkdir -p $(LOCAL_LIBDIR)
 
-
+test:
+	$(OCAMLBUILD) test.native
 
 clean:
 	$(OCAMLBUILD) -clean
