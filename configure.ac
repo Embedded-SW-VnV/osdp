@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_INIT([OSDP], [0.1], [ploc@garoche.net])
-AC_CONFIG_SRCDIR([Makefile])
+AC_CONFIG_SRCDIR([Makefile.in])
 
 
 # default prefix is /usr/local

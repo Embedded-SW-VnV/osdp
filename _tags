@@ -8,3 +8,4 @@
 "cholewski/posdef_stubs.o": use_posdef
 <**/*.{byte,native}>: thread,use_unix,use_str,use_nums,use_graph,use_csdp,use_posdef
 <osdp.cmxa>: use_csdp
+<osdp.cma>: use_csdp,custom

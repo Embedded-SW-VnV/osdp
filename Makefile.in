@@ -10,11 +10,11 @@ datarootdir=@datarootdir@
 sharedir=@datadir@
 
 LOCAL_BINDIR=.
-LOCAL_LIBCDIR=lib
+LOCAL_LIBDIR=lib
 
 osdp:
-	$(OCAMLBUILD) TODO
-	mkdir -p $(LOCAL_LIBDIR)
+	$(OCAMLBUILD) osdp.cmxa
+	$(OCAMLBUILD) osdp.cma
 
 test:
 	$(OCAMLBUILD) test/test.native
@@ -32,5 +32,22 @@ dist-clean: clean
 
 install-deps: /usr/local/share/csdp/param.csdp
 
+install-findlib:
+	ocamlfind install osdp META _build/libosdp.a _build/osdp.a _build/osdp.cmxa _build/osdp.cma _build/sdp/sdp.cmi _build/sdp/LMI.cmi _build/sdp/matrix.cmi _build/cholewski/posdef.cmi _build/sdp/csdp.cmi _build/sdp/csdp_stubs.o 
+
+uninstall-findlib:
+	ocamlfind remove osdp
+
+hack:
+	ocamlopt ./utils/sette.mli
+	ocamlopt -I utils ./utils/mappe.mli
+	ocamlopt -I utils ./utils/report.mli
+	ocamlopt -I utils ./sdp/matrix.mli
+	ocamlopt -I utils -I sdp ./sdp/csdp.mli
+	ocamlopt -I utils -I sdp ./sdp/sdp.mli
+	ocamlopt -I utils -I sdp ./sdp/LMI.mli
+	/usr/bin/ocamlc.opt -ccopt -DNOSHORTS -ccopt -I/usr/local/include/csdp -c sdp/csdp_stubs.c
+	ocamlmklib -o osdp -I utils -I sdp global.ml utils/sette.ml utils/mappe.ml utils/report.ml utils/utils.ml sdp/matrix.ml sdp/csdp.ml csdp_stubs.o sdp/sdp.ml sdp/LMI.ml
+	ocamlfind install osdp META libosdp.a osdp.a osdp.cmxa osdp.cma sdp/sdp.cmi sdp/LMI.cmi sdp/matrix.cmi sdp/csdp.cmi csdp_stubs.o
 
 .PHONY: osdp test clean install install-deps dist-clean
