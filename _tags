@@ -6,5 +6,5 @@
 "sdp/csdp_stubs.o": use_csdp
 <cholewski/posdef_stubs.c>: use_posdef, debug
 "cholewski/posdef_stubs.o": use_posdef
-<*.{byte,native}>: thread,use_unix,use_str,use_nums,use_graph,use_csdp,use_posdef
+<**/*.{byte,native}>: thread,use_unix,use_str,use_nums,use_graph,use_csdp,use_posdef
 <osdp.cmxa>: use_csdp

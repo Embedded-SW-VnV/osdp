@@ -443,7 +443,7 @@ let num_of_float f =
   num_of_string s
 
 
-module Num = Make(struct 
+module Num_mat = Make(struct 
   type t = Num.num 
   let of_int = Num.num_of_int 
   let add = Num.add_num

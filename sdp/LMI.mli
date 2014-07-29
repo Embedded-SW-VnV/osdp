@@ -45,7 +45,7 @@ sig
   val solve: matrix_expr list -> lmi_obj_t -> float * (ident * (Mat.elt, Mat.t) value_t) list option
 end
 
-module Num : Sig with module Mat = Matrix.Num 
+module Num_mat : Sig with module Mat = Matrix.Num_mat
 
 (* Local Variables: *)
 (* compile-command:"make -C .." *)

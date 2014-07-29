@@ -733,7 +733,7 @@ let solve lmi_list objective =
 
 end
 
-module Num = Make (Matrix.Num)
+module Num_mat = Make (Matrix.Num_mat)
 
 
 (*

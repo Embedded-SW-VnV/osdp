@@ -17,7 +17,7 @@ osdp:
 	mkdir -p $(LOCAL_LIBDIR)
 
 test:
-	$(OCAMLBUILD) test.native
+	$(OCAMLBUILD) test/test.native
 
 clean:
 	$(OCAMLBUILD) -clean
@@ -33,4 +33,4 @@ dist-clean: clean
 install-deps: /usr/local/share/csdp/param.csdp
 
 
-.PHONY: osdp clean install install-deps dist-clean
+.PHONY: osdp test clean install install-deps dist-clean
