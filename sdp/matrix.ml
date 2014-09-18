@@ -11,6 +11,7 @@ module type ElemType = sig
   val of_float: float -> t
   val compare: t -> t -> int
   val eq: t -> t -> bool
+  val is_zero: t -> bool
   val to_string: t -> string
 end
 
@@ -456,6 +457,7 @@ module Num_mat = Make(struct
   let pp fmt num = Format.fprintf fmt "%s" (Num.string_of_num num) 
   let compare = Num.compare_num
   let eq = Num.eq_num
+  let is_zero x = eq x (of_int 0)
   let to_string = Utils.string_of_num
 
 end)
@@ -473,6 +475,7 @@ module Float = Make(struct
   let pp = Format.pp_print_float
   let compare = compare
   let eq a b = a = b
+  let is_zero x = eq x (of_int 0)
   let to_string = Utils.string_of_float
 end)
 

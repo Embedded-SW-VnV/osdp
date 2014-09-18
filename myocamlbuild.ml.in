@@ -6,7 +6,7 @@ let csdp_libs = ["-lsdp"; "-llapack"; "-lblas"; "-lm"]
 let csdp_libdir = "-L@CSDP_LIBPATH@"
 let csdp_include = "-I@CSDP_INCPATH@"
 
-let glpk_include = "@GLPK_PATH@"
+(* let glpk_include = "@GLPK_PATH@" *)
 
 let cclib l = List.flatten (List.map (fun x -> [A"-cclib"; A x]) l)
 
@@ -23,6 +23,6 @@ dispatch begin function
     dep  ["link"; "ocaml"; "use_csdp"] ["sdp/csdp_stubs.o"];
     flag ["ocaml"; "link"; "use_posdef"] (S(cclib ["-lm"]));
     dep  ["link"; "ocaml"; "use_posdef"] ["cholewski/posdef_stubs.o"];
-    ocaml_lib ~extern:true ~dir:glpk_include "glpk";
+(*    ocaml_lib ~extern:true ~dir:glpk_include "glpk";*)
 | _ -> ()
 end

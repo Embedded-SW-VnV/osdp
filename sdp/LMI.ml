@@ -1,28 +1,52 @@
-type ident = string
+module Ident =
+struct
+  type t = int
+
+  let cpt = ref 0
+  let name_hash: (string, int) Hashtbl.t = Hashtbl.create 11
+  let id_hash: (int, string) Hashtbl.t = Hashtbl.create 11
+
+  let rec create name : int=
+    if Hashtbl.mem name_hash name then
+      create (name ^ "_")
+    else (
+      incr cpt; 
+      let id = !cpt in
+      Hashtbl.add id_hash id name;
+      Hashtbl.add name_hash name id;
+      id
+    )
+
+  let get_name = Hashtbl.find id_hash 
+  let find_id = Hashtbl.find name_hash 
+  let fprintf fmt id = Format.fprintf fmt "%s" (get_name id)
+  let cmp = compare
+end
 
 type objKind = Minimize | Maximize
 type ('a, 'b) value_t = Scalar of 'a | Mat of 'b
 
-type v_t = Var of ident * int * int | ScalId of ident 
+type v_t = Var of Ident.t * int * int | ScalId of Ident.t 
 
 let pp_var fmt v = 
   match v with
-    Var (s, i, j) -> Format.fprintf fmt "%s_%i_%i" s (i+1) (j+1)
-  | ScalId s -> Format.pp_print_string fmt s
+    Var (s, i, j) -> Format.fprintf fmt "%a_%i_%i" Ident.fprintf s (i+1) (j+1)
+  | ScalId s -> Ident.fprintf fmt s
 
 
 module type Sig = 
 sig
   module Mat: Matrix.S
   type matrix_expr 
-  type lmi_obj_t = (objKind * ident) option
+  type lmi_obj_t = (objKind * Ident.t) option
+  type var
   val pp_matrix_expr : Format.formatter -> matrix_expr -> unit
   val zeros : int -> int -> matrix_expr
   val eye: int -> matrix_expr
   val diag: matrix_expr list -> matrix_expr 
   val const_mult: Mat.elt -> matrix_expr -> matrix_expr
-  val scal_mult: string -> matrix_expr -> matrix_expr
-  val symmat: string * int ->  matrix_expr
+  val scal_mult: Ident.t -> matrix_expr -> matrix_expr
+  val symmat: Ident.t * int ->  matrix_expr
   val const_mat: Mat.t -> matrix_expr
   val trans_const_mat: Mat.t -> matrix_expr
   val kronecker_sym: ?lift:(Mat.t -> Mat.t) -> int -> int -> int -> matrix_expr
@@ -30,13 +54,15 @@ sig
   val sub: matrix_expr -> matrix_expr -> matrix_expr 
   val mult: matrix_expr -> matrix_expr -> matrix_expr
   val of_array_array: matrix_expr array array -> matrix_expr
-  val solve: matrix_expr list -> lmi_obj_t -> float * (ident * (Mat.elt, Mat.t) value_t) list option
+  val sym_mat_of_var: int -> Mat.elt list -> Mat.t
+  val vars_of_sym_mat: Ident.t -> int -> var list 
+  val solve: matrix_expr list -> lmi_obj_t -> float * (Ident.t * (Mat.elt, Mat.t) value_t) list option
 end 
 
 module IdentSet = 
 struct
-  include Set.Make (struct type t = ident let compare = compare end)
-  let pp fmt s = Utils.fprintf_list ~sep:", " Format.pp_print_string fmt (elements s)
+  include Set.Make (struct type t = Ident.t let compare = Ident.cmp end)
+  let pp fmt s = Utils.fprintf_list ~sep:", " Ident.fprintf fmt (elements s)
 end
 
 
@@ -54,7 +80,7 @@ struct
 end
 
 module IdentDimSet = 
-  Set.Make (struct type t = ident * int let compare = compare end)
+  Set.Make (struct type t = Ident.t * int let compare = compare end)
 
 
 
@@ -63,7 +89,9 @@ struct
   type elt = Mat.elt
   module Mat = Mat
 
-  type scalar_t = Cst of elt | SIdent of ident | MVar of ident * int * int
+  type var = v_t
+
+  type scalar_t = Cst of elt | SIdent of Ident.t | MVar of Ident.t * int * int
 
 
 (* Unknown matrices are always symetrical *)
@@ -73,13 +101,13 @@ struct
   | MatSub of matrix_expr * matrix_expr
   | MatScalMult of scalar_t * matrix_expr
   | MatCst of Mat.t
-  | MatVarSym of ident * int 
+  | MatVarSym of Ident.t * int 
   | BlockLMI of matrix_expr array array * (int * int array * int * int array)
 
 (** Objective to be maximized by the solver: None denotes no objective, Some
     (positive_sign, v) denotes the value v if positive_sign is true, -v
     otherwise. *)
-type lmi_obj_t = (objKind * ident) option
+type lmi_obj_t = (objKind * Ident.t) option
 
 let rec get_dim lmi =
   match lmi with
@@ -97,8 +125,8 @@ let rec get_dim lmi =
 let pp_scalar fmt s =
 match s with
 | Cst f -> Mat.Elem.pp fmt f
-| SIdent id -> Format.pp_print_string fmt id
-| MVar (id, i, j) -> Format.fprintf fmt "%s(%i,%i)" id i j
+| SIdent id -> Ident.fprintf fmt id
+| MVar (id, i, j) -> Format.fprintf fmt "%a(%i,%i)" Ident.fprintf id i j
 
 let rec pp_matrix_expr fmt e =
   let pp = pp_matrix_expr in
@@ -118,7 +146,7 @@ let rec pp_matrix_expr fmt e =
   | MatScalMult (s, e1) -> 
     Format.fprintf fmt "%a %a" pp_scalar s pp_paren e1
   | MatCst mat -> Mat.pp_matrix fmt mat
-  | MatVarSym (id, dim) -> Format.fprintf fmt "%s" id
+  | MatVarSym (id, dim) -> Ident.fprintf fmt id
   | BlockLMI (a, _) -> 
     Format.fprintf fmt "@[<v>[ %a ]@]" 
       (Utils.fprintf_list ~sep:";@ " 
@@ -174,7 +202,7 @@ let rec get_vars e =
 
 let new_var id i j = Var (id, i, j)
 let get_var id i j = if j <= i then Var(id, i, j) else Var(id, j, i) 
-let new_var_name v = match v with | Var (id, i, j) -> id ^ "_" ^ string_of_int (i+1) ^ "_" ^ string_of_int (j+1) | ScalId s -> s
+let new_var_name v = match v with | Var (id, i, j) -> (Ident.get_name id) ^ "_" ^ string_of_int (i+1) ^ "_" ^ string_of_int (j+1) | ScalId s -> Ident.get_name s
 
 (* A symetrical matrix of dim n x n is characterized by (n^2 + n)/2 variables *)
 let vars_of_sym_mat id dim = 
@@ -234,7 +262,7 @@ let sym_mat_of_var dim list =
     else
       (incr j)
   ) list;
-  new_mat
+  Mat.matrix_of_array_array new_mat
     
 let kronecker_sym ?lift:(lift=fun x -> x) dim i j =
   (* Report.debugf ~kind:"sdp" 
@@ -540,13 +568,12 @@ else
 	 if i != j then assert false else (
 	   let conv_elems = List.map Mat.Elem.of_float elems in
 	   Report.debugf ~kind:"sdp" ~level:10
-	  (fun fmt -> Format.fprintf fmt "%s elems= [%a]@?" 
-	     id
+	  (fun fmt -> Format.fprintf fmt "%a elems= [%a]@?" 
+	     Ident.fprintf id
 	     (* (Utils.fprintf_list ~sep:", " Base.pp) conv_elems *)
 	     (Utils.fprintf_list ~sep:", " Format.pp_print_float) elems
 	  );
-	   let mat = Mat.matrix_of_array_array 
-	     (sym_mat_of_var (i+1) conv_elems) in
+	   let mat = sym_mat_of_var (i+1) conv_elems in
 	   new_cpt, (id, Mat mat)::accu 
 	 )
        | _ -> assert false

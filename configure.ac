@@ -8,18 +8,18 @@ AC_CONFIG_SRCDIR([Makefile.in])
 # default prefix is /usr/local
 AC_PREFIX_DEFAULT(/usr/local)
 
-AC_ARG_WITH([glpk-path],
-	[AS_HELP_STRING([--with-glpk-path],
-	      [specify the path of OCaml-GLPK library. glpk.cmxa should be in glpk-path @<:@default=$(ocamlfind query glpk)@:>@])],
-	[AS_IF([test "x$with_glpk_path" = xno],
-		[AC_MSG_ERROR([OCaml-GLPK library is needed])],
-		[test "x$with_glpk_path" = xyes],
-		[GLPK_PATH=$(ocamlfind query glpk)],
-		[GLPK_PATH=$with_glpk_path]
-	)],
-	[GLPK_PATH=$(ocamlfind query glpk)]
-)
-AC_SUBST(GLPK_PATH)
+dnl AC_ARG_WITH([glpk-path],
+dnl 	[AS_HELP_STRING([--with-glpk-path],
+dnl 	      [specify the path of OCaml-GLPK library. glpk.cmxa should be in glpk-path @<:@default=$(ocamlfind query glpk)@:>@])],
+dnl 	[AS_IF([test "x$with_glpk_path" = xno],
+dnl 		[AC_MSG_ERROR([OCaml-GLPK library is needed])],
+dnl 		[test "x$with_glpk_path" = xyes],
+dnl 		[GLPK_PATH=$(ocamlfind query glpk)],
+dnl 		[GLPK_PATH=$with_glpk_path]
+dnl 	)],
+dnl 	[GLPK_PATH=$(ocamlfind query glpk)]
+dnl )
+dnl AC_SUBST(GLPK_PATH)
 
 AC_ARG_WITH([csdp-lib-path],
 	[AS_HELP_STRING([--with-csdp-lib-path],
@@ -62,15 +62,15 @@ AC_MSG_RESULT(valid ocaml version detected: $ocamlc_version)
 
 AC_PATH_PROG([OCAMLBUILD],[ocamlbuild],[:])
 
-# Checks for libraries. OCaml-GLPK
-AC_MSG_CHECKING(Ocaml-GLPK library)
-   glpk_lib=`find $GLPK_PATH -iname glpk.cmxa -nowarn | grep -m 1 -o "glpk.cmxa"`
-   if (test "x$glpk_lib" = xglpk.cmxa ); then
-      glpk_lib_full=`find $GLPK_PATH -iname glpk.cmxa -nowarn | grep -m 1 "glpk.cmxa"`
-      AC_MSG_RESULT(library detected: $glpk_lib_full )
-   else	
-      AC_MSG_ERROR([OCaml-GLPK library not installed in $GLPK_PATH])
-   fi
+dnl # Checks for libraries. OCaml-GLPK
+dnl AC_MSG_CHECKING(Ocaml-GLPK library)
+dnl    glpk_lib=`find $GLPK_PATH -iname glpk.cmxa -nowarn | grep -m 1 -o "glpk.cmxa"`
+dnl    if (test "x$glpk_lib" = xglpk.cmxa ); then
+dnl       glpk_lib_full=`find $GLPK_PATH -iname glpk.cmxa -nowarn | grep -m 1 "glpk.cmxa"`
+dnl       AC_MSG_RESULT(library detected: $glpk_lib_full )
+dnl    else	
+dnl       AC_MSG_ERROR([OCaml-GLPK library not installed in $GLPK_PATH])
+dnl    fi
 
 # Checks for libraries. CSDP
 AC_MSG_CHECKING(CSDP library)

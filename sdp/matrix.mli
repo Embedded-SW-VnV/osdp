@@ -11,6 +11,7 @@ module type ElemType = sig
   val of_float: float -> t
   val compare: t -> t -> int
   val eq: t -> t -> bool
+  val is_zero: t -> bool
   val to_string: t -> string
 end
 
