@@ -44,15 +44,30 @@ sig
   module M: ORDEREDNAMEDMONOMIAL
   type t = (S.t * M.t) list (* sorted by M.cmp *)
   val add: t -> t -> t
-  val sub: t -> t -> t
+  val scal_mult: S.t -> t -> t
   val fprintf: string array -> Format.formatter -> t -> unit
 end
 
+ module type MONOMIAL_BASIS = 
+   (* functor (S: SCALAR) ->  *)
+   (*   functor (M: MONOMIAL) ->  *)
+ sig 
+   module S: SCALAR
+   include MONOMIAL
+   module LE : LINEXPR with type S.t = S.t and type M.t = t
+   val get_sos_deg: int -> int -> int
+   (* val fprintf: string array -> Format.formatter -> t ->  unit *)
+   val prod: t -> t -> LE.t 
+ (*   val ext_prod: LE.S.t -> t -> LE.t *)
+ end
+
+(*
 module type POLYEXPR =
 sig
   include LINEXPR
   val mult: t -> t -> t
 end
+ *)
 
 module LinExpr =
   functor (S: SCALAR) ->
@@ -68,8 +83,6 @@ struct
       (fun (s1,m) (s2,_) -> let r_s = S.add s1 s2 in 
 			    if S.is_zero r_s then None else Some (r_s , m)) 
 
-  let sub le1 le2 = add le1 (List.map (fun (s,m) -> S.mult (S.of_int (-1)) s, m) le2)
-
   let scal_mult s le = if S.is_zero s then [] else List.map (fun (s',m) -> S.mult s s', m) le
 
   let fprintf names = 
@@ -77,18 +90,6 @@ struct
       (fun fmt (s,m) -> Format.fprintf fmt "%a * %a" S.fprintf s (M.fprintf names) m) 
 end 
 
- module type MONOMIAL_BASIS = 
-   (* functor (S: SCALAR) ->  *)
-   (*   functor (M: MONOMIAL) ->  *)
- sig 
-   module S: SCALAR
-   include MONOMIAL
-   module LE : LINEXPR with type S.t = S.t and type M.t = t
-  val get_sos_deg: int -> int -> int
-  (* val fprintf: string array -> Format.formatter -> t ->  unit *)
-  val prod: t -> t -> LE.t 
-(*   val ext_prod: LE.S.t -> t -> LE.t *)
-end
 
 (*
 module PolyExpr =
@@ -149,7 +150,8 @@ struct
 	d 
 	(List.length flattened_set)
 	(Utils.fprintf_list ~sep:",@," (pp_debug d)) flattened_set
-    ) base      
+    ) base    
+  
   (* Compute basis *)
   let rec monomes_rec accu (i, vector) =
     if i = Array.length vector then accu else
