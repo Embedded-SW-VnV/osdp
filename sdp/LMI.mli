@@ -29,6 +29,7 @@ sig
 
 (** Printers for LMI *)
  val pp_matrix_expr : Format.formatter -> matrix_expr -> unit
+ val pp_var : Format.formatter -> var -> unit
     
  (** Constructors *)
  val zeros: int -> int -> matrix_expr
@@ -52,6 +53,9 @@ sig
     obj. It returns the solver return value plus a list with result, mapping each unknown variable to its
     value *)
   val solve: matrix_expr list -> lmi_obj_t -> float * (Ident.t * (Mat.elt, Mat.t) value_t) list option
+
+  val get_var_id: var -> Ident.t
+  val get_var_indices: var -> (int * int) option
 end
 
 module Num_mat : Sig with module Mat = Matrix.Num_mat

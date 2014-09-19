@@ -19,6 +19,10 @@ osdp:
 test:
 	$(OCAMLBUILD) test/test.native
 
+
+test-sos:
+	$(OCAMLBUILD) sos/test.native
+
 clean:
 	$(OCAMLBUILD) -clean
 	rm -f *~ sdp/*~ 

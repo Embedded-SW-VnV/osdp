@@ -1,15 +1,13 @@
 open Monomials
+open LinearExpr
 
-module Num = 
-struct
-  include Matrix.Num_mat.Elem
-  let of_rat a b = div (of_int a) (of_int b)
-  let fprintf = pp 
-end
+module C = ClassicalMonomialBasis 
+module H = HermiteMonomialBasis 
+
+    
+ 
 
 
-module C = ClassicalMonomialBasis (Num)
-module H = HermiteMonomialBasis (Num)
 
 module Test =
   functor (M: MONOMIAL_BASIS) ->
@@ -58,17 +56,46 @@ aux base base
 end
 
 
+
+
+
+
+(*
 let _ =
   let nb_vars = 10 in 
   let deg = 16 in
   let nb_mon = C.get_sos_deg nb_vars deg in
 
 ()
-(*module TC =  Test(C)
+
+*)
+
+(*
+dule TC =  Test(C)
 
 module TH = Test(H)
 *)
 
 
+module SOS = LinearExpr.Make (C)
+let _ =
+  let dim = 4 in
+  let sos1 = SOS.new_sos_var "p1" 4 dim in
+
+  Format.printf "sos1: %a@." (SOS.pp_sos dim) (SOS.get_sos_vars sos1);
+
+  let sos1_expr = SOSVar(sos1, dim) in
+  let expr = Add (sos1_expr, sos1_expr) in
+  let expr = ScalMul ([LinearExpr.N.of_int 2, [|0;2;1;0|]], sos1_expr) in
+  let sos2,_ = SOS.sos dim [|"x";"y";"z";"k"|] "toto" expr in
+
+  Format.printf "sos2: %a" (SOS.pp_sos dim) (SOS.get_sos_vars sos2);
+
+
+
 (*module X = LinearExpr.PolyScalar*)
 
+
+
+
+1

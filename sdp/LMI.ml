@@ -41,6 +41,7 @@ sig
   type lmi_obj_t = (objKind * Ident.t) option
   type var
   val pp_matrix_expr : Format.formatter -> matrix_expr -> unit
+  val pp_var : Format.formatter -> var -> unit
   val zeros : int -> int -> matrix_expr
   val eye: int -> matrix_expr
   val diag: matrix_expr list -> matrix_expr 
@@ -57,6 +58,8 @@ sig
   val sym_mat_of_var: int -> Mat.elt list -> Mat.t
   val vars_of_sym_mat: Ident.t -> int -> var list 
   val solve: matrix_expr list -> lmi_obj_t -> float * (Ident.t * (Mat.elt, Mat.t) value_t) list option
+  val get_var_id: var -> Ident.t
+  val get_var_indices: var -> (int * int) option
 end 
 
 module IdentSet = 
@@ -153,6 +156,8 @@ let rec pp_matrix_expr fmt e =
 	 (fun fmt a_i -> 
 	   Utils.fprintf_list ~sep:", @  " pp fmt (Array.to_list a_i)))
       (Array.to_list a)
+
+let pp_var = pp_var
 
 let rec get_mat_var_sym e =
   match e with
@@ -756,7 +761,16 @@ let solve lmi_list objective =
   else
     res, Some (rebuild_dual dual_sol sorted_vars)
     
- 
+let get_var_id v =
+  match v with
+  | Var (v,_,_) -> v
+  | ScalId v -> v
+
+let get_var_indices v =
+  match v with
+  | Var (_,i,j) -> Some(i,j)
+  | ScalId _ -> None
+
 
 end
 
@@ -808,5 +822,5 @@ let _ =
   *)
 
 (* Local Variables: *)
-(* compile-command:"make -C ../.." *)
+(* compile-command:"make -C .." *)
 (* End: *)
