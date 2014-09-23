@@ -43,6 +43,11 @@ match c with | [] -> Format.fprintf fmt "0" | _ ->
 (* Polynomials in the classical basis with scalar in LEVarsNum *)
 type t_cvn = (t_levarsnum * C.t) list
 
+(* For debug purpose *)
+let pp_xvn pp_x names fmt xvn =
+  fprintf_list ~sep:" + " (fun fmt (l,c) -> Format.fprintf fmt "(%a * %a)" pp_levarsnum l (pp_x names) c) fmt xvn
+
+let pp_cvn = pp_xvn C.fprintf
 
 (* Type of expressions: it should be linear in SOSVar, SDPVar, PolyVar *)
 type expr = | SOSVar of Ident.t * int (* SOSVar(id, d) : Positive Polynomial variable 
@@ -62,6 +67,8 @@ module Make =
   (* Polynomials in base M with scalar in LEVarsNum *)
   (* module MVN = PolyLinExpr (LEVarsNum) (M) *)
   type t_mvn = (t_levarsnum * M.t) list 
+
+  let pp_mvn = pp_xvn M.fprintf
     
   (* Polynomials in the classical basis with scalar in MVN *)
   (* module CMVN = PolyLinExpr (MVN) (C)  *)
@@ -81,7 +88,8 @@ module Make =
     (* Hash table to store the computed generated sos variables *)
    let hash_sosvars : 
 	(Ident.t, 
-	 LMI.Num_mat.var list * 
+	 int *
+	   LMI.Num_mat.var list * 
 	   (LMI.Num_mat.Mat.elt list -> LMI.Num_mat.Mat.t) * 
 	   LMI.Num_mat.matrix_expr *
 	   t_mvn
@@ -139,7 +147,8 @@ module Make =
       let id = Ident.create name in
       let deg_monomials = M.get_sos_deg dim deg in
       Format.eprintf "nb element base monomiale: %i@." deg_monomials;
-      let vars = LMI.Num_mat.vars_of_sym_mat id deg in
+      let vars = LMI.Num_mat.vars_of_sym_mat id deg_monomials in
+      Format.eprintf "nb vars: %i@." (List.length vars);
       let expr : t_mvn = 
 	List.fold_left  
 	  (fun res v -> mvn_add res 
@@ -161,13 +170,14 @@ module Make =
       in
       let build_poly elems = LMI.Num_mat.sym_mat_of_var deg_monomials elems in
       let unknown_sdp = LMI.Num_mat.symmat (id, deg_monomials) in
-      Hashtbl.add hash_sosvars id (vars, build_poly, unknown_sdp, expr);
+      Hashtbl.add hash_sosvars id (deg_monomials, vars, build_poly, unknown_sdp, expr);
       id
 	
-    let get_sos_vars id = match Hashtbl.find hash_sosvars id with a, _, _, _ -> a
-    let get_sos_mat  id = match Hashtbl.find hash_sosvars id with _, a, _, _ -> a
-    let get_sos_var  id = match Hashtbl.find hash_sosvars id with _, _, a, _ -> a
-    let get_sos_expr id = match Hashtbl.find hash_sosvars id with _, _, _, a -> a
+    let get_sos_dim  id = match Hashtbl.find hash_sosvars id with a, _, _, _, _ -> a
+    let get_sos_vars id = match Hashtbl.find hash_sosvars id with _, a, _, _, _ -> a
+    let get_sos_mat  id = match Hashtbl.find hash_sosvars id with _, _, a, _, _ -> a
+    let get_sos_var  id = match Hashtbl.find hash_sosvars id with _, _, _, a, _ -> a
+    let get_sos_expr id = match Hashtbl.find hash_sosvars id with _, _, _, _, a -> a
 
 
       
@@ -254,41 +264,128 @@ module Make =
       in
 
       mvn, degree
+   
 
+(* TODO 
+   each time we introduce (x,[])
+   if x is a singleton (coeff, var) we store that var = 0
+   and we simplify accu: every occurence of var is replaced by 0. If we obtain a new var = 0, this is removed from accu and stored in the zero table.
 
+   if it is more complex, x is simplidied using the list of zero vars and store into accu
+*)
     let sos dim names id expr =
-      let rec build_constraints mvn1 mvn2 accu =
-	match mvn1, mvn2 with
-	| [], [] -> accu
-	| (_::_ as l), []
-	| [], (_::_ as l) -> List.map (fun (c,_) -> c, []) l 
-	(* We add the constraints c = 0, for each element c of l *)
-	| (c1, m1)::tl1, (c2, m2)::tl2 ->
-	  let order = M.cmp m1 m2 in
-	  if order = 0 then
-	    build_constraints tl1 tl2 ((c1,c2)::accu)
-	  else if order < 0 then (* m1 < m2 *)
-	    build_constraints tl1 mvn2 ((c1,[])::accu)
-	  else 
-	    build_constraints mvn1 tl2 ((c2,[])::accu)
+      (* We use two hashtbl: 
+	 idtbl: pairid to (c1, c2)
+	 var_id: var to pairid list
+	 zerotbl: List of var
+      *)
+      let cpt = ref 0 in
+      let idtbl = Hashtbl.create 13 in
+      let vartbl = Hashtbl.create 13 in
+      let zerotbl = ref [] in
 
+      let clean c = List.filter (fun (_,v) -> not (List.mem v !zerotbl)) c in
+
+      let rec add_zero_var v =
+	zerotbl := v :: !zerotbl;
+	let ids = Hashtbl.find_all vartbl v in
+	(* We remove all v elements of vartbl *)
+	List.iter (fun _ -> Hashtbl.remove vartbl v) ids;
+	(* We clean and store the constraints *)
+	List.iter (fun id ->
+	  (* Format.eprintf "add_zero_var id=%i@.@?" id; *)
+	  try 
+	    let c1, c2 = Hashtbl.find idtbl id in
+	    match clean c1, clean c2 with
+	      [], [] -> (* this case should not happen *) ()
+	    | [_,v'], [] | [], [_, v'] -> (
+	    (* this constraint has to be removed and v added to zerotbl *) 
+	      Hashtbl.remove idtbl id;
+	      add_zero_var v'	      
+	    )
+	    | l1, l2 -> (* both lists are non empty, we replace id *)
+	      Hashtbl.replace idtbl id (l1, l2)
+	  with Not_found -> ()
+	) ids
+      in
+      
+      let rec add_cons c1 c2 =
+	match c1, c2 with
+	| [], [_,v] 
+	| [_,v], [] -> (* case 1 *)
+	  if List.mem v !zerotbl then
+	    () (* the constraint is already here *)
+	  else  (* We register the variable and clean the existing data *)
+	    add_zero_var v
+	| [], (_::_ as l)
+	| (_::_ as l), [] -> ( (* case 2 *)
+	  let l' = clean l in 
+	  match l' with
+	  | [] -> () (* strange case. Can it happen ? *)
+	  | [_,v] -> add_cons l' [] (* case 2.1 *)
+	  | _ -> let new_id = incr cpt; !cpt in
+		 Hashtbl.add idtbl new_id (l', []); (* the cons l' = 0 is added *)
+		 (* a link is stored from each variable v of l' to od *)
+		 List.iter (fun (_,v) -> Hashtbl.add vartbl v new_id) l       
+	)
+	| l1, l2 -> ((* We clean c1 c2 and add it to the hashtbls *)
+	  let l1', l2' = clean l1, clean l2 in
+	  match l1', l2' with
+	  | [], [_] | [_], [] -> add_cons l1' l2' (* -> case 1 *)
+	  | [], (_::_ as l') | (_::_ as l'), [] -> add_cons l' [] (* -> case 2.1 *)
+	  | _ -> let  new_id = incr cpt; !cpt in
+		 Hashtbl.add idtbl new_id (l1', l2'); (* the cons l1' = l2' is added *)
+		 (* a link is stored from each variable v of l1' and l2' to id *)
+		 List.iter (fun (_,v) -> Hashtbl.add vartbl v new_id) (l1'@l2')      
+	)
       in
 
-	  if dim <> Array.length names then
-	    assert false;
-	  let cvn = simplify dim expr in 
-	  let mvn, degree = unfold_poly dim cvn in
-	  Format.eprintf "new sos var: deg=%i, dim=%i@." degree dim;
-	  let sos_var = new_sos_var id (2*degree) dim in
-	  let sos_expr : t_mvn = get_sos_expr sos_var in
-	  let constraints = build_constraints mvn sos_expr [] in
-	  List.iter (fun (c1, c2) -> 
+      let rec build_constraints mvn1 mvn2 =
+	  match mvn1, mvn2 with
+	| [], [] -> ()
+	| (_::_ as l), []
+	| [], (_::_ as l) -> List.iter (fun (c,_) -> add_cons c []) l
+	| (c1, m1)::tl1, (c2, m2)::tl2 -> (
+	  let order = M.cmp m1 m2 in
+	  (* Format.eprintf "Comparing %a with %a: %i@." (M.fprintf names) m1 (M.fprintf names) m2 order; *)
+	  if order = 0 then (
 	    Format.printf "%a = %a@."
-	      pp_levarsnum c1 pp_levarsnum c2
-	  ) constraints;
-	  sos_var, constraints
-
-  end
+	      pp_levarsnum c1 pp_levarsnum c2;
+	    add_cons c1 c2;
+	    build_constraints tl1 tl2
+	  )
+	  else if order < 0 then (* m1 < m2 *) (
+	    add_cons c1 [];
+	    build_constraints tl1 mvn2 
+	  )
+	  else (
+	    add_cons c2 [];
+	    build_constraints mvn1 tl2 
+	  )
+	)
+      in
+      
+      if dim <> Array.length names then
+	assert false;
+      let cvn = simplify dim expr in 
+      Format.eprintf "cvn = %a@." (pp_cvn names) cvn;
+      let mvn, degree = unfold_poly dim cvn in
+      Format.eprintf "d(mvn)=%i, mvn = %a@." degree (pp_mvn names) mvn;
+      Format.eprintf "new sos var: deg=%i, dim=%i@." degree dim;
+      let sos_var = new_sos_var id (2*degree) dim in
+      let sos_expr : t_mvn = get_sos_expr sos_var in
+      let _ = build_constraints mvn sos_expr in
+      let constraints = 
+	(Hashtbl.fold (fun _ cons accu -> cons::accu) idtbl []) @ 
+	  (List.map (fun c -> [N.of_int 1, c], []) !zerotbl)
+      in
+      List.iter (fun (c1, c2) -> 
+	Format.printf "%a = %a@."
+	    pp_levarsnum c1 pp_levarsnum c2
+      ) constraints;
+      sos_var, constraints
+   	
+   end
 
 
 (*

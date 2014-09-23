@@ -77,19 +77,22 @@ module TH = Test(H)
 *)
 
 
-module SOS = LinearExpr.Make (C)
+module SOS = LinearExpr.Make (H)
 let _ =
   let dim = 4 in
   let sos1 = SOS.new_sos_var "p1" 4 dim in
-
-  Format.printf "sos1: %a@." (SOS.pp_sos dim) (SOS.get_sos_vars sos1);
+  let sos1_dim = SOS.get_sos_dim sos1 in
+  Format.printf "sos1: %a@." (SOS.pp_sos sos1_dim) (SOS.get_sos_vars sos1);
 
   let sos1_expr = SOSVar(sos1, dim) in
-  let expr = Add (sos1_expr, sos1_expr) in
-  let expr = ScalMul ([LinearExpr.N.of_int 2, [|0;2;1;0|]], sos1_expr) in
-  let sos2,_ = SOS.sos dim [|"x";"y";"z";"k"|] "toto" expr in
 
-  Format.printf "sos2: %a" (SOS.pp_sos dim) (SOS.get_sos_vars sos2);
+  let expr = sos1_expr (* Add (sos1_expr, sos1_expr) *) in
+ (* let expr = ScalMul ([LinearExpr.N.of_int 2, [|0;2;1;0|]], sos1_expr) in *)
+  
+  let sos2,_ = SOS.sos dim [|"x";"y";"z";"k"|] "t" expr in
+  let sos2_dim = SOS.get_sos_dim sos2 in
+
+  Format.printf "sos2: %a" (SOS.pp_sos sos2_dim) (SOS.get_sos_vars sos2);
 
 
 

@@ -141,7 +141,7 @@ struct
     
   let gen_base dim deg =
     Format.eprintf "Gen base dim=%i deg=%i@."dim deg;
-    Format.eprintf "Avant: %t@." pp_debug_base;
+(*    Format.eprintf "Avant: %t@." pp_debug_base;*)
     let exist = Hashtbl.mem base dim in
     let run, set, st = 
       if exist then
@@ -158,7 +158,8 @@ struct
       done;
       Hashtbl.add base dim (set @ !monomials)
     );
-    Format.eprintf "Apres: %t@." pp_debug_base
+(*    Format.eprintf "Apres: %t@." pp_debug_base;*)
+    ()
     
 
   let nth dim n  = 
@@ -192,7 +193,7 @@ struct
 
     gen_base dim target_deg;
     let set = Hashtbl.find base dim in	
-    Format.eprintf "target deg = %i, nb of deg: %i@." target_deg (List.length set); 
+    Format.eprintf "filling hashtbl: target deg = %i, nb of already computed deg: %i@." target_deg (List.length set); 
     let rec aux n base = 
       if n > target_deg then 
 	base 
