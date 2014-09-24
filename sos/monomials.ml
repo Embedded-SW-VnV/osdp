@@ -10,7 +10,7 @@ module type MONOMIAL =
 sig
   type t (* A monomial *)
   val cmp: t -> t -> int
-  val fprintf: string array -> Format.formatter -> t ->  unit
+  val fprintf: ?names:string array option -> Format.formatter -> t ->  unit
 end
 
 (*
@@ -34,7 +34,7 @@ sig
   type t = (SNum.t * M.t) list (* sorted by M.cmp *)
   val add: t -> t -> t
   val scal_mult: SNum.t -> t -> t
-  val fprintf: string array -> Format.formatter -> t -> unit
+  val fprintf: ?names:string array option -> Format.formatter -> t -> unit
 end
 
 module type MONOMIAL_BASIS = 
@@ -47,6 +47,7 @@ sig
      should be the only monomial of degree 0 *)
   val nth: int -> int -> t
 
+  val dim: t -> int
   val deg: t -> int
     
   val get_sos_deg: int -> int -> int
@@ -73,9 +74,9 @@ struct
 
   let scal_mult s le = if SNum.is_zero s then [] else List.map (fun (s',m) -> SNum.mult s s', m) le
 
-  let fprintf names = 
+  let fprintf ?(names=None) = 
     Utils.fprintf_list ~sep:" + " 
-      (fun fmt (s,m) -> Format.fprintf fmt "%a * %a" SNum.pp s (M.fprintf names) m) 
+      (fun fmt (s,m) -> Format.fprintf fmt "%a * %a" SNum.pp s (M.fprintf ~names:names) m) 
 end 
 
 
@@ -86,6 +87,7 @@ struct
     
   type t = int array (* array of size: dim + 1 *)
 
+  let dim = Array.length
   let deg = Array.fold_left ((+)) 0     
 
   let base : (int, int array list list) Hashtbl.t = Hashtbl.create 13
@@ -94,7 +96,13 @@ struct
     compare m1 m2
 
 
-  let fprintf pp_univar_monomial names fmt monomial = 
+  let fprintf pp_univar_monomial ?(names=None) fmt monomial = 
+    let names =
+      match names with
+      | None -> let x_char = Char.code 'x' in 
+		Array.init (Array.length monomial) (fun id -> String.make 1 (Char.chr (x_char + id)))
+      | Some a -> a
+    in
     assert (Array.length names = Array.length monomial);
       (*Format.fprintf fmt "[%a]" (fprintf_list ~sep:"; " Format.pp_print_int)
 	(Array.to_list monomial)*)
@@ -110,8 +118,7 @@ struct
 
 
   let pp_debug dim fmt m= 
-    let names = (Array.init dim (fun i -> "x" ^ string_of_int i)) in
-    fprintf (fun fmt name pow -> Format.fprintf fmt "%s^%i" name pow) names fmt m
+    fprintf (fun fmt name pow -> Format.fprintf fmt "%s^%i" name pow) fmt m
 
   let pp_debug_base fmt =
     Hashtbl.iter (fun d set -> 
@@ -140,7 +147,7 @@ struct
     
     
   let gen_base dim deg =
-    Format.eprintf "Gen base dim=%i deg=%i@."dim deg;
+    (* Format.eprintf "Gen base dim=%i deg=%i@."dim deg; *)
 (*    Format.eprintf "Avant: %t@." pp_debug_base;*)
     let exist = Hashtbl.mem base dim in
     let run, set, st = 
@@ -189,11 +196,11 @@ struct
        polynomial of degree deg *)
   let get_sos_deg dim deg = 
     let target_deg = (deg / 2) + (deg mod 2) in
-    Format.eprintf "deg vise: %i@." target_deg;
+    (* Format.eprintf "dim=%i, deg=%i, deg vise: %i@." dim deg target_deg; *)
 
     gen_base dim target_deg;
     let set = Hashtbl.find base dim in	
-    Format.eprintf "filling hashtbl: target deg = %i, nb of already computed deg: %i@." target_deg (List.length set); 
+    (* Format.eprintf "filling hashtbl: target deg = %i, nb of already computed deg: %i@." target_deg (List.length set);  *)
     let rec aux n base = 
       if n > target_deg then 
 	base 
@@ -219,7 +226,11 @@ module ClassicalMonomialBasis =
 
   module LE = LinExpr 
     (* (S)  *)
-    (struct include TensorProduct let fprintf = fprintf pp_univar_monomial end)
+    (struct include TensorProduct 
+	    let fprintf ?(names=None) = fprintf pp_univar_monomial ~names:names 
+(*let fprintf = fprintf pp_univar_monomial *)
+
+end)
       
   let prod m1 m2 = 
     let l1, l2 = Array.length m1, Array.length m2 in
@@ -251,7 +262,7 @@ struct
     module LE = LinExpr (* (S) *) 
       (struct type t = int 
 	      let cmp x y = - (compare x y)
-	      let fprintf names fmt monomial = fprintf pp_univar_monomial names fmt [|monomial|]  
+	      let fprintf ?(names=None) fmt monomial = fprintf pp_univar_monomial ~names:names fmt [|monomial|]  
        end) 
       
   (* Computes xH0 = 1/2 H1,  xHn = nH{n-1} + 1/2 H{n+1} *)
@@ -266,7 +277,7 @@ struct
   let test () =
     List.iter (fun n -> 
       let m = prod_var_mono n in
-      Format.printf "xH%i(x) = %a@." n (LE.fprintf [|"x"|]) m
+      Format.printf "xH%i(x) = %a@." n (LE.fprintf ~names:(Some [|"x"|])) m
     ) [0;1;2;3;4;5;6;7;8;9;10]
 
   (* Computes x(sum xxx)*)
@@ -292,7 +303,7 @@ struct
     let le1:LE.t = [(SNum.of_int 1, 4); (SNum.of_int 1, 3); (SNum.of_int 1, 2); (SNum.of_int 1, 1)] in
     List.iter (fun (nl: LE.t) -> 
       let m = prod_var_mono_serie nl in
-      Format.printf "x * (%a) = %a@." (LE.fprintf [|"x"|]) nl (LE.fprintf [|"x"|]) m
+      Format.printf "x * (%a) = %a@." (LE.fprintf ~names:(Some [|"x"|])) nl (LE.fprintf ~names:(Some [|"x"|])) m
     ) ([le1]: LE.t list)
 
 
@@ -319,9 +330,9 @@ struct
   let test () =
     List.iter (fun (x,y) ->
       let r = prod_mono_monomials x y in 
-      let names = [|"x"|] in
-      let pp = fprintf pp_univar_monomial names in
-      Format.printf "%a * %a = %a@." pp [|x|] pp [|y|] (LE.fprintf names) r
+      let names = Some [|"x"|] in
+      let pp = fprintf pp_univar_monomial ~names:names in
+      Format.printf "%a * %a = %a@." pp [|x|] pp [|y|] (LE.fprintf ~names:names) r
     )
       [(1,1);(0,2);(2,3); (5,6) ]
       
@@ -393,13 +404,16 @@ struct
     if l1 <> l2 then
       assert false
     else
-      let res_by_dim = 
-	List.map2
-	  (fun mono1 mono2 -> UniVariate.prod_mono_monomials mono1 mono2) 
-	  (Array.to_list m1)
-	  (Array.to_list m2)
+      let res = 
+	let res_by_dim = 
+	  List.map2
+	    (fun mono1 mono2 -> UniVariate.prod_mono_monomials mono1 mono2) 
+	    (Array.to_list m1)
+	    (Array.to_list m2)
+	in
+	tensorize res_by_dim
       in
-      tensorize res_by_dim
+      List.sort (fun (_,x) (_,y) -> cmp x y) res
 
 
 end:MONOMIAL_BASIS)
