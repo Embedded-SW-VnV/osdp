@@ -50,10 +50,15 @@ sig
   val dim: t -> int
   val deg: t -> int
     
-  val get_sos_deg: int -> int -> int
+  (* dim deg *)
+  val get_base_size: int -> int -> int
+  val get_sos_base_size: int -> int -> int
   val prod: t -> t -> LE.t 
   (* var_prod c m : multiply m by the polynomial x^c[0]y^c[1]... *)
   val var_prod: int array -> t -> LE.t 
+
+(* get_monimials dim deg returns the list of monomials of dim up to deg *)
+  val get_monomials: int -> int -> t list
 end
 
 module LinExpr =
@@ -168,6 +173,17 @@ struct
 (*    Format.eprintf "Apres: %t@." pp_debug_base;*)
     ()
     
+  let get_monomials dim deg =
+    if Hashtbl.mem base dim then
+      let rec select i l =
+	match i, l with
+	| 0, x::_ -> x
+	| _, hd::tl -> hd@(select (i-1) tl)
+	| _ -> Format.eprintf "select: %i in list of length %i@.@?" i (List.length l); assert false
+      in
+      select deg (Hashtbl.find base dim)
+    else 
+      assert false (* base not computed for dim *)
 
   let nth dim n  = 
     if Hashtbl.mem base dim then
@@ -192,22 +208,25 @@ struct
       assert false (* arrive si la base n'a pas ete calculé du tout pour dim *)
     )
 
-    (* Compute the size of the monomial basis when targeting a SOS
-       polynomial of degree deg *)
-  let get_sos_deg dim deg = 
-    let target_deg = (deg / 2) + (deg mod 2) in
-    (* Format.eprintf "dim=%i, deg=%i, deg vise: %i@." dim deg target_deg; *)
-
-    gen_base dim target_deg;
+  let get_base_size dim deg =
+    gen_base dim deg;
     let set = Hashtbl.find base dim in	
     (* Format.eprintf "filling hashtbl: target deg = %i, nb of already computed deg: %i@." target_deg (List.length set);  *)
     let rec aux n base = 
-      if n > target_deg then 
+      if n > deg then 
 	base 
       else 
 	(aux (n+1) ((try base + List.length (List.nth set n) with Failure _ -> Format.eprintf "n=%i@?@." n; assert false)))
     in
+    Format.eprintf "%t" pp_debug_base;
     aux 0 0 
+
+    (* Compute the size of the monomial basis when targeting a SOS
+       polynomial of degree deg *)
+  let get_sos_base_size dim deg = 
+    let target_deg = (deg / 2) + (deg mod 2) in
+    (* Format.eprintf "dim=%i, deg=%i, deg vise: %i@." dim deg target_deg; *)
+    get_base_size dim target_deg
 end
 
 module ClassicalMonomialBasis =
