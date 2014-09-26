@@ -26,23 +26,34 @@ struct
  
 end
 
-(*
-  (* For debug purpose *)
-  let pp_xvn pp_x fmt xvn =
-    match xvn with
-      [] -> Format.fprintf fmt "0"
-    | _ -> fprintf_list ~sep:" + " 
-      (fun fmt (l,c) -> 
-	pp_x Format.str_formatter c;
-	let c_str = Format.flush_str_formatter () in
-	if c_str = "1" then
-	  pp_levarsnum fmt l 
-	else
-	  Format.fprintf fmt "%a * %s" pp_levarsnum l c_str
-      )
-      fmt 
-      xvn
-*)
+module Vars =
+struct
+   type t = | SOSVar of Ident.t * int
+	    | PolyVar of Ident.t * int
+	    | SDPVar of LMI.Num_mat.var 
+	    | Cst (* homogeneization used to encode affine part *)
+		
+  let compare x y = match x,y with 
+    | Cst , (SOSVar _ | PolyVar _ | SDPVar _ ) -> -1 
+    | (SOSVar _ | PolyVar _ | SDPVar _ ) , Cst -> 1 
+    | _ -> compare x y
+
+  let pp fmt v = match v with
+    | SOSVar (v, d) -> Format.fprintf fmt "sos(%a)" Ident.fprintf v
+    | PolyVar (v, d) -> Format.fprintf fmt "poly(%a)" Ident.fprintf v
+    | SDPVar v -> Format.fprintf fmt "%a" LMI.Num_mat.pp_var v
+    | Cst -> ()
+end 
+
+(*******************************************************************************)
+(*                                                                             *)
+(*                                                                             *)
+(*                                                                             *)
+(*                                                                             *)
+(*                                                                             *)
+(*                                                                             *)
+(*******************************************************************************)
+
 
 module type COEFF =
 sig
@@ -75,6 +86,7 @@ sig
   val ext_mult: ext_t -> t -> t
   val is_zero: t -> bool
   val add: t -> t -> t
+  val sub: t -> t -> t
   val ext_of_int: int -> ext_t
   val pp: Format.formatter -> t -> unit
   val inject: (Coeff.t * V.t) list -> t
@@ -82,6 +94,15 @@ sig
   val map: (Coeff.t * V.t -> 'a) -> t -> 'a list
   val zero: t
 end
+
+(*******************************************************************************)
+(*                                                                             *)
+(*                                                                             *)
+(*                                                                             *)
+(*                                                                             *)
+(*                                                                             *)
+(*                                                                             *)
+(*******************************************************************************)
 
 (* Linear expr on (Coeff * V) *)
 module MakeLE = functor (Coeff: COEFF) -> functor (V: VARS) -> (
@@ -135,49 +156,19 @@ struct
 
 end : LE with type Coeff.t = Coeff.t and type V.t = V.t and type ext_t = Coeff.ext_t
 )
-(*
 
-module Make =functor 
-    (N:sig 
-      type t 
-      type ext_t
-      val is_zero: t -> bool
-      val ext_is_zero: ext_t -> bool
-      val ext_mult: ext_t -> t -> t
-      val add: t -> t -> t
-      val ext_of_int: int -> ext_t
-      val pp: Format.formatter -> t -> unit
-    end) ->
-struct
 
- 
-
-  module VN =
-  struct
-    include MakeLE 
-      (struct
-	include N(*	type t = N.t
-	type ext_t = N.t
-	let is_zero = N.is_zero
-	let ext_mult = N.ext_mult
-	let add = N.add
-	let ext_of_int = N.of_int*)
-       end)
-      
-      (struct
-	include Vars
-	module Set = Set.Make (Vars)
-	let pp ?(names:string array option=None) = pp 
-       end)
-      
-    (* We overwrite get_vars to remove Cst *)
-    let get_vars l = V.Set.remove Vars.Cst (get_vars l) 
+(*module LE = LinearExpr.Make (LinearExpr.N)*)
+  (*  module LEV = LinearExprVars.Make (N)*)
+module VN = struct
+  include MakeLE (N) (struct
+    include Vars
+    module Set = Set.Make (Vars)
+    let pp ?(names:string array option=None) = pp 
+  end)
+    
+  (* We overwrite get_vars to remove Cst *)
+  let get_vars l = V.Set.remove Vars.Cst (get_vars l) 
 
 end
 
-
-
-end
-
-module Main = Make (N)
-*)

@@ -42,40 +42,9 @@ open Monomials
 module C = ClassicalMonomialBasis 
 module H = HermiteMonomialBasis 
 
-module Vars =
-struct
-   type t = | SOSVar of Ident.t * int
-	   | PolyVar of Ident.t * int
-	   | SDPVar of LMI.Num_mat.var 
-	   | Cst (* homogeneization used to encode affine part *)
-
-  let compare x y = match x,y with 
-    | Cst , (SOSVar _ | PolyVar _ | SDPVar _ ) -> -1 
-    | (SOSVar _ | PolyVar _ | SDPVar _ ) , Cst -> 1 
-    | _ -> compare x y
-
-  let pp fmt v = match v with
-    | SOSVar (v, d) -> Format.fprintf fmt "sos(%a)" Ident.fprintf v
-    | PolyVar (v, d) -> Format.fprintf fmt "poly(%a)" Ident.fprintf v
-    | SDPVar v -> Format.fprintf fmt "%a" LMI.Num_mat.pp_var v
-    | Cst -> ()
-end 
-
-
-
-(*module LE = LinearExpr.Make (LinearExpr.N)*)
-  (*  module LEV = LinearExprVars.Make (N)*)
-module VN = struct
-  include LinearExpr.MakeLE (LinearExpr.N) (struct
-    include Vars
-    module Set = Set.Make (Vars)
-    let pp ?(names:string array option=None) = pp 
-  end)
-    
-  (* We overwrite get_vars to remove Cst *)
-  let get_vars l = V.Set.remove Vars.Cst (get_vars l) 
-
-end
+module Vars = LinearExpr.Vars
+module VN = LinearExpr.VN
+module VNConstraints = Constraints
 
 module CN = LinearExpr.MakeLE (LinearExpr.N) (struct include C module Set= Set.Make(C) end)
 module CVN = LinearExpr.MakeLE (VN) (struct include C module Set= Set.Make(C) end)
@@ -95,6 +64,9 @@ struct
   (*******************************************************************************)
   module MVN = LinearExpr.MakeLE (VN) (struct include M module Set= Set.Make(M) end)
   module CMVN = LinearExpr.MakeLE (MVN) (struct include C module Set= Set.Make(C) end)
+
+
+
 (*
 (* Polynomial in C *)
 type CN.t = (N.t * C.t) list
@@ -296,31 +268,32 @@ let rec simplify dim expr : CVN.t =
 	 CMVN -> MVN -- on deplie les equations et on recaster en base M
     *)
 let unfold_poly dim cvn =
-
+  let cst_monomial_M = try M.nth dim 0 with Failure _ -> assert false in
   let cmvn : CMVN.t = CMVN.inject (
-    CVN.map (
-    fun (s,m) -> (* s: linear expr over vars, m: a classical monomial *)
-      List.fold_right ( 
-	fun (c,v) accu -> (* c: a numerical coeff, v a variable *)
-	  let new_term =
-	    match v with
-	    | Vars.SDPVar _ -> (* M.nth 0 : the constant monomial : 1 *)
-	      CMVN.inject [MVN.inject [VN.inject [c, v], try M.nth dim 0 with Failure _ -> assert false] , m ]
-	    | Vars.PolyVar (id, d) -> assert false (* TODO generer un polynome de degre d 
-						      en la base M *)
-	    | Vars.Cst -> CMVN.inject [MVN.inject[VN.inject[c, Vars.Cst], (try M.nth dim 0 with Failure _ -> assert false)], m]
-	    | Vars.SOSVar (id, d) -> 
-	      CMVN.inject [List.map (fun (v, m') -> MVN.inject [VN.ext_mult c v, m']) (MVN.extract (get_sos_expr id)), m]
-	    in
-	  CMVN.add new_term accu
-      ) (VN.extract s) CMVN.zero,
-      m 
-    )
-    (cvn: CVN.t) (* a polynomial in classical basis, with linear expressions
-		    over var as coefficients *)
+    CVN.map ( 
+      fun (s,m) -> (* s: linear expr over vars (VN) , m: a classical monomial (C) *)
+	let s_mvn : MVN.t = (* s expressed in base M  *)
+	  List.fold_right (
+	    fun (n,v) res' -> (* n a numerical coeff and v a (SDP/SOS/Poly) variable *)
+	      let v_mvn = (* = ( (c * v) * {base M} ) *)
+		match v with
+		| Vars.SDPVar _ -> (* M.nth 0 : the constant monomial : 1 *)
+		  MVN.inject [VN.inject [n, v], cst_monomial_M]
+		| Vars.PolyVar (id, d) -> assert false (* TODO generer un polynome de degre d 
+							  en la base M *)
+		| Vars.Cst -> MVN.inject[VN.inject[n, Vars.Cst], cst_monomial_M]
+		| Vars.SOSVar (id, d) -> 
+		  let mvn_v = get_sos_expr id in
+		  MVN.ext_mult n mvn_v
+	      in
+	      MVN.add v_mvn res'
+	  ) (VN.extract s) MVN.zero 
+	in
+	s_mvn, m
+    ) cvn
   )
   in
-
+ 
   let mvn, degree = 
     List.fold_right  (
       fun (s, mc) (res, deg) -> 
@@ -328,13 +301,14 @@ let unfold_poly dim cvn =
 	  fun (expr_v, mm) (res', deg) -> 
 	    let m_expr = M.var_prod mc mm in
 	    let new_term, deg' = 
-	      List.fold_right (fun (c,m) (accu,deg) -> 
-		(VN.ext_mult c expr_v, m
-		)::accu, max deg (M.deg m)) m_expr ([], deg)
+	      List.fold_right (
+		fun (c,m) (accu,deg) -> 
+		  (VN.ext_mult c expr_v, m)::accu, max deg (M.deg m)) 
+		m_expr ([], deg)
 	    in
-	    MVN.add res' new_term , deg'
-	) s (res, deg) 
-    ) cmvn ([], 0) 
+	    MVN.add res' (MVN.inject new_term) , deg'
+	) (MVN.extract s) (res, deg) 
+    ) (CMVN.extract cmvn) (MVN.zero, 0) 
   in
 
   mvn, degree
@@ -353,9 +327,9 @@ let sos ?(names=None) dim id expr =
     match mvn1, mvn2 with
     | [], [] -> ()
     | (_::_ as l), []
-    | [], (_::_ as l) -> List.iter (fun (c,_) -> VNConstraints.add_cons c []) l
+    | [], (_::_ as l) -> List.iter (fun (c,_) -> VNConstraints.add_cons c VN.zero) l
     | (c1, m1)::tl1, (c2, m2)::tl2 -> (
-      let order = M.cmp m1 m2 in
+      let order = M.compare m1 m2 in
 	  (* Format.eprintf "Comparing %a with %a: %i@." (M.fprintf names) m1 (M.fprintf names) m2 order; *)
       if order = 0 then (
 	    (* Format.eprintf "%a = %a@." *)
@@ -364,11 +338,11 @@ let sos ?(names=None) dim id expr =
 	build_constraints tl1 tl2
       )
       else if order < 0 then (* m1 < m2 *) (
-	VNConstraints.add_cons c1 [];
+	VNConstraints.add_cons c1 VN.zero;
 	build_constraints tl1 mvn2 
       )
       else (
-	VNConstraints.add_cons c2 [];
+	VNConstraints.add_cons c2 VN.zero;
 	build_constraints mvn1 tl2 
       )
     )
@@ -384,10 +358,10 @@ let sos ?(names=None) dim id expr =
   let mvn, degree = unfold_poly dim cvn in
       (* Format.eprintf "d(mvn)=%i, mvn = %a@." degree (pp_mvn ~names:names) mvn; *)
   Format.eprintf "new sos var: deg=%i, dim=%i@." degree dim;
-  let sos_var = new_sos_var id degree dim in
+  let sos_var, _ = new_sos_var id degree dim in
   let sos_expr : MVN.t = get_sos_expr sos_var in
       (* Format.eprintf "sos expr mvn = %a@." (pp_mvn ~names:names) sos_expr; *)
-  let _ = build_constraints mvn sos_expr in
+  let _ = build_constraints (MVN.extract mvn) (MVN.extract sos_expr) in
   let constraints = VNConstraints.get_cons () in
       (* List.iter (fun c ->  *)
       (* 	Format.printf "%a = 0@." pp_levarsnum c *)
