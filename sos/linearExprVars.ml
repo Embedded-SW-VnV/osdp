@@ -43,8 +43,9 @@ let pp_levarsnum fmt c =
 match c with 
 | [] -> Format.fprintf fmt "0"
 | [n, Vars.Cst] -> N.fprintf fmt n        
-| (n1,Vars.Cst)::(n, v)::[] when N.is_zero n1 ->
+(*| (n1,Vars.Cst)::(n, v)::[] when N.is_zero n1 ->
   Format.fprintf fmt "%a * %a" N.fprintf n Vars.fprintf v      
+*)
 | _ ->
   Format.fprintf fmt "(%a)"
     (fprintf_list ~sep:" + " 
@@ -73,7 +74,7 @@ match c with
   let levarsnum_get_vars l = 
     List.fold_left (fun accu (_,v) -> VarSet.add v accu) VarSet.empty  (List.tl l)
 
-
+    
 (*******************************************************************************)
 (*                                                                             *)
 (* Module used to accumulate constraints and store them in a compact           *)

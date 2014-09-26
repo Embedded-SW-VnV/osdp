@@ -3,7 +3,7 @@ open LinearExpr
 
 module C = ClassicalMonomialBasis 
 module H = HermiteMonomialBasis 
-module SOS = LinearExpr.Make (C)
+module SOS = Sos.Make (C)
 module N = LinearExpr.N
 module Vars = LinearExpr.Vars
 
