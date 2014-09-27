@@ -13,6 +13,8 @@ sig
   val fprintf: Format.formatter -> t -> unit
 end
 
+type v_t = Var of Ident.t * int * int | ScalId of Ident.t 
+
 module type Sig = 
 sig
   module Mat: Matrix.S
@@ -23,9 +25,9 @@ sig
 (** Objective to be maximized by the solver: None denotes no objective, Some
     (positive_sign, v) denotes the value v if positive_sign is true, -v
     otherwise. *)
-  type lmi_obj_t = (objKind * Ident.t) option
+  type lmi_obj_t = (objKind * v_t) option
 
-  type var 
+  type var = v_t
 
 (** Printers for LMI *)
  val pp_matrix_expr : Format.formatter -> matrix_expr -> unit
@@ -36,7 +38,7 @@ sig
  val eye: int -> matrix_expr
  val diag: matrix_expr list -> matrix_expr 
  val const_mult: Mat.elt -> matrix_expr -> matrix_expr
- val scal_mult: Ident.t -> matrix_expr -> matrix_expr
+ val scal_mult: v_t -> matrix_expr -> matrix_expr
  val symmat: Ident.t * int ->  matrix_expr
  val const_mat: Mat.t -> matrix_expr
  val trans_const_mat: Mat.t -> matrix_expr
@@ -49,10 +51,14 @@ sig
  val vars_of_sym_mat: Ident.t -> int -> var list 
   (* val rewrite_mat_as_scalar: matrix_expr -> matrix_expr  *)
 
-(** [solve lmi obj] solves the provided LMI trying to maximize the objective
+(** [solve vars lmi obj] solves the provided LMI on variables vars trying to maximize the objective
     obj. It returns the solver return value plus a list with result, mapping each unknown variable to its
     value *)
-  val solve: matrix_expr list -> lmi_obj_t -> float * (Ident.t * (Mat.elt, Mat.t) value_t) list option
+  val solve: 
+    v_t list list ->  (* list of variables *)
+    matrix_expr list -> (* list of sdp matrix expression *)
+    lmi_obj_t -> (* Objective *)
+    float * (Ident.t * (Mat.elt, Mat.t) value_t) list option 
 
   val get_var_id: var -> Ident.t
   val get_var_indices: var -> (int * int) option

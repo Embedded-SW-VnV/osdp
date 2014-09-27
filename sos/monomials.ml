@@ -59,6 +59,7 @@ sig
 
 (* get_monimials dim deg returns the list of monomials of dim up to deg *)
   val get_monomials: int -> int -> t list
+
 end
 
 module LinExpr =
@@ -174,17 +175,16 @@ struct
     ()
     
   let get_monomials dim deg =
-    if Hashtbl.mem base dim then
-      let rec select i l =
-	match i, l with
-	| 0, x::_ -> x
-	| _, hd::tl -> hd@(select (i-1) tl)
-	| _ -> Format.eprintf "select: %i in list of length %i@.@?" i (List.length l); assert false
-      in
-      select deg (Hashtbl.find base dim)
-    else 
-      assert false (* base not computed for dim *)
-
+    let rec select i l =
+      match i, l with
+      | 0, x::_ -> x
+      | _, hd::tl -> hd@(select (i-1) tl)
+      | _ -> Format.eprintf "select: %i in list of length %i@.@?" i (List.length l); assert false
+    in
+    if not (Hashtbl.mem base dim) then
+      gen_base dim deg;
+    select deg (Hashtbl.find base dim)
+    
   let nth dim n  = 
     if Hashtbl.mem base dim then
       let set = Hashtbl.find base dim in
@@ -218,7 +218,7 @@ struct
       else 
 	(aux (n+1) ((try base + List.length (List.nth set n) with Failure _ -> Format.eprintf "n=%i@?@." n; assert false)))
     in
-    Format.eprintf "%t" pp_debug_base;
+(*    Format.eprintf "%t" pp_debug_base;*)
     aux 0 0 
 
     (* Compute the size of the monomial basis when targeting a SOS
@@ -263,7 +263,10 @@ end)
       
 end:MONOMIAL_BASIS with type t = int array)
 
-module HermiteMonomialBasis =
+type hermite_t = HPhysicists | HStatistic
+
+module HermiteMonomialBasisMake =
+  functor (HKind: sig val kind: hermite_t end) ->
 (* functor (S : RING) ->  *)(
 struct
   (* module S = S *)
@@ -284,16 +287,20 @@ struct
 	      let pp ?(names=None) fmt monomial = pp pp_univar_monomial ~names:names fmt [|monomial|]  
        end) 
       
-  (* Computes xH0 = 1/2 H1,  xHn = nH{n-1} + 1/2 H{n+1} *)
+  (* Computes 
+     xH0 = 1/2 H1,  xHn = nH{n-1} + 1/2 H{n+1} (in physicists)
+     xH0 = H1,  xHn = nH{n-1} + H{n+1}         (in statistic)
+
+  *)
   let prod_var_mono n : LE.t =
-    let half = SNum.of_rat 1 2 in
+    let half = if HKind.kind = HPhysicists then SNum.of_rat 1 2 else SNum.of_int 1 in
     if n = 0 then
       (half, 1)::[]
     else
 	(half, n + 1)::(SNum.of_int n, n - 1)::[]
 
   (* Test *)	  
-  let test () =
+  let test =
     List.iter (fun n -> 
       let m = prod_var_mono n in
       Format.printf "xH%i(x) = %a@." n (LE.pp ~names:(Some [|"x"|])) m
@@ -327,6 +334,7 @@ struct
 
 
   let prod_mono_monomials n1 n2 =
+    let scale = if HKind.kind = HPhysicists then SNum.of_int 2 else SNum.of_int 1 in
     let xs, c = if n1 <= n2 then LE.inject n1, n2 else LE.inject n2, n1 in
     let rec aux i c0 c1 nd =
       if i >= c + 2 then
@@ -334,26 +342,26 @@ struct
       else
 	let i' = i + 1 in
 	let nd' = nd - 1 in
-	let c0' = LE.scal_mult (SNum.of_int (-2 * (nd'-1)) ) c1 in
-	let c1' = LE.add c0 (LE.scal_mult (SNum.of_int 2) (prod_var_mono_serie c1)) in
+	let c0' = LE.scal_mult (SNum.mult scale (SNum.of_int (-(nd'-1))) ) c1 in
+	let c1' = LE.add c0 (LE.scal_mult scale (prod_var_mono_serie c1)) in
 	aux i' c0' c1' nd'
     in 
     match c with 
     | 0 -> LE.inject 0
     | 1 -> let c0, c1 = [], xs in
-	   LE.add c0 (LE.scal_mult (SNum.of_int 2) (prod_var_mono_serie c1))
+	   LE.add c0 (LE.scal_mult scale (prod_var_mono_serie c1))
     | _ -> let c0, c1 = aux 3 [] xs (c+1) in
-	   LE.add c0 (LE.scal_mult (SNum.of_int 2) (prod_var_mono_serie c1))
+	   LE.add c0 (LE.scal_mult scale (prod_var_mono_serie c1))
 
   (* Test *)
-  let test () =
+  let test  =
     List.iter (fun (x,y) ->
       let r = prod_mono_monomials x y in 
       let names = Some [|"x"|] in
       let pp = pp pp_univar_monomial ~names:names in
       Format.printf "%a * %a = %a@." pp [|x|] pp [|y|] (LE.pp ~names:names) r
     )
-      [(1,1);(0,2);(2,3); (5,6) ]
+      [(*(1,1);(0,2);(2,3); (5,6);*) (2,2) ]
       
   end
 
@@ -434,5 +442,7 @@ struct
       in
       List.sort (fun (_,x) (_,y) -> compare x y) res
 
+end)
 
-end:MONOMIAL_BASIS)
+module HermiteP = HermiteMonomialBasisMake(struct let kind = HPhysicists end)
+module HermiteS = HermiteMonomialBasisMake(struct let kind = HStatistic end)

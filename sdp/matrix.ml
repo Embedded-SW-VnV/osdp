@@ -426,22 +426,6 @@ let lift_block mat n m pos_l pos_c =
 
 end: S with type Elem.t = BT.t)
 
-let num_of_string s =
-  let regexp = Str.regexp "\\(-\\)?\\([0-9]+\\)\\.\\([0-9]+\\)?\\(e\\(-\\)?\\([0-9]+\\)\\)?" in
-  let _ = Str.string_match regexp s 0 in
-  let neg = try let _ = Str.matched_group 1 s in true with Not_found -> false in
-  let left = Str.matched_group 2 s in
-  let right = try Some (Str.matched_group 3 s) with Not_found -> None in
-  let exp_opt = 
-    try 
-      let negsign = (match Str.matched_group 5 s with "+" -> false | "-" -> true | _ -> assert false) in
-      Some (negsign, Str.matched_group 6 s) 
-    with Not_found -> None in
-  Utils.num_of_strings neg left right exp_opt 
-
-let num_of_float f =
-  let s = string_of_float f in 
-  num_of_string s
 
 
 module Num_mat = Make(struct 
@@ -453,7 +437,7 @@ module Num_mat = Make(struct
   let div = Num.div_num
   let sign = Num.sign_num
   let to_float = Num.float_of_num
-  let of_float = num_of_float
+  let of_float = Utils.num_of_float
   let pp fmt num = Format.fprintf fmt "%s" (Num.string_of_num num) 
   let compare = Num.compare_num
   let eq = Num.eq_num

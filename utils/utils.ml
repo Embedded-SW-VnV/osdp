@@ -109,6 +109,22 @@ let num_of_strings neg left right exp =
       Num.mult_num base (Num.power_num (Num.num_of_int 10) (neg_num posneg_exp (Num.num_of_int e)))
   | _ -> base
 
+let num_of_string s =
+  let regexp = Str.regexp "\\(-\\)?\\([0-9]+\\)\\.\\([0-9]+\\)?\\(e\\(-\\)?\\([0-9]+\\)\\)?" in
+  let _ = Str.string_match regexp s 0 in
+  let neg = try let _ = Str.matched_group 1 s in true with Not_found -> false in
+  let left = Str.matched_group 2 s in
+  let right = try Some (Str.matched_group 3 s) with Not_found -> None in
+  let exp_opt = 
+    try 
+      let negsign = (match Str.matched_group 5 s with "+" -> false | "-" -> true | _ -> assert false) in
+      Some (negsign, Str.matched_group 6 s) 
+    with Not_found -> None in
+  num_of_strings neg left right exp_opt 
+
+let num_of_float f =
+  let s = string_of_float f in 
+  num_of_string s
 
 		    
 let merge_sorted_lists

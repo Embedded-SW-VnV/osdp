@@ -40,7 +40,7 @@ on a deux polynome
 *)
 open Monomials
 module C = ClassicalMonomialBasis 
-module H = HermiteMonomialBasis 
+module H = HermiteS 
 
 module Vars = LinearExpr.Vars
 module VN = LinearExpr.VN
@@ -48,7 +48,24 @@ module VNConstraints = Constraints
 
 module CN = LinearExpr.MakeLE (LinearExpr.N) (struct include C module Set= Set.Make(C) end)
 module CVN = LinearExpr.MakeLE (VN) (struct include C module Set= Set.Make(C) end)
-  
+
+(* Type of expressions: it should be linear in SOSVar, SDPVar, PolyVar *)
+type expr = | Var of Vars.t 
+    (*SOSVar of Ident.t * int (* SOSVar(id, d) : Positive Polynomial variable 
+					 id of degree d *)
+	    | PolyVar of Ident.t * int 
+	    | SDPVar of LMI.Num_mat.var
+    *)
+	    | Scalar of CN.t (* Polynomial with known coefficients, no free (sdp) vars *)
+	    | Add of expr * expr 
+	    | Sub of expr * expr
+	    | ScalMul of CN.t * expr
+
+let (+%) x y = Add(x,y)  
+let (-%) x y = Sub(x,y)  
+let ( *% ) x y = ScalMul(x,y)  
+let (?%) x = Scalar x
+let (!%) x = Var x
 
 module Make = functor (M: MONOMIAL_BASIS) ->
 struct
@@ -99,15 +116,6 @@ let pp_cvn ?(names=None) = pp_xvn (C.fprintf ~names:names)
 
 
 
-(* Type of expressions: it should be linear in SOSVar, SDPVar, PolyVar *)
-type expr = | SOSVar of Ident.t * int (* SOSVar(id, d) : Positive Polynomial variable 
-					 id of degree d *)
-	    | PolyVar of Ident.t * int 
-	    | SDPVar of LMI.Num_mat.var
-      	    | Scalar of CN.t (* Polynomial with known coefficients, no free (sdp) vars *)
-	    | Add of expr * expr 
-	    | Sub of expr * expr
-	    | ScalMul of CN.t * expr
 
 
 
@@ -130,6 +138,8 @@ let hash_sosvars :
        MVN.t
     ) Hashtbl.t  
     = Hashtbl.create 13
+
+let hash_polyvars = Hashtbl.create 13
 
    (* copy of LMI.sym_mat_of_var *)
 let pp_sos dim fmt (vl:LMI.Num_mat.var list) = 
@@ -178,7 +188,7 @@ let pp_sos dim fmt (vl:LMI.Num_mat.var list) =
        sdp_vars is the sdp matrix
     *)
     
-let new_sos_var name deg dim : Ident.t * expr =
+let new_sos_var name dim deg : Ident.t * Vars.t =
   let id = Ident.create name in
   let deg_monomials = M.get_sos_base_size dim deg in
   Format.eprintf "nb element base monomiale: %i@." deg_monomials;
@@ -209,7 +219,7 @@ let new_sos_var name deg dim : Ident.t * expr =
   let build_poly elems = LMI.Num_mat.sym_mat_of_var deg_monomials elems in
   let unknown_sdp = LMI.Num_mat.symmat (id, deg_monomials) in
   Hashtbl.add hash_sosvars id (deg_monomials, vars, build_poly, unknown_sdp, expr);
-  id, SOSVar(id, dim)
+  id, Vars.SOSVar(id, deg)
     
 let get_sos_dim  id = match Hashtbl.find hash_sosvars id with a, _, _, _, _ -> a
 let get_sos_vars id = match Hashtbl.find hash_sosvars id with _, a, _, _, _ -> a
@@ -218,6 +228,20 @@ let get_sos_var  id = match Hashtbl.find hash_sosvars id with _, _, _, a, _ -> a
 let get_sos_expr id = match Hashtbl.find hash_sosvars id with _, _, _, _, a -> a
 
 
+let new_poly_var name dim deg =
+  let id = Ident.create name in
+  let monomials = M.get_monomials dim deg in
+  let vars = List.mapi (fun idx _ -> LMI.Var (id, idx, 0)) monomials in
+  let expr : MVN.t = 
+    MVN.inject 
+      (List.map2 (fun v m -> (VN.inject [LinearExpr.N.of_int 1, Vars.SDPVar v], m)) vars monomials) 
+  in
+  Hashtbl.add hash_polyvars id (deg, vars, expr);
+  id, Vars.PolyVar (id, deg)
+
+let get_poly_deg id  = match Hashtbl.find hash_polyvars id with  a, _, _ -> a
+let get_poly_vars id = match Hashtbl.find hash_polyvars id with  _, a, _ -> a
+let get_poly_expr id =  match Hashtbl.find hash_polyvars id with _, _, a -> a
   
     (*******************************************************************************)
     (*                                                                             *)
@@ -233,10 +257,11 @@ let get_sos_expr id = match Hashtbl.find hash_sosvars id with _, _, _, _, a -> a
 let rec simplify dim expr : CVN.t =
   let zero_c dim = Array.make dim 0 in
   match expr with
-  | SOSVar (v, d)  -> CVN.inject [VN.inject [LinearExpr.N.of_int 1,  Vars.SOSVar (v, d)] , zero_c dim]
-  | SDPVar v -> CVN.inject [VN.inject [LinearExpr.N.of_int 1,  Vars.SDPVar v] , zero_c dim]
+  | Var (Vars.Cst) -> assert false
+  | Var (Vars.SOSVar (v, d))  -> CVN.inject [VN.inject [LinearExpr.N.of_int 1,  Vars.SOSVar (v, d)] , zero_c dim]
+  | Var(Vars.SDPVar v) -> CVN.inject [VN.inject [LinearExpr.N.of_int 1,  Vars.SDPVar v] , zero_c dim]
   | Scalar s -> CVN.inject (CN.map (fun (n,m) -> VN.inject [n, Vars.Cst] ,m) s) (* Constant polynomial in C *)
-  | PolyVar _ -> assert false (* todo *)
+  | Var(Vars.PolyVar (v,d)) -> CVN.inject [VN.inject [LinearExpr.N.of_int 1,  Vars.PolyVar (v, d)] , zero_c dim]
   | Add (e1, e2) -> CVN.add (simplify dim e1) (simplify dim e2)
 
   | Sub (e1, e2) -> 
@@ -279,8 +304,9 @@ let unfold_poly dim cvn =
 		match v with
 		| Vars.SDPVar _ -> (* M.nth 0 : the constant monomial : 1 *)
 		  MVN.inject [VN.inject [n, v], cst_monomial_M]
-		| Vars.PolyVar (id, d) -> assert false (* TODO generer un polynome de degre d 
-							  en la base M *)
+		| Vars.PolyVar (id, d) -> 
+		  let mvn_v = get_poly_expr id in
+		  MVN.ext_mult n mvn_v
 		| Vars.Cst -> MVN.inject[VN.inject[n, Vars.Cst], cst_monomial_M]
 		| Vars.SOSVar (id, d) -> 
 		  let mvn_v = get_sos_expr id in
@@ -358,7 +384,7 @@ let sos ?(names=None) dim id expr =
   let mvn, degree = unfold_poly dim cvn in
       (* Format.eprintf "d(mvn)=%i, mvn = %a@." degree (pp_mvn ~names:names) mvn; *)
   Format.eprintf "new sos var: deg=%i, dim=%i@." degree dim;
-  let sos_var, _ = new_sos_var id degree dim in
+  let sos_var, sos_id_expr = new_sos_var id dim degree in
   let sos_expr : MVN.t = get_sos_expr sos_var in
       (* Format.eprintf "sos expr mvn = %a@." (pp_mvn ~names:names) sos_expr; *)
   let _ = build_constraints (MVN.extract mvn) (MVN.extract sos_expr) in
@@ -366,6 +392,6 @@ let sos ?(names=None) dim id expr =
       (* List.iter (fun c ->  *)
       (* 	Format.printf "%a = 0@." pp_levarsnum c *)
       (* ) constraints; *)
-  sos_var, constraints
+  sos_var, sos_id_expr, constraints
 
 end

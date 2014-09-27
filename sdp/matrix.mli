@@ -83,9 +83,9 @@ module Num_mat: S with type Elem.t = Num.num (* elt = Num.num *)
 
 (* Matrix with float coefficients *)
 module Float: S with type Elem.t = float (*elt = float *)
-
+(*
 val num_of_string: string -> Num_mat.elt
-
+*)
 (* Local Variables: *)
-(* compile-command:"make -C ../.." *)
+(* compile-command:"make -C .." *)
 (* End: *)

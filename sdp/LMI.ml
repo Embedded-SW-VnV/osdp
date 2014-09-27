@@ -38,15 +38,15 @@ module type Sig =
 sig
   module Mat: Matrix.S
   type matrix_expr 
-  type lmi_obj_t = (objKind * Ident.t) option
-  type var
+  type lmi_obj_t = (objKind * v_t) option
+  type var = v_t
   val pp_matrix_expr : Format.formatter -> matrix_expr -> unit
   val pp_var : Format.formatter -> var -> unit
   val zeros : int -> int -> matrix_expr
   val eye: int -> matrix_expr
   val diag: matrix_expr list -> matrix_expr 
   val const_mult: Mat.elt -> matrix_expr -> matrix_expr
-  val scal_mult: Ident.t -> matrix_expr -> matrix_expr
+  val scal_mult: v_t -> matrix_expr -> matrix_expr
   val symmat: Ident.t * int ->  matrix_expr
   val const_mat: Mat.t -> matrix_expr
   val trans_const_mat: Mat.t -> matrix_expr
@@ -57,7 +57,7 @@ sig
   val of_array_array: matrix_expr array array -> matrix_expr
   val sym_mat_of_var: int -> Mat.elt list -> Mat.t
   val vars_of_sym_mat: Ident.t -> int -> var list 
-  val solve: matrix_expr list -> lmi_obj_t -> float * (Ident.t * (Mat.elt, Mat.t) value_t) list option
+  val solve: v_t list list -> matrix_expr list -> lmi_obj_t -> float * (Ident.t * (Mat.elt, Mat.t) value_t) list option
   val get_var_id: var -> Ident.t
   val get_var_indices: var -> (int * int) option
 end 
@@ -110,7 +110,7 @@ struct
 (** Objective to be maximized by the solver: None denotes no objective, Some
     (positive_sign, v) denotes the value v if positive_sign is true, -v
     otherwise. *)
-type lmi_obj_t = (objKind * Ident.t) option
+type lmi_obj_t = (objKind * v_t) option
 
 let rec get_dim lmi =
   match lmi with
@@ -188,12 +188,14 @@ let rec get_scal_var e =
   | MatVarSym (id, dim) -> assert false (* Should not exist anymore when this function is called *)
 *)
 
+(*
 let rec get_vars e =
   match e with
   | MatMult (e1, e2) 
   | MatAdd (e1, e2) 
   | MatSub (e1, e2) ->     IdentDimSet.union (get_vars e1) (get_vars e2)
   | MatScalMult (SIdent s, e1) -> IdentDimSet.add (s,0) (get_vars e1) 
+  | MatScalMult (MVar (id, i, j), e1) -> IdentDimSet.add (idxxxx,0) (get_vars e1) 
   | MatScalMult (_, e1) -> get_vars e1
   | MatCst _ ->            IdentDimSet.empty
   | MatVarSym (id, dim) -> IdentDimSet.singleton (id, dim)
@@ -204,6 +206,7 @@ let rec get_vars e =
 	  accu 
 	  (Array.to_list a_i)
     ) IdentDimSet.empty (Array.to_list a)
+*)
 
 let new_var id i j = Var (id, i, j)
 let get_var id i j = if j <= i then Var(id, i, j) else Var(id, j, i) 
@@ -544,7 +547,9 @@ let kronecker_sym_matrix dim i j = MatCst (Mat.kronecker_sym_matrix dim i j)
 
 let const_mult c e = MatScalMult ((Cst c), e)
 
-let scal_mult id e = MatScalMult ((SIdent id), e)
+let scal_mult v e = match v with
+  | ScalId id -> MatScalMult ((SIdent id), e)
+  | Var (id, i, j) -> MatScalMult (MVar (id, i, j), e)
 
 let symmat (id, dim) = MatVarSym (id, dim)
 let const_mat m = MatCst m
@@ -678,23 +683,32 @@ let diag block_list =
 
 
 (* Dual -> Primal *)
-let solve lmi_list objective =
-  (* 1. we iterate through lmi_list to gather variables and split them as scalar, it will be our solution. *)
-  let vars = List.fold_left (fun accu s -> IdentDimSet.union accu (get_vars s)) IdentDimSet.empty lmi_list in
+let solve (sorted_vars: v_t list list) lmi_list objective =
+  
+  (* 1. we iterate through lmi_list to gather variables and split them as
+     scalar, it will be our solution. *)
+(*  let vars = List.fold_left 
+    (fun accu s -> IdentDimSet.union accu (get_vars s)) 
+    IdentDimSet.empty lmi_list 
+  in
+  
   let sorted_vars : v_t list list = 
     List.map 
       (fun (v, dim) -> if dim = 0 then [ScalId v] else vars_of_sym_mat v dim) 
       (IdentDimSet.elements vars) 
   in
+*)
+
   (* We check that objective is part of the variables *)
   (match objective with
   | Some (_, o) -> 
-    if not (IdentDimSet.mem (o, 0) vars) then 
+    if not (List.exists (List.mem o) sorted_vars) then 
       raise (Failure "LMI: objective is not part of the free variable of the LMIs.")
   | _ -> ()
-    );
+  );
 
-  (* 2. each lmi is rephrased over those scalars. the associated constant part is negated and returned (-C) *) 
+  (* 2. each lmi is rephrased over those scalars. the associated constant part
+     is negated and returned (-C) *)
   let _, neg_constants, (lmi_unfolded: (VarSet.t *  Mat.t) list list) = 
     List.fold_right  (fun lmi (cpt, csts, unfolded) ->
       let assoc_list = try rewrite_mat_as_scalar lmi  
@@ -718,15 +732,14 @@ let solve lmi_list objective =
     ) lmi_list (1, [], [])
   in
   (* 3. We iterate through the scalar variables and for each of them provide the
-     block matrix of each lmi (do you understand that?)
-     It is also associated to the float a_i ((+/-) 1 for the objective variable, 0 for the others 
-     This is CONSTRAINTS
-  *)
+     block matrix of each lmi (do you understand that?)  It is also associated
+     to the float a_i ((+/-) 1 for the objective variable, 0 for the others This
+     is CONSTRAINTS *)
   let constraints = List.map (
     fun (v : v_t) -> 
       let target = match objective with
-	| Some (Minimize, obj) when ScalId obj = v -> 1. (* we minimize the dual, ie maximize the primal *)
-	| Some (Maximize, obj) when ScalId obj = v -> -1. (* we maximize the dual, ie minimize the primal *)
+	| Some (Minimize, obj) when obj = v -> 1. (* we minimize the dual, ie maximize the primal *)
+	| Some (Maximize, obj) when obj = v -> -1. (* we maximize the dual, ie minimize the primal *)
 	| None  (* no target *)
 	| _ -> 0. (* or non objective variable are associated to 0. *)
       in
@@ -741,6 +754,7 @@ let solve lmi_list objective =
       blocks, target
   ) (List.flatten sorted_vars)
   in
+
   (* 4. We call Sdp.solve OBJ LIST *)
   let to_floats b = List.map (fun (i, m) -> 
     let m = Mat.matrix_to_list_list m in
@@ -755,7 +769,9 @@ let solve lmi_list objective =
   let res , (primal_sol, dual_sol) = Sdp.solve neg_constants' constraints' in
   Report.debugf ~kind:"sdp" ~level:10
 	  (fun fmt -> Format.fprintf fmt "sdp=%f @?" res);
-  (* TODO extract from dual_sol the value of each params and rebuilt the unknown matrices and lambda *)
+
+  (* Extract from dual_sol the value of each params and rebuilt the unknown
+     matrices and lambda *)
   if res = infinity || res = neg_infinity then
     res, None
   else
@@ -772,7 +788,7 @@ let get_var_indices v =
   | ScalId _ -> None
 
 
-end
+end 
 
 module Num_mat = Make (Matrix.Num_mat)
 

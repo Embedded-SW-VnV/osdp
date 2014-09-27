@@ -106,7 +106,14 @@ module VN = LinearExpr.VN
 	  let l' = VN.ext_mult (LinearExpr.N.div (LinearExpr.N.of_int (-1)) n) (VN.inject l) in
 	  add_def_var v l'	 
 
-      let get_cons () = 
+      let get_cons () =
+	let res =  
 	(Hashtbl.fold (fun var expr accu -> (VN.add (VN.inject [LinearExpr.N.of_int (-1), var]) expr)::accu) deftbl []) @ 
 	  (List.map (fun c -> VN.inject [LinearExpr.N.of_int 1, c]) !zerotbl)
+	in
+	  Hashtbl.reset deftbl;
+	  Hashtbl.reset varusetbl;
+	  zerotbl := [];
+
+	res
       

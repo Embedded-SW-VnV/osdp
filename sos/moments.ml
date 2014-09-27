@@ -58,8 +58,35 @@ let momball monomials =
 	let denum = (* \Gamma ( 1 + (n + sum ai) / 2 ) *)
 	  gamma (noi 1 +/ ( (noi dim +/ sum_l) // (noi 2)) ) 
 	in
-	num /. denum
+	Some (num /. denum)
       else
-	0.
+	None
   ) monomials
+
+
+
+(* Compute \int H(i)(x)*H(j)(y) H(i')(x)*H(j')(y) d \gauss = d e^{- (x^2 + y^2)/2}  
+   = \int H(i)(x)*H(j)(y) H(i')(x)*H(j')(y) d e^{- x^2/2} . e^{-y^2/2}
+   = \int H(i)(x) H(i')(x) d e^{- x^2/2}  \times \int H(j)(y)H(j')(y) d e^{-y^2/2}
+   
+   For Statistical Hermite: with the 'real' gaussian measure, we have
+   if i=i' then \int H(i)(x)H(i')(x) = \sqrt(2 \pi ) i!
+   else 0   
+
+ *)
+
+let hermite_e_scal_prod hermite_pair_monomials =
+  List.map (fun (xlist, ylist) ->
+    if xlist = ylist then
+      let prod =
+	Array.fold_left (fun res i -> res * (fact i)) 1 xlist in
+      let dim = Array.length xlist in
+      let cst = (sqrt (2. *. pi)) ** (float_of_int dim) in
+      cst *. (float_of_int prod)
+    else
+      0.
+)
+
+
+
 

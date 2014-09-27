@@ -23,7 +23,17 @@ struct
   let ext_mult = mult
   let ext_of_int = of_int
   let ext_is_zero = is_zero
- 
+end
+
+module F = 
+struct
+  module Ext = Matrix.Float.Elem
+  include Ext
+  type ext_t =t 
+  let of_rat a b = div (of_int a) (of_int b)
+  let ext_mult = mult
+  let ext_of_int = of_int
+  let ext_is_zero = is_zero
 end
 
 module Vars =
@@ -42,7 +52,7 @@ struct
     | SOSVar (v, d) -> Format.fprintf fmt "sos(%a)" Ident.fprintf v
     | PolyVar (v, d) -> Format.fprintf fmt "poly(%a)" Ident.fprintf v
     | SDPVar v -> Format.fprintf fmt "%a" LMI.Num_mat.pp_var v
-    | Cst -> ()
+    | Cst -> Format.fprintf fmt "CST"
 end 
 
 (*******************************************************************************)
@@ -172,3 +182,10 @@ module VN = struct
 
 end
 
+module VF = struct
+  include MakeLE (F) (struct
+    include Vars
+    module Set = Set.Make (Vars)
+    let pp ?(names:string array option=None) = pp 
+  end)
+end
