@@ -216,7 +216,8 @@ struct
          let sline = meet None sline (TImat (Some i)) in
          let scol = meet None scol (TImat (Some j)) in
          sline, scol, None
-      | MEtranspose m -> type_check scol sline m
+      | MEtranspose m ->
+         let sline, scol, eq = type_check scol sline m in scol, sline, eq
       | MEminus m | MEmult_const (_, m) -> type_check sline scol m
       | MEmult_scalar (i, e) ->
          constrain i TIscal; type_check sline scol e
@@ -235,7 +236,7 @@ struct
          let smiddle, scol, eq2 = type_check smiddle scol e2 in
          let eq = match eq1, eq2 with
            | None, None -> None
-           | Some i, None
+           | Some i, None -> constrain i smiddle; None
            | None, Some i -> constrain i scol; None
            | Some i, Some j ->
               constrain i scol; equate i j; Some i in
