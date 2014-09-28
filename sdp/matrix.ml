@@ -442,7 +442,7 @@ module Num_mat = Make(struct
   let compare = Num.compare_num
   let eq = Num.eq_num
   let is_zero x = eq x (of_int 0)
-  let to_string = Utils.string_of_num
+  let to_string = Num.string_of_num
 
 end)
 
@@ -460,7 +460,7 @@ module Float = Make(struct
   let compare = compare
   let eq a b = a = b
   let is_zero x = eq x (of_int 0)
-  let to_string = Utils.string_of_float
+  let to_string = string_of_float
 end)
 
 (* Local Variables: *)

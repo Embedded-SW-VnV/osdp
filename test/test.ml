@@ -4,14 +4,14 @@ let _ =
 	let mat_map f = List.map (fun row -> List.map f row) in
 
 	let a = 
-  Matrix.Num_mat.matrix_of_list_list (mat_map Matrix.num_of_string  [
+  Matrix.Num_mat.matrix_of_list_list (mat_map Utils.num_of_string  [
     ["0.9379"; "-0.0381"; "-0.0414"];
     ["-0.0404";"0.968";"-0.0179"];
     ["0.0142"; "-0.0197"; "0.9823"];
   ]) in
 
 	let b = 
-  Matrix.Num_mat.matrix_of_list_list (mat_map Matrix.num_of_string [
+  Matrix.Num_mat.matrix_of_list_list (mat_map Utils.num_of_string [
     ["0.0237"];
     ["0.0143"];
     ["0.0077"];
