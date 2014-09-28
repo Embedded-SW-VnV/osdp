@@ -1,4 +1,4 @@
-Requires ocaml, csdp (no Debian package), ocaml-glpk (no Debian package)
+Requires ocaml, csdp (no Debian package)
 
 
 To install Csdp:
@@ -16,13 +16,6 @@ param.csdp)
 * type make, sudo make install
 
 
-To install OCaml-GLPK:
-* download it from http://ocaml-glpk.sourceforge.net/
-* install dependencies:
-  * libglpk-dev from http://www.gnu.org/software/glpk/ (the version 4.35)
-* type make opt, sudo make install
-
-
 Autoconf :
 % autoconf
 
@@ -30,7 +23,7 @@ Autoconf :
 Configure :
 % ./configure
 or
-% ./configure --with-csdp-lib-path=PATH --with-csdp-inc-path=PATH --with-glpk-path=PATH
+% ./configure --with-csdp-lib-path=PATH --with-csdp-inc-path=PATH
 
 the default path is /usr/local/
 

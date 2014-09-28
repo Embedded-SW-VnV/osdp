@@ -1,841 +1,493 @@
-module Ident =
-struct
-  type t = int
-
-  let cpt = ref 0
-  let name_hash: (string, int) Hashtbl.t = Hashtbl.create 11
-  let id_hash: (int, string) Hashtbl.t = Hashtbl.create 11
-
-  let rec create name : int=
-    if Hashtbl.mem name_hash name then
-      create (name ^ "_")
-    else (
-      incr cpt; 
-      let id = !cpt in
-      Hashtbl.add id_hash id name;
-      Hashtbl.add name_hash name id;
-      id
-    )
-
-  let get_name = Hashtbl.find id_hash 
-  let find_id = Hashtbl.find name_hash 
-  let fprintf fmt id = Format.fprintf fmt "%s" (get_name id)
-  let cmp = compare
+module type S = sig
+  module Mat : Matrix.S
+  module LinExpr : LinExpr.S
+  type matrix_expr =
+    | MEconst of Mat.t
+    | MEvar of Ident.t
+    | MEzeros of int * int
+    | MEeye of int
+    | MEkronecker_sym of int * int * int
+    | MEblock of matrix_expr array array
+    | MElift_block of matrix_expr * int * int * int * int
+    | MEtranspose of matrix_expr
+    | MEminus of matrix_expr
+    | MEmult_const of Mat.Elem.t * matrix_expr
+    | MEmult_scalar of Ident.t * matrix_expr
+    | MEadd of matrix_expr * matrix_expr
+    | MEsub of matrix_expr * matrix_expr
+    | MEmult of matrix_expr * matrix_expr
+  type ty =
+    | TIscal
+    | TImat of int option
+  exception Type_error of string
+  val type_check : matrix_expr list -> ty Ident.Map.t
+  exception Not_linear
+  val scalarize : matrix_expr list -> ty Ident.Map.t ->
+                  LinExpr.t array array list * (Ident.t * (int * int)) Ident.Map.t
+  type obj_t = Minimize of Ident.t | Maximize of Ident.t | Purefeas
+  type ('a, 'b) value_t = Scalar of 'a | Mat of 'b
+  exception Not_symmetric
+  val solve : obj_t -> matrix_expr list ->
+    float * (Mat.Elem.t, Mat.t) value_t Ident.Map.t
+  val pp : Format.formatter -> matrix_expr -> unit
 end
 
-type objKind = Minimize | Maximize
-type ('a, 'b) value_t = Scalar of 'a | Mat of 'b
-
-type v_t = Var of Ident.t * int * int | ScalId of Ident.t 
-
-let pp_var fmt v = 
-  match v with
-    Var (s, i, j) -> Format.fprintf fmt "%a_%i_%i" Ident.fprintf s (i+1) (j+1)
-  | ScalId s -> Ident.fprintf fmt s
-
-
-module type Sig = 
-sig
-  module Mat: Matrix.S
-  type matrix_expr 
-  type lmi_obj_t = (objKind * v_t) option
-  type var = v_t
-  val pp_matrix_expr : Format.formatter -> matrix_expr -> unit
-  val pp_var : Format.formatter -> var -> unit
-  val zeros : int -> int -> matrix_expr
-  val eye: int -> matrix_expr
-  val diag: matrix_expr list -> matrix_expr 
-  val const_mult: Mat.elt -> matrix_expr -> matrix_expr
-  val scal_mult: v_t -> matrix_expr -> matrix_expr
-  val symmat: Ident.t * int ->  matrix_expr
-  val const_mat: Mat.t -> matrix_expr
-  val trans_const_mat: Mat.t -> matrix_expr
-  val kronecker_sym: ?lift:(Mat.t -> Mat.t) -> int -> int -> int -> matrix_expr
-  val add: matrix_expr -> matrix_expr -> matrix_expr 
-  val sub: matrix_expr -> matrix_expr -> matrix_expr 
-  val mult: matrix_expr -> matrix_expr -> matrix_expr
-  val of_array_array: matrix_expr array array -> matrix_expr
-  val sym_mat_of_var: int -> Mat.elt list -> Mat.t
-  val vars_of_sym_mat: Ident.t -> int -> var list 
-  val solve: v_t list list -> matrix_expr list -> lmi_obj_t -> float * (Ident.t * (Mat.elt, Mat.t) value_t) list option
-  val get_var_id: var -> Ident.t
-  val get_var_indices: var -> (int * int) option
-end 
-
-module IdentSet = 
+module Make (M : Matrix.S) (LE : LinExpr.S with module Coeff = M.Elem) :
+  S with module Mat = M and module LinExpr = LE =
 struct
-  include Set.Make (struct type t = Ident.t let compare = Ident.cmp end)
-  let pp fmt s = Utils.fprintf_list ~sep:", " Ident.fprintf fmt (elements s)
-end
+  module Mat = M
+  module LinExpr = LE
 
+  type matrix_expr =
+    | MEconst of Mat.t
+    | MEvar of Ident.t
+    | MEzeros of int * int
+    | MEeye of int
+    | MEkronecker_sym of int * int * int
+    | MEblock of matrix_expr array array
+    | MElift_block of matrix_expr * int * int * int * int
+    | MEtranspose of matrix_expr
+    | MEminus of matrix_expr
+    | MEmult_const of Mat.Elem.t * matrix_expr
+    | MEmult_scalar of Ident.t * matrix_expr
+    | MEadd of matrix_expr * matrix_expr
+    | MEsub of matrix_expr * matrix_expr
+    | MEmult of matrix_expr * matrix_expr
 
-module VarSet = 
-struct
-  include Set.Make (struct type t = v_t let compare = compare end)
-  let pp fmt s = Utils.fprintf_list ~sep:", " pp_var fmt (elements s)
-end
+  let pp fmt e =
+    let rec pp_prior prior fmt = function
+      | MEconst m -> Mat.pp fmt m
+      | MEvar i -> Ident.pp fmt i
+      | MEzeros (n, m) -> Format.fprintf fmt "zeros(%i, %i)" n m
+      | MEeye n -> Format.fprintf fmt "eye(%i, %i)" n n
+      | MEkronecker_sym (n, i, j) -> Mat.pp fmt (Mat.kronecker_sym n i j)
+      | MEblock a ->
+         Format.fprintf fmt "[@[%a@]]"
+                        (Utils.fprintf_array ~sep:";@ "
+                           (fun fmt -> Format.fprintf fmt "@[%a@]"
+                              (Utils.fprintf_array ~sep:",@ " (pp_prior 0)))) a
+      | MElift_block (m, i, j, k, l) ->
+         Format.fprintf fmt "lift_block(@[%a,@ %i, %i, %i, %i@])"
+                        (pp_prior 0) m i j k l
+      | MEtranspose m -> Format.fprintf fmt "%a'" (pp_prior 2) m
+      | MEminus m -> Format.fprintf fmt "-%a" (pp_prior (max 1 prior)) m
+      | MEmult_const (e, m) -> Format.fprintf fmt
+         (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
+         Mat.Elem.pp e (pp_prior 1) m
+      | MEmult_scalar (i, e) -> Format.fprintf fmt
+         (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
+         Ident.pp i (pp_prior 1) e
+      | MEadd (e1, e2) -> Format.fprintf fmt
+         (if 0 < prior then "(@[%a@ + %a@])" else "@[%a@ + %a@]")
+         (pp_prior 0) e1 (pp_prior 0) e2
+      | MEsub (e1, e2) -> Format.fprintf fmt
+         (if 0 < prior then "(@[%a@ - %a@])" else "@[%a@ - %a@]")
+         (pp_prior 0) e1 (pp_prior 1) e2
+      | MEmult (e1, e2) -> Format.fprintf fmt
+         (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
+         (pp_prior 1) e1 (pp_prior 1) e2 in
+    pp_prior 0 fmt e
 
+  (*****************)
+  (* Type checking *)
+  (*****************)
 
-module VarSetSet = 
-struct
-  include Set.Make (struct type t = VarSet.t let compare = compare end)
-  let pp fmt s = Utils.fprintf_list ~sep:"; " VarSet.pp fmt (elements s)
-end
+  type ty =
+    | TIscal  (* scalar variable *)
+    | TImat of int option  (* matrix variable and size (if known) *)
 
-module IdentDimSet = 
-  Set.Make (struct type t = Ident.t * int let compare = compare end)
+  type uf =
+    | UFr of ty  (* variable is of type ty *)
+    | UFl of Ident.t  (* variable is of the same type than another *)
 
+  exception Type_error of string
 
+  let type_error id s =
+    let s = match id with
+      | None -> s
+      | Some i -> "'" ^ Format.asprintf "%a" Ident.pp i ^ "' " ^ s in
+    raise (Type_error s)
 
-module Make = functor (Mat: Matrix.S) -> 
-struct
-  type elt = Mat.elt
-  module Mat = Mat
+  let type_check el =
+    let htbl : (Ident.t, uf) Hashtbl.t = Hashtbl.create 31 in
 
-  type var = v_t
+    (* Returns representant of identifier i. *)
+    let rec find_repr i =
+      try
+        match Hashtbl.find htbl i with
+        | UFr _ -> i
+        | UFl i' ->
+           let i'' = find_repr i' in
+           Hashtbl.add htbl i (UFl i'');  (* path compression *)
+           i''
+      with Not_found -> i in
 
-  type scalar_t = Cst of elt | SIdent of Ident.t | MVar of Ident.t * int * int
+    (* Returns what we know so far about i. *)
+    let find i =
+      try
+        match Hashtbl.find htbl (find_repr i) with
+        | UFl _ -> assert false  (* result of find_repr can't link to UFl *)
+        | UFr t -> Some t
+      with Not_found -> None in
 
+    let set i t = Hashtbl.replace htbl (find_repr i) t in
 
-(* Unknown matrices are always symetrical *)
-  type matrix_expr = 
-  | MatMult of matrix_expr * matrix_expr
-  | MatAdd of matrix_expr * matrix_expr
-  | MatSub of matrix_expr * matrix_expr
-  | MatScalMult of scalar_t * matrix_expr
-  | MatCst of Mat.t
-  | MatVarSym of Ident.t * int 
-  | BlockLMI of matrix_expr array array * (int * int array * int * int array)
+    (* Combines types t1 and t2, raises Type_error if they are inconsistent. *)
+    let meet i t1 t2 =
+      match t1, t2 with
+      | TIscal, TIscal -> TIscal
+      | TIscal, TImat _  | TImat _, TIscal ->
+         type_error i "cannot be a scalar and a matrix at the same time."
+      | TImat None, _ -> t2
+      | _, TImat None -> t1
+      | TImat (Some n1), TImat (Some n2) ->
+         if n1 = n2 then t1 else
+           type_error i ("cannot be of size " ^ string_of_int n1 ^ " and "
+                         ^ string_of_int n2 ^ " at the same time.") in
 
-(** Objective to be maximized by the solver: None denotes no objective, Some
-    (positive_sign, v) denotes the value v if positive_sign is true, -v
-    otherwise. *)
-type lmi_obj_t = (objKind * v_t) option
+    (* constrain i to have type ti *)
+    let constrain i ti =
+      let ti =
+        match find i with None -> ti | Some ti' -> meet (Some i) ti ti' in
+      set i (UFr ti) in
 
-let rec get_dim lmi =
-  match lmi with
-  | MatMult (e1, e2) -> 
-    let n1, _ = get_dim e1 in
-    let _, m2 = get_dim e2 in
-    n1, m2
+    (* constrain i and i' to have same type *)
+    let equate i i' =
+      if Ident.compare (find_repr i) (find_repr i') <> 0 then
+        match find i, find i' with
+        | None, _ -> set i (UFl i')
+        | _, None -> set i' (UFl i)
+        | Some ti, Some ti' ->
+           let t = meet (Some i) ti ti' in
+           set i' (UFr t); set i (UFl i') in
 
-  | MatAdd (e1, _) | MatSub (e1, _) 
-  | MatScalMult (_, e1) -> get_dim e1
-  | MatCst mat -> Mat.nb_lines mat, Mat.nb_cols mat
-  | MatVarSym (id, dim) -> dim, dim
-  | BlockLMI (_, (n, _, m, _)) -> n, m
-    
-let pp_scalar fmt s =
-match s with
-| Cst f -> Mat.Elem.pp fmt f
-| SIdent id -> Ident.fprintf fmt id
-| MVar (id, i, j) -> Format.fprintf fmt "%a(%i,%i)" Ident.fprintf id i j
+    let rec type_check sline scol = function
+      | MEconst m ->
+         meet None sline (TImat (Some (Mat.nb_lines m))),
+         meet None scol (TImat (Some (Mat.nb_cols m))),
+         None
+      | MEvar i ->
+         let t = TImat None in  (* i is a square matrix... *)
+         let t = meet (Some i) t sline in  (* ...of size sline... *)
+         let t = meet (Some i) t scol in  (* ...and scol *)
+         constrain i t;
+         t, t, Some i
+      | MEzeros (n, m) ->
+         meet None sline (TImat (Some n)), meet None scol (TImat (Some m)), None
+      | MEeye n | MEkronecker_sym (n, _, _) ->
+         let t = meet None (TImat (Some n)) sline in
+         let t = meet None t scol in
+         t, t, None
+      | MEblock a ->
+         if Array.length a <= 0 || Array.length a.(0) <= 0 then
+           type_error None "Block matrix dimension error.";
+         let nl = Array.length a in
+         let nc = Array.length a.(0) in
+         let slines = Array.make nl (TImat None) in
+         let scols = Array.make nc (TImat None) in
+         let eqs = Array.make_matrix nl nc None in
+         for i = 0 to nl - 1 do
+           for j = 0 to nc - 1 do
+             let sl, sc, eq = type_check slines.(i) scols.(j) a.(i).(j) in
+             slines.(i) <- sl; scols.(j) <- sc; eqs.(i).(j) <- eq
+           done
+         done;
+         let eqc = Array.make nc None in
+         for i = 0 to nl - 1 do
+           let eql = ref None in
+           for j = 0 to nc - 1 do
+             match eqs.(i).(j) with None -> () | Some id ->
+               constrain id slines.(i); constrain id scols.(j);
+               begin match !eql with None -> eql := Some id
+                                   | Some id' -> equate id id' end;
+               begin match eqc.(j) with None -> eqc.(j) <- Some id
+                                      | Some id' -> equate id id' end
+           done
+         done;
+         let sum a =
+           Array.fold_left
+             (fun t1 t2 ->
+                match t1, t2 with
+                | TImat (Some n1), TImat (Some n2) -> TImat (Some (n1 + n2))
+                | _ -> TImat None)
+             (TImat (Some 0)) a in
+         sum slines, sum scols, None
+      | MElift_block (m, i, j, k, l) ->
+         let sline = meet None sline (TImat (Some i)) in
+         let scol = meet None scol (TImat (Some j)) in
+         sline, scol, None
+      | MEtranspose m -> type_check scol sline m
+      | MEminus m | MEmult_const (_, m) -> type_check sline scol m
+      | MEmult_scalar (i, e) ->
+         constrain i TIscal; type_check sline scol e
+      | MEadd (e1, e2) | MEsub (e1, e2) ->
+         let sline, scol, eq1 = type_check sline scol e1 in
+         let sline, scol, eq2 = type_check sline scol e2 in
+         let eq = match eq1, eq2 with
+           | None, None -> None
+           | Some i, None
+           | None, Some i -> constrain i scol; Some i
+           | Some i, Some j ->
+              constrain i scol; equate i j; Some i in
+         sline, scol, eq
+      | MEmult (e1, e2) ->
+         let sline, smiddle, eq1 = type_check sline (TImat None) e1 in
+         let smiddle, scol, eq2 = type_check smiddle scol e2 in
+         let eq = match eq1, eq2 with
+           | None, None -> None
+           | Some i, None
+           | None, Some i -> constrain i scol; None
+           | Some i, Some j ->
+              constrain i scol; equate i j; Some i in
+         sline, scol, eq in
 
-let rec pp_matrix_expr fmt e =
-  let pp = pp_matrix_expr in
-  let pp_paren fmt e =
-    match e with 
-    | MatAdd _ | MatSub _ -> 
-      Format.fprintf fmt "(%a)" pp e
-    | _ -> pp fmt e
-  in
-  match e with
-  | MatMult (e1, e2) ->
-    Format.fprintf fmt "%a %a" pp_paren e1 pp_paren e2
-  | MatAdd (e1, e2) -> 
-    Format.fprintf fmt "%a + %a" pp e1 pp e2
-  | MatSub (e1, e2) -> 
-    Format.fprintf fmt "%a - %a" pp e1 pp e2
-  | MatScalMult (s, e1) -> 
-    Format.fprintf fmt "%a %a" pp_scalar s pp_paren e1
-  | MatCst mat -> Mat.pp_matrix fmt mat
-  | MatVarSym (id, dim) -> Ident.fprintf fmt id
-  | BlockLMI (a, _) -> 
-    Format.fprintf fmt "@[<v>[ %a ]@]" 
-      (Utils.fprintf_list ~sep:";@ " 
-	 (fun fmt a_i -> 
-	   Utils.fprintf_list ~sep:", @  " pp fmt (Array.to_list a_i)))
-      (Array.to_list a)
+    List.iter
+      (fun e -> let _ = type_check (TImat None) (TImat None) e in ())
+      el;
+    Hashtbl.fold
+      (fun i _ m ->
+         match find i with
+         | None | Some (TImat None) ->
+            type_error None ("Unable to infer type of '"
+                             ^ Format.asprintf "%a" Ident.pp i ^ "'. "
+                             ^ "Can be fixed by adding zeros(n, n) to it.")
+         | Some (TIscal as t) | Some ((TImat (Some _)) as t) ->
+            Ident.Map.add i t m)
+      htbl Ident.Map.empty
 
-let pp_var = pp_var
+  (*************)
+  (* Scalarize *)
+  (*************)
 
-let rec get_mat_var_sym e =
-  match e with
-  | MatMult (e1, e2) 
-  | MatAdd (e1, e2) 
-  | MatSub (e1, e2) -> 
-    IdentDimSet.union (get_mat_var_sym e1) (get_mat_var_sym e2)
-  | MatScalMult (s, e1) -> (get_mat_var_sym e1) 
-  | MatCst _ -> IdentDimSet.empty
-  | MatVarSym (id, dim) -> IdentDimSet.singleton (id, dim)
-  | BlockLMI (a, _) -> 
-    List.fold_left (
-      fun accu a_i ->
-	List.fold_left (fun accu2 e -> IdentDimSet.union (get_mat_var_sym e) accu2) 
-	  accu 
-	  (Array.to_list a_i)
-    ) IdentDimSet.empty (Array.to_list a)
-(*
+  exception Not_linear
 
-let rec get_scal_var e =
-  match e with
-  | MatMult (e1, e2) 
-  | MatAdd (e1, e2) ->     IdentSet.union (get_scal_var e1) (get_scal_var e2)
-  | MatSub (e1, e2) ->     assert false
-  | MatScalMult (SIdent s, e1) -> IdentSet.add s (get_scal_var e1) 
-  | MatScalMult (_, e1) -> get_scal_var e1
-  | MatCst _ ->            IdentSet.empty
-  | MatVarSym (id, dim) -> assert false (* Should not exist anymore when this function is called *)
-*)
+  (* matrices whose coefficients are linear expressions *)
+  module LEMat = Matrix.Make (struct
+    type t = LinExpr.t
+    let zero = LinExpr.const LinExpr.Coeff.zero
+    let one = LinExpr.const LinExpr.Coeff.one
+    let is_zero e =
+      LinExpr.is_const e
+      && let _, c = LinExpr.to_list e in LinExpr.Coeff.is_zero c
+    let of_float _ = assert false  (* should never happen *)
+    let to_float _ = assert false  (* should never happen *)
+    let add = LinExpr.add
+    let sub = LinExpr.sub
+    let mult e1 e2 =
+      match LinExpr.is_const e1, LinExpr.is_const e2 with
+      | false, false -> raise Not_linear
+      | true, _ ->
+         let _, s = LinExpr.to_list e1 in
+         LinExpr.mult_scalar s e2
+      | false, true ->
+         let _, s = LinExpr.to_list e2 in
+         LinExpr.mult_scalar s e1
+    let div _ _ = assert false  (* should never happen *)
+    let pp = LinExpr.pp
+  end)
 
-(*
-let rec get_vars e =
-  match e with
-  | MatMult (e1, e2) 
-  | MatAdd (e1, e2) 
-  | MatSub (e1, e2) ->     IdentDimSet.union (get_vars e1) (get_vars e2)
-  | MatScalMult (SIdent s, e1) -> IdentDimSet.add (s,0) (get_vars e1) 
-  | MatScalMult (MVar (id, i, j), e1) -> IdentDimSet.add (idxxxx,0) (get_vars e1) 
-  | MatScalMult (_, e1) -> get_vars e1
-  | MatCst _ ->            IdentDimSet.empty
-  | MatVarSym (id, dim) -> IdentDimSet.singleton (id, dim)
-  | BlockLMI (a, _) -> 
-    List.fold_left (
-      fun accu a_i ->
-	List.fold_left (fun accu2 e -> IdentDimSet.union (get_vars e) accu2) 
-	  accu 
-	  (Array.to_list a_i)
-    ) IdentDimSet.empty (Array.to_list a)
-*)
+  let scalarize el env =
+    let htbl : ((Ident.t * (int * int)), Ident.t) Hashtbl.t = Hashtbl.create 31 in
 
-let new_var id i j = Var (id, i, j)
-let get_var id i j = if j <= i then Var(id, i, j) else Var(id, j, i) 
-let new_var_name v = match v with | Var (id, i, j) -> (Ident.get_name id) ^ "_" ^ string_of_int (i+1) ^ "_" ^ string_of_int (j+1) | ScalId s -> Ident.get_name s
-
-(* A symetrical matrix of dim n x n is characterized by (n^2 + n)/2 variables *)
-let vars_of_sym_mat id dim = 
-  let res = 
-  let rec aux i j =
-    let new_v = new_var id i j in
-    let tail = 
-      if i = dim-1 && j = dim-1 then 
-	[] 
-      else if j = dim-1 then
-	aux (i+1) (i+1)
-      else
-	aux i (j+1)
-    in
-    new_v :: tail
-  in
-  aux 0 0 
-
-  in
-  (* Report.debugf ~kind:"sdp" 
-	  (fun fmt -> "Vars of sym mat: %s (dim %i) -> [%a]@.@?" id dim (Utils.fprintf_list ~sep:", " (fun fmt v -> Format.pp_print_string fmt (new_var_name v) )) res); *)
-  res
-
-(* The nth variable in list when matrix is of size dim, characterize the element
-   (i,j) and (j,i) where i=
-
-   size=3, list=[a,b,c,d,e,f]
-   0 -> (0,0)
-   1 -> (0,1) and (1,0)
-   2 -> (0,2) and (2,0)
-   3 -> (1,1) 
-   4 -> (1,2) and (2,1)
-   5 -> (2,2)
-*)
-let sym_mat_of_var dim list =
-  let expected_length = (dim*dim + dim)/2 in
-  if List.length list != expected_length then
-    raise (Failure ("Invalid input list for sym_mat_of_var: expecting " 
-		    ^ string_of_int expected_length ^ ", we have " 
-		    ^ string_of_int (List.length list)));
-
-  let new_mat = Array.make_matrix dim dim (Mat.Elem.of_int 0) in
-  let i = ref 0 and j = ref 0 in
-  List.iter (fun elem -> 
-    (* Report.debugf ~kind:"sdp" 
-	  (fun fmt -> "%i, %i@.@?" !i !j); *)
-    if !i > dim then assert false;
-    (if !i = !j then
-	new_mat.(!i).(!j) <- elem
-     else
-	(new_mat.(!i).(!j) <- elem;
-	 new_mat.(!j).(!i) <- elem)
-    );
-    (* Incrementing i and j *)
-    if !j = dim-1 then
-      (incr i; j := !i)
-    else
-      (incr j)
-  ) list;
-  Mat.matrix_of_array_array new_mat
-    
-let kronecker_sym ?lift:(lift=fun x -> x) dim i j =
-  (* Report.debugf ~kind:"sdp" 
-	  (fun fmt -> "kro: %i %i %i@.@?" dim i j); *)
-    MatCst (lift (Mat.kronecker_sym_matrix dim i j))
-
-
-(* The algorithm is the follow: 
-   - we iterate (down) through the AST to replace unknown
-     matrices by sum of (unknown scalar) times E_ij 
-     ( zeros everywhere except in (i,j) )
-   - we iterate (up) from the leaves to the root to extract 
-     unknown scalar and evaluate (eval) the constant parts 
-   - when block matrices are met through this second 
-     phase, the same up algo is applied on each block 
-     before it is replaced by a sum of lifted blocks 
-*)
-let rewrite_mat_as_scalar matrix_expr =
-
-  let rec eval e =
-    let res = 
-      match e with
-    | MatMult (e1, e2) -> (
-      match e1, e2 with
-      | MatCst m1, MatCst m2 -> 
-	MatCst (Mat.mult_matrix m1 m2)
-      | _ -> e
-    )
-    | MatAdd (e1, e2) -> (
-      match e1, e2 with
-      | MatCst m1, MatCst m2 -> 
-	MatCst (Mat.add_matrix m1 m2)
-      | _ -> e
-    )
-    | MatScalMult (s, e1) -> (
-      match s, e1 with
-      | Cst c, MatCst m1 -> 
-	MatCst (Mat.mult_scalar_matrix c m1)
-      | _ -> e
-    )
-    | MatCst x -> MatCst x
-
-    | MatSub _
-    | MatVarSym _ 
-    | BlockLMI _ -> assert false (* Should be removed now *)
-    in
-    (* Format.eprintf "Evaluating expr %a = %a@."  *)
-    (*   pp_matrix_expr e *)
-    (*   pp_matrix_expr res; *)
-    
-    res
-  in      
-
-  let var_to_kronecker dim v = 
-    match v with Var (id, i, j) -> 
-      MatScalMult (MVar(id, i, j), (try kronecker_sym dim i j with Failure id -> raise (Failure id))) 
-    | ScalId _ -> assert false
-    
-  in
-
-  let rec down e = 
-    match e with
-    | MatMult (e1, e2) -> MatMult (down e1, down e2) 
-    | MatAdd (e1, e2) -> MatAdd  (down e1, down e2)
-    | MatSub (e1, e2) -> MatAdd (down e1, MatScalMult (Cst (Mat.Elem.of_int (-1)), down e2))
-    | MatScalMult (s, e1) -> (
-      let res = MatScalMult (s, down e1) in
-     (* ( match s with *)
-     (* 	SIdent "lambda_1" -> Format.eprintf "down LAMBDA1 * %a@." pp_matrix_expr res *)
-     (*  | _ -> ()); *)
-      res)
-    | MatCst x -> MatCst x
-    | MatVarSym (id, dim) -> (
-      let vars = try vars_of_sym_mat id dim with _ -> assert false in
-      match vars with
-      | [] -> assert false
-      | [ v ] -> (try( var_to_kronecker dim v) with _ -> assert false)
-      | hd:: tl -> 
-	List.fold_left 
-	  (fun accu v -> MatAdd (accu, try var_to_kronecker dim v with _ -> assert false)) 
-	  (try var_to_kronecker dim hd with Failure id -> raise (Failure id)) 
-	  tl 
-    )  
-    | BlockLMI (a, (n, dim_lines, m, dim_cols)) -> (
-      (* Full copy of matrix a and apply down on each element *)
-      let copy_a = Array.copy a in
-      for i = 0 to Array.length a -1 do
-	copy_a.(i) <- Array.copy copy_a.(i) ;
-	for j = 0 to Array.length copy_a.(i) - 1 do 
-	  copy_a.(i).(j) <- down a.(i).(j);
-	done
+    let scalarize_mat_var id =
+      let size =
+        let ty =
+          try Ident.Map.find id env
+          with Not_found ->
+            type_error (Some id) ("Unable to infer type of the variable. Can "
+                                  ^ "be fixed by adding zeros(n, n) to it.") in
+        match ty with TImat (Some n) -> n | _ -> type_error None "" in
+      let a = Array.make_matrix size size LEMat.Elem.zero in
+      for i = 0 to size - 1 do
+        for j = i to size - 1 do
+          let sid =
+            try Hashtbl.find htbl (id, (i, j))
+            with Not_found ->
+              let new_id =
+                let s = Format.asprintf "%a" Ident.pp id in
+                Ident.create ((* "__LMI__" ^ *) s ^ "_"
+                              ^ string_of_int i ^ "_" ^ string_of_int j) in
+              Hashtbl.add htbl (id, (i, j)) new_id;
+              new_id in
+          a.(i).(j) <- LinExpr.var sid; a.(j).(i) <- a.(i).(j)
+        done
       done;
-      BlockLMI(copy_a, (n, dim_lines, m, dim_cols))
-    )
-      
-  in
+      LEMat.of_array_array a in
 
-  let up e =
+    let rec scalarize = function
+      | MEconst m ->
+         let l = Mat.to_list_list m in
+         let l = List.map (List.map LinExpr.const) l in
+         LEMat.of_list_list l
+      | MEvar i -> scalarize_mat_var i
+      | MEzeros (n, m) -> LEMat.zeros n m
+      | MEeye n -> LEMat.eye n
+      | MEkronecker_sym (n, i, j) -> LEMat.kronecker_sym n i j
+      | MEblock a -> LEMat.block (Array.map (Array.map scalarize) a)
+      | MElift_block (m, i, j, k, l) -> LEMat.lift_block (scalarize m) i j k l
+      | MEtranspose m -> LEMat.transpose (scalarize m)
+      | MEminus m -> LEMat.minus (scalarize m)
+      | MEmult_const (e, m) ->
+         let le = LinExpr.const e in
+         LEMat.mult_scalar le (scalarize m)
+      | MEmult_scalar (i, e) ->
+         let le = LinExpr.var i in
+         LEMat.mult_scalar le (scalarize e)
+      | MEadd (e1, e2) -> LEMat.add (scalarize e1) (scalarize e2)
+      | MEsub (e1, e2) -> LEMat.sub (scalarize e1) (scalarize e2)
+      | MEmult (e1, e2) -> LEMat.mult (scalarize e1) (scalarize e2) in
 
-    let lift i j (n, dim_lines, m, dim_cols) =
-      let pos_line = Array.fold_left (+) 0 (try Array.sub dim_lines 0 i with _ -> assert false) in
-      let pos_col = Array.fold_left (+) 0 (try Array.sub dim_cols 0 j with _ -> assert false) in
-      fun mat -> 
-	match mat with 
-	  MatCst mat -> MatCst (Mat.lift_block mat n m pos_line pos_col)
-	| _ -> assert false 
-    in
+    (* scalarize *)
+    let el = List.map scalarize el in
+    let el = List.map LEMat.to_array_array el in
+    (* and collect bindings *)
+    let b = Hashtbl.fold
+              (fun coord id -> Ident.Map.add id coord)
+              htbl Ident.Map.empty in
+    el, b
 
-    (* let flatten_block a (n, dim_lines, m, dim_cols) =  *)
-    (*   let flatten = ref [] in *)
-    (*   for i = 0 to (Array.length dim_lines) - 1 do *)
-    (* 	for j = 0 to (Array.length dim_cols) - 1 do  *)
-    (* 	  try	     *)
-    (* 	    let pos_line = Array.fold_left (+) 0 (try Array.sub dim_lines 0 i with _ -> assert false) in *)
-    (* 	    let pos_col = Array.fold_left (+) 0 (try Array.sub dim_cols 0 j with _ -> assert false) in *)
-    (* 	    let lift_fun mat = lift (Mat.lift_block mat n m pos_line pos_col (\* with _ -> raise (Failure "coucou") *\) ) in *)
-    (* 	    let a_i_j = down ~lift:(lift_fun) a.(i).(j) in *)
-    (* 	    flatten := a_i_j :: !flatten *)
-    (* 	  with Invalid_argument _ ->  assert false	done; *)
-    (*   done; *)
-    (*   match !flatten with *)
-    (*   | [] -> assert false *)
-    (*   | [e] -> e *)
-    (*   | hd::tl -> List.fold_left (fun accu e -> MatAdd (e, accu)) hd tl *)
-    (* in *)
+  (*********)
+  (* Solve *)
+  (*********)
 
-    let rec up e =
-      let r = 
-      match e with
-      | MatMult (e1, e2) -> (
-	 (* Report.debugf ~kind:"sdp" 
-	  (fun fmt -> "up mat mult %a  %a@.@?" pp_matrix_expr e1 pp_matrix_expr e2);  *)
-	match up e1, up e2 with
-	| [v1, e1'], [v2, e2'] -> [VarSet.union v1 v2 , eval (MatMult (e1', e2'))]
-	| [v, e], (_::_ as l) when VarSet.is_empty v ->
- 	  List.map (fun (vs, e') -> vs, eval (MatMult (e, e'))) l
-	| (_::_ as l), [v, e] when VarSet.is_empty v -> 
-	  List.map (fun (vs, e') -> vs, eval (MatMult (e', e))) l
-	| _ -> assert false (* Non linear expression *)
-      )
-      | MatAdd (e1, e2) -> combine_additive_op (up e1) (up e2)
-      | MatScalMult (s, e1) -> (
-	let up_e1 = up e1 in
-	
-	(* (match s with *)
-	(*   SIdent "lambda_1" -> Format.eprintf "UP LAMBDA1 * %a@."    *)
-	(*     (Utils.fprintf_list ~sep:"; " (fun fmt (vs, e) -> Format.fprintf fmt "%a: %a" VarSet.pp vs pp_matrix_expr e) ) *)
-	(*     up_e1 *)
-	(* | _ -> ()); *)
-	    
+  type obj_t = Minimize of Ident.t | Maximize of Ident.t | Purefeas
 
+  type ('a, 'b) value_t = Scalar of 'a | Mat of 'b
 
-	 (* Report.debugf ~kind:"sdp" 
-	  (fun fmt -> "up mat scal mult %a  %a@.@?" pp_scalar s pp_matrix_expr e1) ; *)
-	   
-	 
-	  match s, up_e1 with 
-	  | SIdent s, [v, e'] when VarSet.is_empty v -> 
-	    [VarSet.singleton (ScalId s), e']
-	  | MVar (s,i,j), [v, e'] when VarSet.is_empty v ->
-	    [VarSet.singleton (Var (s,i,j)), e']
-	  | SIdent _,( _::_ as vmap)
-	  | MVar _, (_::_ as vmap) -> (
-	    Report.debugf ~kind:"sdp" 
-	      (fun fmt -> Format.fprintf fmt "Non linear expression: %a * [%a]"
-	      pp_scalar s
-	      (Utils.fprintf_list ~sep:"; " (fun fmt (vs, e) -> Format.fprintf fmt "%a: %a" VarSet.pp vs pp_matrix_expr e) )
-	      (List.filter (fun (vs, _) -> not (VarSet.is_empty vs)) vmap )
-	  );
- 
-	    assert false (* Non linear expression *) 
-	  )
-	  | Cst c, e' -> List.map (fun (vs, e'') -> vs, eval (MatScalMult (s, e''))) e'
-	  | _, [] -> assert false (* should not happen, by construction we have a non empty list as second argument *)
-      )
-      | MatCst c -> [VarSet.empty , MatCst c]
-      | BlockLMI (a, dim) -> (try
-	(* Each block has to be analyzed with 'up'. We can work inplace *)
-	(* Then each constant expression associated to a block element is
-	   evaluated *)
-	(* Finally each constant matrix is lifted to the global dim and the
-	   block is transformed as a sum *)
-	let _, res =
-	  Array.fold_right (
-	  fun line (i, accu) ->
-	    let _, new_line = 
-	      Array.fold_right (
-		fun elem (j, line_accu) ->
-		  let vlist = up elem in
-		  let vlist' = List.map (fun (vs, mat) -> vs, lift i j dim (eval mat)) vlist in
-		  j-1, combine_additive_op vlist' line_accu
-	      ) line (Array.length line - 1, [])		
-	    in
-	    i-1, (combine_additive_op new_line accu)
-	) a (Array.length a - 1, [])
-	in
-	res
-	with Invalid_argument msg -> raise (Invalid_argument ("icic" ^ msg)))
-      | MatSub _ 
-      | MatVarSym _ -> 
-	assert false (* should have been remove by down *)
-      in
-      (* Report.debugf ~kind:"sdp" 
-	  (fun fmt -> Format.fprintf fmt "up: %a -> %a@." *)
-      (* 	pp_matrix_expr e *)
-      (* 	(Utils.fprintf_list ~sep:"; " (fun fmt (vs, e') -> Format.fprintf fmt "(%a) -> %a" VarSet.pp vs pp_matrix_expr e')) r); *)
-      r
+  exception Not_symmetric
 
-    and combine_additive_op e1 e2 =
-      let vars_of_elems e =
-	List.fold_right VarSetSet.add (List.map fst e) VarSetSet.empty
-      in
-      (* let e1' = up e1 in *)
-      let vars1 = vars_of_elems e1 in
-      (* let e2' = up e2 in *)
-      let vars2 = vars_of_elems e2 in
+  let solve obj el = 
+    let env = type_check el in
 
-      let common = VarSetSet.inter vars1 vars2 in
+    let scalarized, binding = scalarize el env in
 
-      let remain1 = VarSetSet.diff vars1 common in
-      let remain1_elems = List.filter (fun (vs, _) -> VarSetSet.mem vs remain1) e1 in
-      let remain2 = VarSetSet.diff vars2 common in
-      let remain2_elems = List.filter (fun (vs, _) -> VarSetSet.mem vs remain2) e2 in
-      
-      let common_elems = 
-	List.fold_left (
-	  fun accu vs -> 
-	    let vs_e1 = List.assoc vs e1 in
-	    let vs_e2 = List.assoc vs e2 in
-	    (vs, eval (MatAdd (vs_e1, vs_e2))):: accu
-	) [] (VarSetSet.elements common) 
-      in
-      Report.debugf ~kind:"sdp" ~level:10
-	  (fun fmt -> Format.fprintf fmt "Common: [%a], remain1: [%a], remain2: [%a]@."
-      	VarSetSet.pp common
-      	VarSetSet.pp remain1
-      	VarSetSet.pp remain2
-      )	;
-      
-      let res = remain1_elems @ remain2_elems @ common_elems in
-      Report.debugf ~kind:"sdp" ~level:10
-	(fun fmt -> Format.fprintf fmt "Combine addidive: %a + %a = %a@."
-	  (Utils.fprintf_list ~sep:"; " (fun fmt (vs, e) -> Format.fprintf fmt "%a: %a" VarSet.pp vs pp_matrix_expr e) ) e1
-	  (Utils.fprintf_list ~sep:"; " (fun fmt (vs, e) -> Format.fprintf fmt "%a: %a" VarSet.pp vs pp_matrix_expr e) ) e2
-	  (Utils.fprintf_list ~sep:"; " (fun fmt (vs, e) -> Format.fprintf fmt "%a: %a" VarSet.pp vs pp_matrix_expr e) ) res
-	)	;
-      
-      res
-    in
-    let e' = up e in 
-    e'
-  in
-  let d = down matrix_expr in
-  Report.debugf ~kind:"sdp" ~level:10
-	  (fun fmt -> Format.fprintf fmt "Down: %a@.============@." pp_matrix_expr d);
-  let u = up d in
-  Report.debugf ~kind:"sdp" ~level:10
-	  (fun fmt -> Format.fprintf fmt "Up: %a@." (Utils.fprintf_list ~sep:"@ " (fun fmt (vs, e) -> Format.fprintf fmt "%a: %a" VarSet.pp vs pp_matrix_expr e)) u);
-  (* Cleaning *)
-  List.map (fun (v, e) ->
-    let m =
-      match e with
-      | MatCst m -> m
-      | _ -> assert false (* TODO raise Failure and catch it later *)
-    in
-    v, m
-  ) u
+    (* check symmetry *)
+    List.iter
+      (fun a ->
+         let sz = Array.length a in
+         if sz > 0 && Array.length a.(0) > 0 then begin
+           if sz <> Array.length a.(0) then
+             raise Not_symmetric; 
+           for i = 0 to sz - 1 do
+             for j = i + 1 to sz - 1 do
+               if not (LinExpr.eq a.(i).(j) a.(j).(i)) then
+                 raise Not_symmetric
+             done
+           done
+         end) scalarized;
 
+    (* building block matrices A_i and C (see csdp.mli) *)
+    let blks_A : (Ident.t, (int * float array array) list) Hashtbl.t = Hashtbl.create 31 in
+    let blks_C = ref [] in
 
-(** Constructors *)
-let zeros n m = MatCst (Mat.zeros_matrix n m)
-let eye n = MatCst (Mat.ident_matrix n)
-let kronecker_sym_matrix dim i j = MatCst (Mat.kronecker_sym_matrix dim i j)
+    (* build ith diagonal block, corresponding to scalarized matrix_expr me *)
+    let build_blk i me =
+      let sz = Array.length me in
+      let get_blk_A id =
+        let l = try Hashtbl.find blks_A id with Not_found -> [] in
+        match l with
+        | (i', a) :: _ when i' = i -> a
+        | _ ->
+           let a = Array.make_matrix sz sz 0. in
+           Hashtbl.replace blks_A id ((i, a) :: l);
+           a in
+      let blk_C = Array.make_matrix sz sz 0. in
+      for i = 0 to sz - 1 do
+        for j = i to sz - 1 do
+          let lin, const = LinExpr.to_list me.(i).(j) in
+          List.iter
+            (fun (id, c) ->
+               let blk_A = get_blk_A id in
+               blk_A.(i).(j) <- LinExpr.Coeff.to_float c;
+               blk_A.(j).(i) <- blk_A.(i).(j)) lin;
+          (* C is the opposite of the constant part *)
+          blk_C.(i).(j) <- -. LinExpr.Coeff.to_float const;
+          blk_C.(j).(i) <- blk_C.(i).(j)
+        done
+      done;
+      blks_C := (i, blk_C) :: !blks_C in
+    (* build all blocks *)
+    List.iteri build_blk scalarized;
 
-let const_mult c e = MatScalMult ((Cst c), e)
+    (* add the scalars a_i (see csdp.mli) *)
+    let vars, constraints = Hashtbl.fold
+      (fun id blks (lv, lc) ->
+       let a_i = match obj with
+         | Minimize id' when Ident.compare id id' = 0 -> 1.
+         | Maximize id' when Ident.compare id id' = 0 -> -1.
+         | _ -> 0. in
+       id :: lv, (blks, a_i) :: lc) blks_A ([], []) in
 
-let scal_mult v e = match v with
-  | ScalId id -> MatScalMult ((SIdent id), e)
-  | Var (id, i, j) -> MatScalMult (MVar (id, i, j), e)
+    List.iter2
+      (fun id (blks, a_i) ->
+    Format.printf
+      "A_%a: %f, @[%a@]@." Ident.pp id a_i
+      (Utils.fprintf_list ~sep:",@ "
+         (fun fmt (i, b) ->
+            Format.fprintf
+              fmt "(%i, [@[%a@]])" i
+              (Utils.fprintf_array
+                 ~sep:";@ "
+                 (fun fmt l ->
+                    Format.fprintf
+                      fmt "@[%a@]"
+                      (Utils.fprintf_array
+                         ~sep:",@ "
+                         (fun fmt -> Format.fprintf fmt "%f")) l)) b)) blks)
+      vars constraints;
 
-let symmat (id, dim) = MatVarSym (id, dim)
-let const_mat m = MatCst m
-let trans_const_mat m = MatCst (Mat.transpose_matrix m)
-let add e1 e2 = MatAdd (e1, e2)
-let sub e1 e2 = MatSub (e1, e2)
-let mult e1 e2 = MatMult (e1, e2)
+    Format.printf
+      "C: @[%a@]@."
+      (Utils.fprintf_list ~sep:",@ "
+         (fun fmt (i, b) ->
+            Format.fprintf
+              fmt "(%i, [@[%a@]])" i
+              (Utils.fprintf_array
+                 ~sep:";@ "
+                 (fun fmt l ->
+                    Format.fprintf
+                      fmt "@[%a@]"
+                      (Utils.fprintf_array
+                         ~sep:",@ "
+                         (fun fmt -> Format.fprintf fmt "%f")) l)) b)) !blks_C;
 
-(* For each var in sorted_vars, associate the value in dual_sol. Then rebuilt matrices. *)
-let rebuild_dual dual_sol sorted_vars =
-if List.length (List.flatten sorted_vars) != Array.length dual_sol then
-  assert false (* TODO should return a Failure ?. It should never happen *)
-else
-  let _, res = 
-    List.fold_right (
-     fun var_list (cpt, accu)-> 
-       let new_cpt, vars, elems = 
-	 List.fold_right 
-	   (fun v (cpt, accu_vars, accu_elems) -> cpt-1 , v::accu_vars, dual_sol.(cpt)::accu_elems) 
-	   var_list 
-	   (cpt, [], [])
-       in
-       match List.rev vars, elems with
-       | [ScalId x], [y] -> new_cpt, (x, Scalar (Mat.Elem.of_float y)) :: accu
-       | (Var (id, i, j)::_ ), _ -> 
-	 if i != j then assert false else (
-	   let conv_elems = List.map Mat.Elem.of_float elems in
-	   Report.debugf ~kind:"sdp" ~level:10
-	  (fun fmt -> Format.fprintf fmt "%a elems= [%a]@?" 
-	     Ident.fprintf id
-	     (* (Utils.fprintf_list ~sep:", " Base.pp) conv_elems *)
-	     (Utils.fprintf_list ~sep:", " Format.pp_print_float) elems
-	  );
-	   let mat = sym_mat_of_var (i+1) conv_elems in
-	   new_cpt, (id, Mat mat)::accu 
-	 )
-       | _ -> assert false
-   ) sorted_vars (-1 + Array.length dual_sol,[]) 
-  in
-  res
+    (* call SDP solver *)
+    let res, (primal_sol, dual_sol) = Sdp.solve !blks_C constraints in
 
-(*let prod_vect vecta vectb =
-  let lengtha = Array.length vecta in
-  if lengtha != Array.length vectb then
-    raise (Failure "incomptaible length for vector products")
-  else (
-    let res = ref (Mat.Elem.of_int 0) in
-    for i = 0 to lengtha - 1 do
-      res := Mat.Elem.add !res (Mat.Elem.mult vecta.(i) vectb.(i))
-    done;
-    !res
-  )
-*)
+    (* rebuild matrix variables *)
+    if res = infinity || res = neg_infinity then
+      res, Ident.Map.empty
+    else
+      let vars = List.mapi (fun i id -> id, dual_sol.(i)) vars in
+      let scalars, matrices = List.fold_left
+        (fun (scalars, matrices) (id, f) ->
+           try
+             let mid, (i, j) = Ident.Map.find id binding in
+             (* coefficient of matrix variable *)
+             let mat =
+               try Ident.Map.find mid matrices
+               with Not_found ->
+                 let sz =
+                   try
+                     match Ident.Map.find mid env with
+                     | TImat (Some sz) -> sz
+                     | _ -> assert false  (* should never happen *)
+                   with Not_found -> assert false in  (* should never happen *)
+                 Array.make_matrix sz sz Mat.Elem.zero in
+             mat.(i).(j) <- Mat.Elem.of_float f; mat.(j).(i) <- mat.(i).(j);
+             scalars, Ident.Map.add mid mat matrices
+           with Not_found ->
+             (* scalar variable *)
+             Ident.Map.add id (Mat.Elem.of_float f) scalars, matrices)
+        (Ident.Map.empty, Ident.Map.empty) vars in
+      let vars = Ident.Map.map (fun e -> Scalar e) scalars in
+      let vars = Ident.Map.fold
+        (fun id m vars -> Ident.Map.add id (Mat (Mat.of_array_array m)) vars)
+        matrices vars in
+      res, vars
+end
 
-(*
-let add_vect vecta vectb =
-  let lengtha = Array.length vecta in
-  if lengtha != Array.length vectb then
-    raise (Failure "incomptaible length for vector products")
-  else ()
-*)
-
-(* let sub_vect vecta vectb = *)
-(*   let vectb' = Array.map (fun e -> MatScalMult (Cst (Base.of_int (-1))) xxxx  vectb in *)
-(*   add_vect vecta vectb *)
-
-(* let get_line i m = *)
-(* match m with *)
-(* | MatMult (e1, e2) ->  *)
-(* | MatAdd (e1, e2) -> add_vect (get_line i e1) (get_line i e2) *)
-(* | MatSub (e1, e2) -> sub_vect ((get_line i e1) (get_line i e2) *)
-(* | MatScalMult (s, e1) -> MatScalMult (s, down e1) *)
-(* | MatCst x -> (Mat.matrix_to_array_array x).(i).(j) *)
-(* | MatVarSym (id, dim) -> *)
-  
-
-let of_array_array a =
-  (* We check the dimension *)
-  let cols_dim = 
-    let first_line = a.(0) in
-    Report.debugf ~kind:"sdp" ~level:10
-	  (fun fmt -> Format.fprintf fmt "Cols: first line dims: %a@."
-	    (fun fmt -> Array.iter (fun e -> Format.fprintf fmt "%a: %i, %i" pp_matrix_expr e (fst (get_dim e)) (snd (get_dim e)) )) first_line);
-    Array.map (fun elem -> snd (get_dim elem)) first_line
-  in
-  let nb_cols = Array.length a  in
-  let lines_dim = 
-    let first_col = Array.map (fun l -> l.(0)) a in
-    Array.map (fun elem -> fst (get_dim elem)) first_col
-  in
-  let nb_lines = Array.length a.(0) in
-  (* Report.debugf ~kind:"sdp"  *)
-  (* 	  (fun fmt -> Format.fprintf fmt "Expected dim:@.lines: %a@.cols:%a@." (Utils.fprintf_list ~sep:", " Format.pp_print_int) (Array.to_list lines_dim) (Utils.fprintf_list ~sep:", " Format.pp_print_int) (Array.to_list cols_dim)); *)
-  for i = 1 to nb_lines - 1 do
-    for j = 1 to nb_cols - 1 do
-    let dim_l, dim_c = get_dim a.(i).(j) in
-      (* Report.debugf ~kind:"sdp"  *)
-      (* 	  (fun fmt -> Format.fprintf fmt "Checking block %i, %i: dim is %i, %i, expecting %i, %i@." i j dim_l dim_c lines_dim.(i) cols_dim.(j)); *)
-    if dim_l <> lines_dim.(i) || dim_c <> cols_dim.(j) then (
-      Report.debugf ~kind:"sdp" 
-	  (fun fmt -> Format.fprintf fmt "Failure: dimen error in block matrix LMI expression; block %i, %i@. Dim is %i, %i, expecting %i, %i@." i j dim_l dim_c lines_dim.(i) cols_dim.(j));
-      raise (Failure "dimen error in block matrix LMI expression")
-    )
-    done
-  done;
-
-  let sum a = Array.fold_left ((+)) 0 a in
-
-  let total_lines = sum lines_dim in
-  let total_cols = sum cols_dim in
-
-  BlockLMI (a, (total_lines, lines_dim, total_cols, cols_dim))
-
-
-let diag block_list = 
-  let nb_elems = List.length block_list in
-  let block_array = Array.of_list block_list in
-  let matrix = Array.make_matrix nb_elems nb_elems (zeros 1 1) in
-  for i = 0 to nb_elems - 1 do
-    for j = 0 to nb_elems - 1 do
-      if i = j then 
-	matrix.(i).(j) <- block_array.(i)
-      else
-	let nb_lines, _ = get_dim block_array.(i) in
-	let _, nb_cols = get_dim block_array.(j) in
-	matrix.(i).(j) <- zeros nb_lines nb_cols
-    done;
-  done;
-  of_array_array matrix
-
-
-
-(* Dual -> Primal *)
-let solve (sorted_vars: v_t list list) lmi_list objective =
-  
-  (* 1. we iterate through lmi_list to gather variables and split them as
-     scalar, it will be our solution. *)
-(*  let vars = List.fold_left 
-    (fun accu s -> IdentDimSet.union accu (get_vars s)) 
-    IdentDimSet.empty lmi_list 
-  in
-  
-  let sorted_vars : v_t list list = 
-    List.map 
-      (fun (v, dim) -> if dim = 0 then [ScalId v] else vars_of_sym_mat v dim) 
-      (IdentDimSet.elements vars) 
-  in
-*)
-
-  (* We check that objective is part of the variables *)
-  (match objective with
-  | Some (_, o) -> 
-    if not (List.exists (List.mem o) sorted_vars) then 
-      raise (Failure "LMI: objective is not part of the free variable of the LMIs.")
-  | _ -> ()
-  );
-
-  (* 2. each lmi is rephrased over those scalars. the associated constant part
-     is negated and returned (-C) *)
-  let _, neg_constants, (lmi_unfolded: (VarSet.t *  Mat.t) list list) = 
-    List.fold_right  (fun lmi (cpt, csts, unfolded) ->
-      let assoc_list = try rewrite_mat_as_scalar lmi  
-	with Invalid_argument ex -> (Report.debugf ~kind:"sdp" 
-	  (fun fmt -> Format.fprintf fmt "Failure in step 1.@."); raise (Invalid_argument ex))
-      in
-      (* Format.eprintf "LMI:@.initial lmi: %a@. Rewritten as@.%a@." *)
-      (* 	pp_matrix_expr lmi *)
-      (* 	(Utils.fprintf_list ~sep:"@." (fun fmt (vs, elem) -> Format.fprintf fmt "%a * %a" VarSet.pp vs Mat.pp_matrix elem )) *)
-      (* 	assoc_list *)
-      (* ; *)
-      let constant_blocks = 
-	if List.mem_assoc VarSet.empty assoc_list then
-	  let const_block = List.assoc VarSet.empty assoc_list in
-	  let neg_const_block = Mat.mult_scalar_matrix (Mat.Elem.of_int (-1)) const_block in
-	  (cpt, neg_const_block)::csts
-	else
-	  csts
-      in
-      cpt+1, constant_blocks, assoc_list::unfolded
-    ) lmi_list (1, [], [])
-  in
-  (* 3. We iterate through the scalar variables and for each of them provide the
-     block matrix of each lmi (do you understand that?)  It is also associated
-     to the float a_i ((+/-) 1 for the objective variable, 0 for the others This
-     is CONSTRAINTS *)
-  let constraints = List.map (
-    fun (v : v_t) -> 
-      let target = match objective with
-	| Some (Minimize, obj) when obj = v -> 1. (* we minimize the dual, ie maximize the primal *)
-	| Some (Maximize, obj) when obj = v -> -1. (* we maximize the dual, ie minimize the primal *)
-	| None  (* no target *)
-	| _ -> 0. (* or non objective variable are associated to 0. *)
-      in
-      let _, blocks = List.fold_right  (
-	fun elems (cpt, accu) ->
-	  if List.mem_assoc (VarSet.singleton v) elems then
-	    cpt+ 1, (cpt, (List.assoc (VarSet.singleton v) elems)) :: accu
-	  else 
-	    cpt+1, accu
-      ) lmi_unfolded (1, [])
-      in
-      blocks, target
-  ) (List.flatten sorted_vars)
-  in
-
-  (* 4. We call Sdp.solve OBJ LIST *)
-  let to_floats b = List.map (fun (i, m) -> 
-    let m = Mat.matrix_to_list_list m in
-    let m = List.map (List.map Mat.Elem.to_float) m in
-    let m = Matrix.Float.matrix_of_list_list m in
-    let m = Matrix.Float.matrix_to_array_array m in
-    i, m)
-    b 
-  in
-  let neg_constants' = to_floats neg_constants in
-  let constraints' = List.map (fun (m, f) -> to_floats m, f) constraints in
-  let res , (primal_sol, dual_sol) = Sdp.solve neg_constants' constraints' in
-  Report.debugf ~kind:"sdp" ~level:10
-	  (fun fmt -> Format.fprintf fmt "sdp=%f @?" res);
-
-  (* Extract from dual_sol the value of each params and rebuilt the unknown
-     matrices and lambda *)
-  if res = infinity || res = neg_infinity then
-    res, None
-  else
-    res, Some (rebuild_dual dual_sol sorted_vars)
-    
-let get_var_id v =
-  match v with
-  | Var (v,_,_) -> v
-  | ScalId v -> v
-
-let get_var_indices v =
-  match v with
-  | Var (_,i,j) -> Some(i,j)
-  | ScalId _ -> None
-
-
-end 
-
-module Num_mat = Make (Matrix.Num_mat)
-
-
-(*
-let mat_map f = List.map (fun row -> List.map f row)
-
-
-let a = 
-  Matrix.Num.matrix_of_list_list (mat_map Matrix.num_of_string  [
-    ["0.9379"; "-0.0381"; "-0.0414"];
-    ["-0.0404";"0.968";"-0.0179"];
-    ["0.0142"; "-0.0197"; "0.9823"];
-  ])
-
-let b = 
-  Matrix.Num.matrix_of_list_list (mat_map Matrix.num_of_string [
-    ["0.0237"];
-    ["0.0143"];
-    ["0.0077"];
-  ]
-  )
-
-let _ =
-  Global.policy_verbosity := 10;
-  Global.sdp_verbosity := 10;
-  let dim_p = Matrix.Num.nb_lines a in
-  let nb_inputs = Matrix.Num.nb_cols b in
-  let n = 1 in
-  let mat_n = Num.of_array_array 
-    [|
-      [| Num.zeros dim_p dim_p; Num.zeros dim_p nb_inputs; Num.zeros dim_p 1; |];
-      [| Num.zeros nb_inputs dim_p; 
-	 Num.const_mult 
-	   (Matrix.Num.Elem.of_int (-1)) 
-	   (Num.kronecker_sym nb_inputs (n-1) (n-1)); 
-	 Num.zeros nb_inputs 1; |];
-      [| Num.zeros 1 dim_p; Num.zeros 1 nb_inputs; Num.eye 1 |]
-    |]
-  in
-  let res = Num.rewrite_mat_as_scalar mat_n in
-  Format.eprintf "LMI:@.initial lmi: %a@. Rewritten as@.%a@."
-    Num.pp_matrix_expr mat_n
-    (Utils.fprintf_list ~sep:"@." (fun fmt (vs, elem) -> Format.fprintf fmt "%a * %a" VarSet.pp vs Matrix.Num.pp_matrix elem ))
-    res;
-  ()
-  *)
+module NumLMI = Make (Matrix.NumMat) (LinExpr.Num)
 
 (* Local Variables: *)
 (* compile-command:"make -C .." *)

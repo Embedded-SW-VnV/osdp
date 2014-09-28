@@ -1,5 +1,5 @@
-(** This module is an interface towards a C code proving positive definiteness
-    of matrices *)
+(** Interface towards a C code proving positive definiteness of
+    matrices. *)
 
 (** Takes as input a square matrix of Num of size nxn and returns 1 if it
     manages to prove that the matrix is symmetric positive definite and 0

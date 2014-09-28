@@ -1,70 +1,95 @@
-(** This module is an interface towards SDP solvers providing high level LMI
-    constructs. It takes LMI problems, transform them as dual and primal
-    problems and call SDP. *)
+(** Interface towards SDP solvers providing high level LMI constructs.
 
-type objKind = Minimize | Maximize
-type ('a, 'b) value_t = Scalar of 'a | Mat of 'b
+    This module takes LMI problems, transforms them as dual and primal
+    problems and calls an SDP solver. *)
 
-module Ident :
-sig
-  type t
-  val create: string -> t
-  val cmp: t -> t -> int
-  val fprintf: Format.formatter -> t -> unit
-end
+module type S = sig
+  module Mat : Matrix.S
+  module LinExpr : LinExpr.S
 
-type v_t = Var of Ident.t * int * int | ScalId of Ident.t 
-
-module type Sig = 
-sig
-  module Mat: Matrix.S
-
-  (* Unknown matrices are always symetrical *)
-  type matrix_expr 
-      
-(** Objective to be maximized by the solver: None denotes no objective, Some
-    (positive_sign, v) denotes the value v if positive_sign is true, -v
-    otherwise. *)
-  type lmi_obj_t = (objKind * v_t) option
-
-  type var = v_t
-
-(** Printers for LMI *)
- val pp_matrix_expr : Format.formatter -> matrix_expr -> unit
- val pp_var : Format.formatter -> var -> unit
+(*  type lmi_obj_t = (objKind * Ident.t) option*)
     
- (** Constructors *)
- val zeros: int -> int -> matrix_expr
- val eye: int -> matrix_expr
- val diag: matrix_expr list -> matrix_expr 
- val const_mult: Mat.elt -> matrix_expr -> matrix_expr
- val scal_mult: v_t -> matrix_expr -> matrix_expr
- val symmat: Ident.t * int ->  matrix_expr
- val const_mat: Mat.t -> matrix_expr
- val trans_const_mat: Mat.t -> matrix_expr
- val kronecker_sym: ?lift:(Mat.t -> Mat.t) -> int -> int -> int -> matrix_expr
- val add: matrix_expr -> matrix_expr -> matrix_expr 
- val sub: matrix_expr -> matrix_expr -> matrix_expr 
- val mult: matrix_expr -> matrix_expr -> matrix_expr
- val of_array_array: matrix_expr array array -> matrix_expr    
- val sym_mat_of_var: int -> Mat.elt list -> Mat.t
- val vars_of_sym_mat: Ident.t -> int -> var list 
-  (* val rewrite_mat_as_scalar: matrix_expr -> matrix_expr  *)
+  (** Constructors. See the module {!Matrix.S} for details. *)
+  type matrix_expr =
+    | MEconst of Mat.t
+    | MEvar of Ident.t  (** All matrix variables are symmetric. *)
+    | MEzeros of int * int
+    | MEeye of int
+    | MEkronecker_sym of int * int * int
+    | MEblock of matrix_expr array array
+    | MElift_block of matrix_expr * int * int * int * int
+    | MEtranspose of matrix_expr
+    | MEminus of matrix_expr
+    | MEmult_const of Mat.Elem.t * matrix_expr
+    | MEmult_scalar of Ident.t * matrix_expr
+    | MEadd of matrix_expr * matrix_expr
+    | MEsub of matrix_expr * matrix_expr
+    | MEmult of matrix_expr * matrix_expr
 
-(** [solve vars lmi obj] solves the provided LMI on variables vars trying to maximize the objective
-    obj. It returns the solver return value plus a list with result, mapping each unknown variable to its
-    value *)
-  val solve: 
-    v_t list list ->  (* list of variables *)
-    matrix_expr list -> (* list of sdp matrix expression *)
-    lmi_obj_t -> (* Objective *)
-    float * (Ident.t * (Mat.elt, Mat.t) value_t) list option 
+  (** Type of variables. *)
+  type ty =
+    | TIscal  (** scalar variable *)
+    | TImat of int option  (** matrix variable and size (if known) *)
 
-  val get_var_id: var -> Ident.t
-  val get_var_indices: var -> (int * int) option
+  exception Type_error of string
+
+  (** Infers types of variables (i.e., whether they are scalars or
+      matrices and, in the latter case, size of the matrices).
+
+      @raise Type_error with an explanatory message in case something
+      inconsistent is found. *)
+  val type_check : matrix_expr list -> ty Ident.Map.t
+
+  exception Not_linear
+
+  (** Decomposes all matrix variables into a matrix of new scalar
+      variables and returns a matrix of linear expressions in those
+      scalar variables. Also returns a mapping [m]. All new variables
+      [sv] map to [v, (i, j)] in [m] where [v] is the matrix variable
+      they are part of and [i] and [j] their indices (starting from 0)
+      in [v]. Only upper triangular coeffs are provided since all
+      matrix variables [v] are symmetric. The second argument should
+      be the result of {!type_check} on the first argument.
+
+      @raise Type_error in case the type of a variable is unknown.
+
+      @raise Not_linear if one of the input matrix expressions is non
+      linear. *)
+  val scalarize : matrix_expr list -> ty Ident.Map.t ->
+                  LinExpr.t array array list * (Ident.t * (int * int)) Ident.Map.t
+
+  type obj_t = Minimize of Ident.t | Maximize of Ident.t | Purefeas
+  type ('a, 'b) value_t = Scalar of 'a | Mat of 'b
+
+  exception Not_symmetric
+
+  (** [solve obj l] tries to optimise the objective [obj] under the
+      constraint that each matrix expressions in [l] is positive
+      semi-definite. Returns both the achieved objective value and a
+      map with values for each variable appearing in [l]. The returned
+      map will be empty in case of failure.
+
+      @raise Type_error with an explanatory message in case something
+      inconsistent is found or the type of a variable cannot be
+      determined.
+
+      @raise Not_linear if one of the input matrix expressions in [l]
+      is non linear.
+
+      @raise Not_symmetric if one of the input matrix expressions in [l]
+      is non symmetric. *)
+  val solve : obj_t -> matrix_expr list ->
+              float * (Mat.Elem.t, Mat.t) value_t Ident.Map.t
+
+  (** Printer for LMI *)
+  val pp : Format.formatter -> matrix_expr -> unit
 end
 
-module Num_mat : Sig with module Mat = Matrix.Num_mat
+module Make (M : Matrix.S) (LE : LinExpr.S with module Coeff = M.Elem) :
+  S with module Mat = M and module LinExpr = LE
+
+module NumLMI :
+  S with module Mat = Matrix.NumMat and module LinExpr = LinExpr.Num
 
 (* Local Variables: *)
 (* compile-command:"make -C .." *)
