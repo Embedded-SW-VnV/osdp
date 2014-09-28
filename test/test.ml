@@ -62,6 +62,24 @@ let _ =
 open LMI.NumLMI
 
 let _ =
+  let a = MEeye 3 in
+  let b = MEzeros (3, 1) in
+  let p = Ident.create "P" in
+  let e = MEblock [|[|MEmult (MEtranspose a, MEmult (MEvar p, a));
+                      MEmult (MEtranspose a, MEmult (MEvar p, b))|];
+                    [|MEmult (MEtranspose b, MEmult (MEvar p, a));
+                      MEmult (MEtranspose b, MEmult (MEvar p, b))|]|] in
+  let t = type_check [e] in
+  Ident.Map.iter
+    (fun i t ->
+       let st = match t with
+         | TIscal -> "scalar"
+         | TImat (Some n) -> "square matrix of size " ^ string_of_int n
+         | _ -> assert false in
+       Format.printf "%a : %s\n%!" Ident.pp i st)
+    t
+
+let _ =
   let ratio i j = Num.div_num (Num.num_of_int i) (Num.num_of_int j) in
   let a = Matrix.NumMat.of_list_list
             [[ratio 15 10; ratio (-7) 10]; [ratio 1 1; ratio 0 1]] in
