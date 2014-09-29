@@ -243,17 +243,9 @@ struct
          sline, scol, eq in
 
     List.iter
-      (fun e -> let _ = type_check (TImat None) (TImat None) e in ())
-      el;
+      (fun e -> let _ = type_check (TImat None) (TImat None) e in ()) el;
     Hashtbl.fold
-      (fun i _ m ->
-         match find i with
-         | None | Some (TImat None) ->
-            type_error None ("Unable to infer type of '"
-                             ^ Format.asprintf "%a" Ident.pp i ^ "'. "
-                             ^ "Can be fixed by adding zeros(n, n) to it.")
-         | Some (TIscal as t) | Some ((TImat (Some _)) as t) ->
-            Ident.Map.add i t m)
+      (fun i _ m -> match find i with None -> m | Some t -> Ident.Map.add i t m)
       htbl Ident.Map.empty
 
   (*************)

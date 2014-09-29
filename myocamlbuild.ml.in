@@ -22,7 +22,7 @@ dispatch begin function
     flag ["ocaml"; "link"; "byte"] (A"-custom");
     dep  ["link"; "ocaml"; "use_csdp"] ["sdp/csdp_stubs.o"];
     flag ["ocaml"; "link"; "use_posdef"] (S(cclib ["-lm"]));
-    dep  ["link"; "ocaml"; "use_posdef"] ["cholewski/posdef_stubs.o"];
+    dep  ["link"; "ocaml"; "use_posdef"] ["cholesky/posdef_stubs.o"];
 (*    ocaml_lib ~extern:true ~dir:glpk_include "glpk";*)
 | _ -> ()
 end
