@@ -51,19 +51,3 @@ let num_of_float f = match classify_float f with
   | FP_zero -> Num.num_of_int 0
   | FP_infinite
   | FP_nan -> assert false
-		    
-let merge_sorted_lists cmp f l1 l2 =
-  let rec aux l1 l2 = 
-    match l1, l2 with 
-    | [], l2 -> l2
-    | l1, [] -> l1
-    | h1::t1, h2::t2 ->
-       let comp = cmp h1 h2 in
-       if comp < 0 then 
-	h1 :: (aux t1 l2)
-       else if comp = 0 then
-	 match f h1 h2 with
-	 | Some r -> r::(aux t1 t2)
-	 | None -> aux t1 t2
-       else h2 :: (aux l1 t2) in
-  aux l1 l2

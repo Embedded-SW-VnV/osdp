@@ -13,6 +13,7 @@ module type S = sig
       expression a_1 x_1 + ... + a_n x_n + c. *)
   val of_list : (Ident.t * Coeff.t) list -> Coeff.t -> t
 
+  (** TODO: no duplicates *)
   val to_list : t -> (Ident.t * Coeff.t) list * Coeff.t
 
   (** Same as {!of_list} with an empty list. *)
@@ -44,6 +45,11 @@ module Make (SC : Scalar.S) : S with module Coeff = SC
 module Num : S with module Coeff = Scalar.Num
 
 module Float : S with module Coeff = Scalar.Float
+
+exception Not_linear
+
+(** TODO : doc *)
+module MakeScalar (L : S) : Scalar.S with type t = L.t
 
 (* Local Variables: *)
 (* compile-command:"make -C .." *)

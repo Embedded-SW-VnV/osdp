@@ -2,7 +2,7 @@
 
 module type S = sig
   (** Type of coefficients. *)
-  module Elem : Scalar.S
+  module Elem : Scalar.S  (* TODO : renommer en Coeff *)
 
   (** Type of matrices. *)
   type t

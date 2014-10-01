@@ -10,8 +10,10 @@
     .
     tr(A_n X) = a_n
     X psd]}
+    (X psd meaning X positive semi-definite)
     corresponds to the dual problem {[min a^T y
-    \sum_i y_i A_i - C psd.]}*)
+    \sum_i y_i A_i - C psd.]}
+    C, A_i and a_i are parameters whereas X and y are variables. *)
 
 (** Matrices, line by line.
     Type invariant: all lines have the smae size. *)

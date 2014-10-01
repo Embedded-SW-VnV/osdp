@@ -4,7 +4,9 @@ LinExpr
 LMI
 Matrix
 Monomial
+Polynomial
 Posdef
 Scalar
 Sdp
+SOS
 Utils

@@ -11,7 +11,3 @@ val fprintf_array :
 val profile : 'a Lazy.t -> 'a * float
 
 val num_of_float : float -> Num.num
-
-val merge_sorted_lists :
-  ('a -> 'a -> int) ->
-  ('a -> 'a -> 'a option) -> 'a list -> 'a list -> 'a list

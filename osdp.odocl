@@ -3,6 +3,8 @@ Ident
 LinExpr
 LMI
 Matrix
+Monomial
+Polynomial
 Posdef
 Scalar
 Sdp

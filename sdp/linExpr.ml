@@ -94,6 +94,34 @@ module Num = Make (Scalar.Num)
 
 module Float = Make (Scalar.Float)
 
+exception Not_linear
+
+module MakeScalar (L : S) : Scalar.S with type t = L.t = struct
+  type t = L.t
+  let zero = L.const L.Coeff.zero
+  let one = L.const L.Coeff.one
+  let is_zero e = L.is_const e && let _, c = L.to_list e in L.Coeff.is_zero c
+  let of_float _ = assert false  (* should never happen *)
+  let to_float _ = assert false  (* should never happen *)
+  let add = L.add
+  let sub = L.sub
+  let mult e1 e2 =
+    match L.is_const e1, L.is_const e2 with
+    | false, false -> raise Not_linear
+    | true, _ ->
+       let _, s = L.to_list e1 in
+       L.mult_scalar s e2
+    | false, true ->
+       let _, s = L.to_list e2 in
+       L.mult_scalar s e1
+  let div _ _ = assert false  (* should never happen *)
+  let pp fmt a =
+    let lin, const = L.to_list a in
+    let l, l' = (if L.Coeff.is_zero const then 0 else 1), List.length lin in
+    if l + l' <= 1 then Format.fprintf fmt "%a" L.pp a
+    else Format.fprintf fmt "(%a)" L.pp a
+end
+
 (* Local Variables: *)
 (* compile-command:"make -C .." *)
 (* End: *)
