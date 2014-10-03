@@ -38,7 +38,7 @@ module type Sig =
 sig
   module Mat: Matrix.S
   type matrix_expr 
-  type lmi_obj_t = (objKind * v_t) option
+  type lmi_obj_t = objKind * (v_t * Mat.elt) list
   type var = v_t
   val pp_matrix_expr : Format.formatter -> matrix_expr -> unit
   val pp_var : Format.formatter -> var -> unit
@@ -57,7 +57,7 @@ sig
   val of_array_array: matrix_expr array array -> matrix_expr
   val sym_mat_of_var: int -> Mat.elt list -> Mat.t
   val vars_of_sym_mat: Ident.t -> int -> var list 
-  val solve: v_t list list -> matrix_expr list -> lmi_obj_t -> float * (Ident.t * (Mat.elt, Mat.t) value_t) list option
+  val solve: v_t list list -> matrix_expr list -> lmi_obj_t -> float * (v_t (*Ident.t*) * (Mat.elt, Mat.t) value_t) list option
   val get_var_id: var -> Ident.t
   val get_var_indices: var -> (int * int) option
 end 
@@ -110,7 +110,7 @@ struct
 (** Objective to be maximized by the solver: None denotes no objective, Some
     (positive_sign, v) denotes the value v if positive_sign is true, -v
     otherwise. *)
-type lmi_obj_t = (objKind * v_t) option
+type lmi_obj_t = objKind * (v_t * Mat.elt) list
 
 let rec get_dim lmi =
   match lmi with
@@ -572,21 +572,41 @@ else
 	   var_list 
 	   (cpt, [], [])
        in
-       match List.rev vars, elems with
-       | [ScalId x], [y] -> new_cpt, (x, Scalar (Mat.Elem.of_float y)) :: accu
-       | (Var (id, i, j)::_ ), _ -> 
-	 if i != j then assert false else (
+       let exported_val = 
+	 match List.rev vars, elems with
+       | [ScalId x], [y] -> (
+	 (* Report.debugf ~kind:"sdp" ~level:10 *)
+	   Format.eprintf "%t"
+	   (fun fmt -> Format.fprintf fmt "%a elem= %a@.@?" 
+	     Ident.fprintf x Format.pp_print_float y
+	   );
+	 (ScalId x, Scalar (Mat.Elem.of_float y)) :: accu
+       )
+       | (Var (id, i, j)::_ ), _ when i=j -> (
 	   let conv_elems = List.map Mat.Elem.of_float elems in
-	   Report.debugf ~kind:"sdp" ~level:10
-	  (fun fmt -> Format.fprintf fmt "%a elems= [%a]@?" 
+	   Format.eprintf "%t"
+	   (* Report.debugf ~kind:"sdp" ~level:10 *)
+	  (fun fmt -> Format.fprintf fmt "%a elems= [%a]@.@?" 
 	     Ident.fprintf id
 	     (* (Utils.fprintf_list ~sep:", " Base.pp) conv_elems *)
 	     (Utils.fprintf_list ~sep:", " Format.pp_print_float) elems
 	  );
 	   let mat = sym_mat_of_var (i+1) conv_elems in
-	   new_cpt, (id, Mat mat)::accu 
+	   (Var (id,0,0) , Mat mat)::accu  
 	 )
-       | _ -> assert false
+       | _ -> 
+	 (List.map2 (fun v e -> 
+	   Format.eprintf "%t"
+	   (* Report.debugf ~kind:"sdp" ~level:10 *)
+	  (fun fmt -> Format.fprintf fmt "%t elem= %a@.@?" 
+	    (fun fmt -> match v with Var (id,i,j) -> Format.fprintf fmt "%a(%i,%i)" Ident.fprintf id i j)
+	     (* (Utils.fprintf_list ~sep:", " Base.pp) conv_elems *)
+	     Format.pp_print_float e
+	  );
+
+	   v,Scalar (Mat.Elem.of_float e)) vars elems) @  accu
+       in
+       new_cpt, exported_val
    ) sorted_vars (-1 + Array.length dual_sol,[]) 
   in
   res
@@ -683,8 +703,11 @@ let diag block_list =
 
 
 (* Dual -> Primal *)
-let solve (sorted_vars: v_t list list) lmi_list objective =
+let solve (sorted_vars: v_t list list) lmi_list (obj_kind, obj_varl) =
   
+(* Objective is normalized: it is expressed as coefficients over SDP variables *)
+
+
   (* 1. we iterate through lmi_list to gather variables and split them as
      scalar, it will be our solution. *)
 (*  let vars = List.fold_left 
@@ -700,12 +723,13 @@ let solve (sorted_vars: v_t list list) lmi_list objective =
 *)
 
   (* We check that objective is part of the variables *)
-  (match objective with
+ (* (match objective with
   | Some (_, o) -> 
     if not (List.exists (List.mem o) sorted_vars) then 
       raise (Failure "LMI: objective is not part of the free variable of the LMIs.")
   | _ -> ()
   );
+ *)
 
   (* 2. each lmi is rephrased over those scalars. the associated constant part
      is negated and returned (-C) *)
@@ -737,11 +761,12 @@ let solve (sorted_vars: v_t list list) lmi_list objective =
      is CONSTRAINTS *)
   let constraints = List.map (
     fun (v : v_t) -> 
-      let target = match objective with
-	| Some (Minimize, obj) when obj = v -> 1. (* we minimize the dual, ie maximize the primal *)
-	| Some (Maximize, obj) when obj = v -> -1. (* we maximize the dual, ie minimize the primal *)
-	| None  (* no target *)
-	| _ -> 0. (* or non objective variable are associated to 0. *)
+      let target = 
+	let modifier = match obj_kind with
+	    Minimize -> 1.
+	  | Maximize -> -1.
+	in  (* non objective variable are associated to 0. *)
+	if List.mem_assoc v obj_varl then modifier *. Mat.Elem.to_float (List.assoc v obj_varl) else 0.
       in
       let _, blocks = List.fold_right  (
 	fun elems (cpt, accu) ->
@@ -768,7 +793,7 @@ let solve (sorted_vars: v_t list list) lmi_list objective =
   let constraints' = List.map (fun (m, f) -> to_floats m, f) constraints in
   let res , (primal_sol, dual_sol) = Sdp.solve neg_constants' constraints' in
   Report.debugf ~kind:"sdp" ~level:10
-	  (fun fmt -> Format.fprintf fmt "sdp=%f @?" res);
+	  (fun fmt -> Format.fprintf fmt "sdp=%f @.@?" res);
 
   (* Extract from dual_sol the value of each params and rebuilt the unknown
      matrices and lambda *)

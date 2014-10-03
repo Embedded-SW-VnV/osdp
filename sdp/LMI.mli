@@ -25,7 +25,7 @@ sig
 (** Objective to be maximized by the solver: None denotes no objective, Some
     (positive_sign, v) denotes the value v if positive_sign is true, -v
     otherwise. *)
-  type lmi_obj_t = (objKind * v_t) option
+  type lmi_obj_t = objKind * (v_t * Mat.elt) list
 
   type var = v_t
 
@@ -58,7 +58,7 @@ sig
     v_t list list ->  (* list of variables *)
     matrix_expr list -> (* list of sdp matrix expression *)
     lmi_obj_t -> (* Objective *)
-    float * (Ident.t * (Mat.elt, Mat.t) value_t) list option 
+    float * (v_t (*Ident.t*) * (Mat.elt, Mat.t) value_t) list option 
 
   val get_var_id: var -> Ident.t
   val get_var_indices: var -> (int * int) option
