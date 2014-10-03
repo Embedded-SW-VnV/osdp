@@ -111,12 +111,12 @@ module Vars = LinearExpr.Vars
     let expr = Sos.ScalMul (Sos.CN.inject [LinearExpr.N.of_int 2, [|0;2;1;0|]], Sos.Var sos1_expr) in
   (*   let expr = ScalMul ([LinearExpr.N.of_int 2, [|5;3|]], sos1_expr) in*)
     
-    let sos2, sos2_expr, constraints = SOS.sos dim "t" expr in
+    let sos2, sos2_expr, lmi, constraints = SOS.sos dim "t" expr in
     let sos2_dim = SOS.get_sos_dim sos2 in
 
     Format.printf "sos2: %a@.with constraints @[<v>%a@]@." 
       (SOS.pp_sos sos2_dim) (SOS.get_sos_vars sos2)
-      (Utils.fprintf_list ~sep:"@ " (fun fmt c -> Format.printf "%a = 0" Sos.VN.pp c)) constraints;
+      (Utils.fprintf_list ~sep:"@ " (fun fmt (v, c) -> Format.printf "%a = %a" Vars.pp v Sos.VN.pp c)) constraints;
     ()
 
   let _ =   

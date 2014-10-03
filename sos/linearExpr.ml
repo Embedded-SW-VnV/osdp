@@ -42,10 +42,25 @@ struct
 	    | PolyVar of Ident.t * int
 	    | SDPVar of LMI.Num_mat.var 
 	    | Cst (* homogeneization used to encode affine part *)
-		
+
+   (* Used to drive the ordering of Vars: variable registered should be smaller
+      than unregistered ones *)
+   let base_vars : LMI.Num_mat.var list ref = ref []
+     
+   (* Variables should be registered early to avoid messing with the order of VN
+      expressions *)
+   let register_base_vars vars =
+     base_vars := vars @ !base_vars
+       
+
   let compare x y = match x,y with 
-    | Cst , (SOSVar _ | PolyVar _ | SDPVar _ ) -> -1 
-    | (SOSVar _ | PolyVar _ | SDPVar _ ) , Cst -> 1 
+    | Cst , (SOSVar _ | PolyVar _ | SDPVar _ ) -> 1 
+    | (SOSVar _ | PolyVar _ | SDPVar _ ) , Cst -> -1 
+    | SDPVar v1, SDPVar v2 -> 
+      (* Format.eprintf "v1: %a, %b, v2: %a, %b@."  *)
+      (* 	LMI.Num_mat.pp_var v1 (List.mem v1 !base_vars) *)
+      (* 	LMI.Num_mat.pp_var v2 (List.mem v2 !base_vars); *)
+      if List.mem v1 !base_vars && not (List.mem v2 !base_vars) then 1 else compare x y
     | _ -> compare x y
 
   let pp fmt v = match v with
@@ -125,7 +140,7 @@ struct
   (* Generic functions to ease the addition of polynomials, using merge_sorted_lists *)
   let cmp_gen f ((_,x):elem_t) (_,y) = f x y 
   let add_gen isz fadd ((s1,x):elem_t) (s2,_) = let s = fadd s1 s2 in if isz s then None else Some (s, x)
-      
+
   (* For debug purpose *)
   let pp fmt l =
     match l with

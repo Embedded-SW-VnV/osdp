@@ -17,6 +17,13 @@ let f () =
   let deg = 20 in
   Format.printf "%i" (C.get_base_size dim deg)
 
+let ext_product (v: VN.t) (e: CN.t) : CVN.t =
+  List.fold_left 
+    (fun (accu: CVN.t) (v',c) -> 
+      CVN.add accu (CVN.ext_mult v' (CVN.inject [v, c]))   
+    ) CVN.zero (CN.extract e)
+
+
 let product (e1:CN.t) (e2:CN.t) : CN.t = 
   let prod_elem (n1,m1) (n2,m2) =
     match C.prod m1 m2 with
@@ -36,7 +43,7 @@ let product (e1:CN.t) (e2:CN.t) : CN.t =
   ) CN.zero (CN.extract e1) 
   
 
-(* Compute the expression expr^order in CN.t *)
+(* Compute the composition f o g: expression expr^order in CN.t *)
 let rec expand dim order expr =
   if order < 0 then assert false 
   else if order = 0 then poly_cst_one dim
@@ -44,21 +51,36 @@ let rec expand dim order expr =
   else product expr (expand dim (order-1) expr)
 
 
-let image_measure dim deg (f:CN.t list) : CN.t = 
+let image_measure dim deg v_id (f:CN.t list) : Sos.expr = 
+  let compute_monomial_img m idx var_idx : Sos.expr = (* substitute each dim i with order n by f(i)^n *)
+    let exprl = 
+      Array.mapi (fun idx order -> expand dim order (List.nth f idx)) m in
+    let expr = match Array.to_list exprl with
+      | [] -> assert false (* should not happen : 0-dimensional systems *)
+      | [x] -> x 
+      | hd::tl -> List.fold_left product hd tl 
+    in 
+(*     ext_product (VN.inject [N.of_int 1, Vars.SDPVar var_idx]) expr *)
+      expr *% Sos.Var (Vars.SDPVar var_idx)
+
+  in
   if List.length f <> dim then
     assert false;
   let monomials_C = C.get_monomials dim deg in
-  List.fold_left (
-    fun res monomial ->
-      let img = (* substitute each dim i with order n by f(i)^n *)
-	let exprl = 
-	  Array.mapi (fun idx order -> expand dim order (List.nth f idx)) monomial in
-	List.fold_left product (poly_cst_one dim) (Array.to_list exprl)
-	
-      in
-      CN.add res img  
-  ) CN.zero monomials_C 
-
+  let v_coeffs = SOS.get_poly_vars v_id in
+  match monomials_C, v_coeffs with
+  | [], _ | _ , [] -> assert false (* how could this happen ? *)
+  | [m], [var_idx] -> compute_monomial_img m 0 var_idx
+  | hd_m::tl_m, var_0::_ -> 
+    let res, _ = 
+      List.fold_left (
+	fun (res, idx) monomial ->
+	  let var_idx = List.nth v_coeffs idx in
+	  res +% (compute_monomial_img monomial idx var_idx), idx+1  
+    ) (compute_monomial_img hd_m 0 var_0, 1) tl_m 
+    in
+    res
+  
 let scal_prod_lebesgue w dim deg =
   let vars = SOS.get_poly_vars w in
   let monomials = SOS.M.get_monomials dim deg in
@@ -112,7 +134,7 @@ let nl2 ()  =
 
   (* We have v and w polynomials of degree d *)
   let v_id, v = SOS.new_poly_var "v" dim d in
-  let w_id, w = SOS.new_poly_var "v" dim d in
+  let w_id, w = SOS.new_poly_var "w" dim d in
 
 
   (* We declare the following SOS polynomials *)
@@ -122,31 +144,40 @@ let nl2 ()  =
   let q41, q41_expr = SOS.new_sos_var "q41" dim (d-2) in  
 
   (* Image measure *)
-  let vf = image_measure dim d f in
-  Format.eprintf "F#\\mu = %a@." CN.pp vf;
+  let vf : expr = image_measure dim d v_id f in
+(*   Format.eprintf "F#\\mu = %a@." CVN.pp vf;*)
   
   (* SOS constraints *)
-  let expr_q1 = ((alpha *% (?% vf)) -% (!% v)) -%  (g1 *% !% q11_expr) in
+  let expr_q1 = ((alpha *% vf) -% (!% v)) -%  (g1 *% !% q11_expr) in
   let expr_q2 = (!% v) -%  (g0 *% !% q21_expr) in
   let expr_q3 = ((!% w -% (?% one)) -% !% v) -%  (g1 *% !% q31_expr) in
   let expr_q4 = !% w -%  (g1 *% !% q41_expr) in
-  let q1, q1_expr, cons_q1 = SOS.sos dim "Q1" expr_q1 in
-  Format.eprintf "Q1 sos: %i constraints!@." (List.length cons_q1);
-  let q2, q2_expr, cons_q2 = SOS.sos dim "Q2" expr_q2 in
-  Format.eprintf "Q2 sos: %i constraints!@." (List.length cons_q2);
-  let q3, q3_expr, cons_q3 = SOS.sos dim "Q3" expr_q3 in
-  Format.eprintf "Q3 sos: %i constraints!@." (List.length cons_q3);
-  let q4, q4_expr, cons_q4 = SOS.sos dim "Q4" expr_q4 in
-  Format.eprintf "Q4 sos: %i constraints!@." (List.length cons_q4);
+  let q1, q1_expr, lmi_q1, cons_q1 = SOS.sos dim "Q1" expr_q1 in
+  (* Format.eprintf "Q1 sos: %i constraints!@." (List.length cons_q1); *)
 
-  (* minimize obj = wc' * z. We define the equality - obj + wc * z  *)
-  let objvar_id = Ident.create "objvar" in
-  let objvar = Vars.SDPVar (LMI.ScalId objvar_id) in
-  let obj = Some ( LMI.Minimize, LMI.ScalId objvar_id )  in
-  let sos_vars = [q1; q2; q3; q4; q11; q21; q31; q41] in
+  let q2, q2_expr, lmi_q2, cons_q2 = SOS.sos dim "Q2" expr_q2 in
+  (* Format.eprintf "Q2 sos: %i constraints!@." (List.length cons_q2); *)
+  let q3, q3_expr, lmi_q3, cons_q3 = SOS.sos dim "Q3" expr_q3 in
+  (* Format.eprintf "Q3 sos: %i constraints!@." (List.length cons_q3); *)
+  let q4, q4_expr, lmi_q4, cons_q4 = SOS.sos dim "Q4" expr_q4 in
+  (* Format.eprintf "Q4 sos: %i constraints!@." (List.length cons_q4); *)
 
-  let obj_cons = VN.add (VN.inject [Num.num_of_int (-1), objvar]) (scal_prod_lebesgue w_id dim d) in
-  let constraints_as_lmi = List.fold_left  (
+  (* Minimizing the pb:
+    we iterate over variables,xxx  
+  *)
+
+  (* minimize wc' * z. *)
+  let obj_cons = 
+    List.map 
+      (fun (c,v) -> match v with Vars.SDPVar v -> v, c | _ -> assert false)
+      (VN.extract (scal_prod_lebesgue w_id dim d))
+  in
+  let obj = LMI.Minimize, obj_cons  in
+
+
+  let sos_vars = [(*q1; q2; q3; q4; *) q11; q21; q31; q41] in
+
+  let constraints_as_lmi = [] in (*List.fold_left  (
     fun res cons ->
       let lmi = cons in
       let neg_lmi = cons in
@@ -154,6 +185,11 @@ let nl2 ()  =
   ) [] (obj_cons::cons_q1@cons_q2@cons_q3@cons_q4)
   
   in
+*)
+  (* let sos_constraints_to_lmi =  xxx*)
+
+  (* in *)
+  (* List.map () [cons1; ] *)
   let vn_to_mat_expr vn = (* every thing is in dimension 1 *)
     List.fold_left (fun accu (n,v) ->
       match v with
@@ -165,22 +201,35 @@ let nl2 ()  =
 	
     ) (LMI.Num_mat.zeros 1 1) (VN.extract vn)
   in
-  let lmis = (List.map (fun id -> LMI.Num_mat.symmat (id, SOS.get_sos_dim id)) sos_vars)@(List.map vn_to_mat_expr constraints_as_lmi) in
+  let lmis = (List.map (fun id -> LMI.Num_mat.symmat (id, SOS.get_sos_dim id)) sos_vars)@[lmi_q1; lmi_q2; lmi_q3; lmi_q4]@(List.map vn_to_mat_expr constraints_as_lmi) in
 
   let sos_vars_expr : Vars.t list = [q1_expr; q2_expr; q3_expr; q4_expr; q11_expr; q21_expr; q31_expr; q41_expr] in
   let expand_var v = 
     match v with
     | Vars.SDPVar v -> [v]
-    | Vars.SOSVar (id, i) -> SOS.get_sos_vars id 
+    | Vars.SOSVar (id, i) -> SOS.get_sos_free_vars id
     | Vars.PolyVar (id, i) -> SOS.get_poly_vars id
     | Vars.Cst -> assert false
   in
-  let vars = List.map expand_var (objvar::v::w::sos_vars_expr) in
+  let vars = List.map expand_var (v::w::sos_vars_expr) in
   Format.eprintf "Call LMI.solve@.@?";
-  let _ = LMI.Num_mat.solve vars lmis obj in
+ let _ = LMI.Num_mat.solve vars lmis obj in
   Format.eprintf "Called LMI.solve@.@?";
+
 ()
 
+(* Pistes d'ameliorations:
+- structures de données efficcaces poru conserver des linformations en triangulaire superieur
+- il faut ordonner les variables: les premieres dimensions doivent etre les variables SOS contraintes, sos(expr) exprimées en fonctions des variables SOS existantes
+- on ne gardera que la partie "flat" de la diagonalisée
+  \
+   \
+    \
+     | ici
+     | ici
+
+- dans la production du probleme, les variables a 0 sont retirées. Mais on les garde pour reconstruire le primal (dual).
+*)
 
 let run () =
   nl2 ()

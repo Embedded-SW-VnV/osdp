@@ -2,6 +2,8 @@ open Utils
 module Vars = LinearExpr.Vars
 module VN = LinearExpr.VN
     
+let zero = VN.zero
+
       (* We use two hashtbl: 
 	 idtbl: pairid to (c1, c2)
 	 var_id: var to pairid list
@@ -10,6 +12,7 @@ module VN = LinearExpr.VN
       let deftbl: (Vars.t, VN.t) Hashtbl.t = Hashtbl.create 13 
       let varusetbl: (Vars.t, Vars.t list) Hashtbl.t = Hashtbl.create 13 
       let zerotbl = ref [] 
+
 
       let print_summary fmt = 
 	let pp_v = Vars.pp in
@@ -80,10 +83,11 @@ module VN = LinearExpr.VN
 	    )
 	) (get_uses v)
 
-      and add_cons c1 c2 =
-	(* Format.eprintf "adding cons: %a = %a@.%t@." pp_levarsnum c1  pp_levarsnum c2 print_summary; *)
+      and add_cons vars c1 c2 =
+	(* Format.eprintf "adding cons: %a = %a@.%t@." VN.pp c1  VN.pp c2 print_summary;  *)
 
 	let cl = clean(VN.sub c1 c2) in
+	(* Format.eprintf "adding cons: %a@." VN.pp cl;  *)
 	let cl = List.fold_left (fun accu (n,v) ->
 	  if is_registered v then
 	    let vl = get_def v in
@@ -97,23 +101,24 @@ module VN = LinearExpr.VN
 	| [] -> assert false (* correspond to 0 = 0. I think it should not happen *)
 	| [_, Vars.Cst] -> assert false (* should really never happen, ie. 3 = 0 *)
 	| [_, v] -> add_zero_var v
-
-	| ((_, Vars.Cst) as cst)::(n,v)::tl -> (* Affine expression, special treatment for cst *)
-	  let l' = VN.ext_mult (LinearExpr.N.div (LinearExpr.N.of_int (-1)) n) (VN.inject (cst::tl)) in
-	  add_def_var v l'
-
 	| (n,v)::l -> (* Linear expression, no affine part *)
 	  let l' = VN.ext_mult (LinearExpr.N.div (LinearExpr.N.of_int (-1)) n) (VN.inject l) in
 	  add_def_var v l'	 
 
+      
+      let add_zero_cons c = add_cons [] c (VN.zero)
+
       let get_cons () =
 	let res =  
-	(Hashtbl.fold (fun var expr accu -> (VN.add (VN.inject [LinearExpr.N.of_int (-1), var]) expr)::accu) deftbl []) @ 
-	  (List.map (fun c -> VN.inject [LinearExpr.N.of_int 1, c]) !zerotbl)
+	(Hashtbl.fold (fun var expr accu -> (var, expr)::accu) deftbl []) @ 
+	  (List.map (fun c -> c, VN.zero) !zerotbl)
 	in
+(*	 Format.eprintf "%t@." print_summary; *)
 	  Hashtbl.reset deftbl;
 	  Hashtbl.reset varusetbl;
 	  zerotbl := [];
 
 	res
       
+      let pp fmt = 
+	Format.fprintf fmt "@[<v>%a@]" (fprintf_list ~sep:"@ " (fun fmt (v,c) -> Format.fprintf fmt "%a = %a" Vars.pp v VN.pp c))

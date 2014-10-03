@@ -141,6 +141,8 @@ let hash_sosvars :
 
 let hash_polyvars = Hashtbl.create 13
 
+let hash_sos_free_vars = Hashtbl.create 13
+
    (* copy of LMI.sym_mat_of_var *)
 let pp_sos dim fmt (vl:LMI.Num_mat.var list) = 
   let expected_length = (dim*dim + dim)/2 in
@@ -188,12 +190,12 @@ let pp_sos dim fmt (vl:LMI.Num_mat.var list) =
        sdp_vars is the sdp matrix
     *)
     
-let new_sos_var name dim deg : Ident.t * Vars.t =
+let new_sos_var name ?(is_expr=false) dim deg : Ident.t * Vars.t =
   let id = Ident.create name in
   let deg_monomials = M.get_sos_base_size dim deg in
-  Format.eprintf "nb element base monomiale: %i@." deg_monomials;
   let vars = LMI.Num_mat.vars_of_sym_mat id deg_monomials in
-  Format.eprintf "nb vars: %i@." (List.length vars);
+  Format.eprintf "sos var %s (nb element base monomiale=%i, nb_vars=%i)@." 
+    name deg_monomials (List.length vars);
   let expr : MVN.t = 
     List.fold_left  
       (fun res v -> 
@@ -219,6 +221,8 @@ let new_sos_var name dim deg : Ident.t * Vars.t =
   let build_poly elems = LMI.Num_mat.sym_mat_of_var deg_monomials elems in
   let unknown_sdp = LMI.Num_mat.symmat (id, deg_monomials) in
   Hashtbl.add hash_sosvars id (deg_monomials, vars, build_poly, unknown_sdp, expr);
+  if not is_expr then (* we register only pure variables as base variables *)
+    Vars.register_base_vars vars;
   id, Vars.SOSVar(id, deg)
     
 let get_sos_dim  id = match Hashtbl.find hash_sosvars id with a, _, _, _, _ -> a
@@ -227,6 +231,7 @@ let get_sos_mat  id = match Hashtbl.find hash_sosvars id with _, _, a, _, _ -> a
 let get_sos_var  id = match Hashtbl.find hash_sosvars id with _, _, _, a, _ -> a
 let get_sos_expr id = match Hashtbl.find hash_sosvars id with _, _, _, _, a -> a
 
+let get_sos_free_vars id = try Hashtbl.find hash_sos_free_vars id with Not_found -> get_sos_vars id
 
 let new_poly_var name dim deg =
   let id = Ident.create name in
@@ -237,6 +242,7 @@ let new_poly_var name dim deg =
       (List.map2 (fun v m -> (VN.inject [LinearExpr.N.of_int 1, Vars.SDPVar v], m)) vars monomials) 
   in
   Hashtbl.add hash_polyvars id (deg, vars, expr);
+  Vars.register_base_vars vars;
   id, Vars.PolyVar (id, deg)
 
 let get_poly_deg id  = match Hashtbl.find hash_polyvars id with  a, _, _ -> a
@@ -348,28 +354,44 @@ let unfold_poly dim cvn =
        if it is more complex, x is simplidied using the list of zero vars and store into accu
     *)
 let sos ?(names=None) dim id expr =
-
-  let rec build_constraints mvn1 mvn2 =
+  let vn_to_lmi dim vn cst_mat =
+    List.fold_left (
+      fun accu (n,v) ->
+	match v with
+	| Vars.SDPVar v -> 
+	  let new_term = LMI.Num_mat.scal_mult v (LMI.Num_mat.const_mult n cst_mat) in
+	  LMI.Num_mat.add accu new_term
+	| Vars.Cst -> 
+	  let new_term = LMI.Num_mat.const_mult n cst_mat in
+	  LMI.Num_mat.add accu new_term
+	| _ -> (
+	  Format.eprintf "vars is %a in VN: %a@.@?" Vars.pp v VN.pp vn; 
+	  assert false (* other variables should have been eliminated now *)
+	)
+    )
+      (LMI.Num_mat.zeros dim dim) (VN.extract vn)
+  in
+  let rec build_constraints vars mvn1 mvn2 =
     match mvn1, mvn2 with
     | [], [] -> ()
     | (_::_ as l), []
-    | [], (_::_ as l) -> List.iter (fun (c,_) -> VNConstraints.add_cons c VN.zero) l
+    | [], (_::_ as l) -> List.iter (fun (c,_) -> VNConstraints.add_zero_cons c) l
     | (c1, m1)::tl1, (c2, m2)::tl2 -> (
       let order = M.compare m1 m2 in
-	  (* Format.eprintf "Comparing %a with %a: %i@." (M.fprintf names) m1 (M.fprintf names) m2 order; *)
+(*       Format.eprintf "Comparing %a with %a: %i@." (M.pp ~names:None) m1 (M.pp ~names:None) m2 order; *)
       if order = 0 then (
 	    (* Format.eprintf "%a = %a@." *)
 	    (*   pp_levarsnum c1 pp_levarsnum c2; *)
-	VNConstraints.add_cons c1 c2;
-	build_constraints tl1 tl2
+	VNConstraints.add_cons vars c1 c2;
+	build_constraints vars tl1 tl2
       )
       else if order < 0 then (* m1 < m2 *) (
-	VNConstraints.add_cons c1 VN.zero;
-	build_constraints tl1 mvn2 
+	VNConstraints.add_zero_cons c1;
+	build_constraints vars tl1 mvn2 
       )
       else (
-	VNConstraints.add_cons c2 VN.zero;
-	build_constraints mvn1 tl2 
+	VNConstraints.add_zero_cons c2;
+	build_constraints vars mvn1 tl2 
       )
     )
   in
@@ -380,18 +402,63 @@ let sos ?(names=None) dim id expr =
   in
   
   let cvn = simplify dim expr in 
+  Format.eprintf "SOS Expression: %a@." CVN.pp cvn;
       (* Format.eprintf "cvn = %a@." (pp_cvn ~names:names) cvn; *)
   let mvn, degree = unfold_poly dim cvn in
       (* Format.eprintf "d(mvn)=%i, mvn = %a@." degree (pp_mvn ~names:names) mvn; *)
   Format.eprintf "new sos var: deg=%i, dim=%i@." degree dim;
-  let sos_var, sos_id_expr = new_sos_var id dim degree in
+  let sos_var, sos_id_expr = new_sos_var ~is_expr:true id dim degree in
   let sos_expr : MVN.t = get_sos_expr sos_var in
       (* Format.eprintf "sos expr mvn = %a@." (pp_mvn ~names:names) sos_expr; *)
-  let _ = build_constraints (MVN.extract mvn) (MVN.extract sos_expr) in
+  let _ = build_constraints [](*vars*) (MVN.extract mvn) (MVN.extract sos_expr) in
   let constraints = VNConstraints.get_cons () in
-      (* List.iter (fun c ->  *)
-      (* 	Format.printf "%a = 0@." pp_levarsnum c *)
-      (* ) constraints; *)
-  sos_var, sos_id_expr, constraints
+(*  Format.eprintf "Constraints: %a@." VNConstraints.pp constraints;*)  
+  let dim_sos = get_sos_dim sos_var in 
+  let lmi, remaining_cons = 
+    List.fold_left (fun (accu, constraints) v -> 
+      let new_term, constraints' = match v with
+	| LMI.ScalId _ -> assert false
+	| LMI.Var (id, i, j) -> 
+	  let v_def, constraints' = 
+	    if List.mem_assoc (Vars.SDPVar v) constraints then
+	      List.assoc (Vars.SDPVar v) constraints, List.remove_assoc (Vars.SDPVar v) constraints 
+	    else ( (* the variable should be associated to zero *)
+(*	      Format.eprintf
+	      	"Impossible to find var %a in constraints %a@.@?"
+	      	LMI.Num_mat.pp_var v VNConstraints.pp constraints;
+	      Format.eprintf "Adding it as a fresh variable (with maybe constraints on it)@.";*)
+	      VN.inject [LinearExpr.N.of_int 1, Vars.SDPVar v], constraints
+	    )
+	  in
+	  vn_to_lmi dim_sos v_def (LMI.Num_mat.kronecker_sym dim_sos i j), constraints'
+	in
+	LMI.Num_mat.add accu new_term, constraints'
+	
+      ) (LMI.Num_mat.zeros dim_sos dim_sos, constraints) (get_sos_vars sos_var)
+  in
+  (* Adding free vars to hashtbl *)
+  Hashtbl.add hash_sos_free_vars sos_var 
+    (List.map (fun (v, _) -> match v with Vars.SDPVar v -> v | _ -> assert false) constraints);
+
+  (* if List.length remaining_cons > 0 then *)
+  (*     Format.eprintf "Remaining cons: [%a]@.@?"  *)
+  (* 	VNConstraints.pp remaining_cons *)
+  (*   else  *)
+  (*     Format.eprintf "All definitions used@."; *)
+  (*  let lc = List.map () constraints
+*) (*
+    en vrac:
+    - il ne faut appeler new sos var, en tout cas il ne faut pas declarer id comme un sos var "base"
+    done
+
+    - on itere sur les variables id,i,j, on recupere l'expression expr(id,i,j)
+    associée et on construit l'expression 
+
+    sum_{vars id,i,j) MatScalMult expr(id,i,j) kronecker_sym dim i j
+
+TODO: preparer la reconstruction de la solution
+  *)
+
+  sos_var, sos_id_expr, lmi, remaining_cons
 
 end

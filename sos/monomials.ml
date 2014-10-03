@@ -60,6 +60,7 @@ sig
 (* get_monimials dim deg returns the list of monomials of dim up to deg *)
   val get_monomials: int -> int -> t list
 
+  val cst: int -> t 
 end
 
 module LinExpr =
@@ -93,6 +94,8 @@ struct
     
   type t = int array (* array of size: dim + 1 *)
 
+  let cst dim = Array.make dim 0
+ 
   let dim = Array.length
   let deg = Array.fold_left ((+)) 0     
 
@@ -300,7 +303,7 @@ struct
 	(half, n + 1)::(SNum.of_int n, n - 1)::[]
 
   (* Test *)	  
-  let test =
+  let test () =
     List.iter (fun n -> 
       let m = prod_var_mono n in
       Format.printf "xH%i(x) = %a@." n (LE.pp ~names:(Some [|"x"|])) m
@@ -354,7 +357,7 @@ struct
 	   LE.add c0 (LE.scal_mult scale (prod_var_mono_serie c1))
 
   (* Test *)
-  let test  =
+  let test ()  =
     List.iter (fun (x,y) ->
       let r = prod_mono_monomials x y in 
       let names = Some [|"x"|] in
