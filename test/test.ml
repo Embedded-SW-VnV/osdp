@@ -64,52 +64,140 @@
 (*          | Mat m -> Format.printf "%a = %a@." Ident.pp id Matrix.NumMat.pp m) *)
 (*       vars *)
 
-open SOS.Num
+(* (\* Test LMI *\) *)
+(* open SOS.Num *)
 
+(* let _ = *)
+(*   let l = Monomial.list_le 3 2 in *)
+(*   Format.printf "@[[%a@]]@." (Utils.fprintf_list ~sep:",@ " Monomial.pp) l; *)
+(*   let pol_of_list l = *)
+(*     let l = List.map (fun (s, m) -> Monomial.of_list m, Num.num_of_int s) l in *)
+(*     Polynomial.Num.of_list l in *)
+(*   let p1 = pol_of_list [2, [4]; 2, [3; 1]; -1, [2; 2]; 5, [0; 4]] in *)
+(*   Format.printf "p1 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p1; *)
+(*   let p2 = Polynomial.Num.mult_scalar (Num.num_of_int 2) p1 in *)
+(*   Format.printf "p2 = 2 p1 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p2; *)
+(*   let p3 = pol_of_list [3, [1; 1]; -2, [0; 3]; -2, [4]] in *)
+(*   Format.printf "p3 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p3; *)
+(*   let p4 = Polynomial.Num.add p1 p3 in *)
+(*   Format.printf "p4 = p1 + p3 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p4; *)
+(*   let p5 = Polynomial.Num.power p1 2 in *)
+(*   Format.printf "p5 = p1^2 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p5; *)
+(*   let p6 = pol_of_list [1, [2]] in *)
+(*   Format.printf "p6 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p6; *)
+(*   let p7 = pol_of_list [1, [0; 2]] in *)
+(*   Format.printf "p7 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p7; *)
+(*   let p8 = pol_of_list [1, [1; 1]] in *)
+(*   Format.printf "p8 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p8; *)
+(*   let l1 = Polynomial.Num.mult_scalar *)
+(*              (Num.div_num (Num.num_of_int 1) (Num.num_of_int 10)) *)
+(*              (pol_of_list [15, [1]; -7, [0; 1]]) in *)
+(*   Format.printf "l1 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) l1; *)
+(*   let l2 = pol_of_list [1, [1]] in *)
+(*   Format.printf "l2 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) l2; *)
+(*   let p9 = Polynomial.Num.compose p6 [l1; l2] in *)
+(*   Format.printf "p9 = p6(l1, l2) = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p9; *)
+(*   let p10 = Polynomial.Num.compose p7 [l1; l2] in *)
+(*   Format.printf "p10 = p7(l1, l2) = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p10; *)
+(*   let p11 = Polynomial.Num.compose p8 [l1; l2] in *)
+(*   Format.printf "p11 = p8(l1, l2) = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p11; *)
+(*   let l = Monomial.list_eq 2 2 in *)
+(*   Format.printf "@[[%a@]]@." (Utils.fprintf_list ~sep:",@ " Monomial.pp) l; *)
+(*   let p12 = pol_of_list [1, [4]; 1, [0; 4]] in *)
+(*   Format.printf "p12 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p12; *)
+(*   let p = { name = Ident.create "p"; *)
+(*             nb_vars = 2; *)
+(*             degree = 4; *)
+(*             homogeneous = true } in *)
+(*   (\* solve Purefeas [PLvar p]; *\) *)
+(*   let pe1 = PLcompose (PLvar p, [PLconst l1; PLconst l2]) in *)
+(*   Format.printf "pe1 = @[%a@]@." (pp ~names:[]) pe1; *)
+(*   let lambda_id = Ident.create "lambda" in *)
+(*   let pe2 = PLsub (PLvar p, PLmult_scalar (lambda_id, PLconst p12)) in *)
+(*   Format.printf "pe2 = @[%a@]@." (pp ~names:[]) pe2; *)
+(*   let res, vars = solve Purefeas [pe1; pe2] in *)
+(*   Format.printf "res = %f@." res; *)
+(*   if Ident.Map.is_empty vars then *)
+(*     Format.printf "erreur SDP@." *)
+(*   else *)
+(*     Ident.Map.iter *)
+(*       (fun id v -> *)
+(*          match v with *)
+(*          | Scalar e -> Format.printf "%a = %a@." Ident.pp id Scalar.Num.pp e *)
+(*          | Poly p -> Format.printf "%a = %a@." Ident.pp id (Polynomial.Num.pp ~names:["x"; "y"]) p) *)
+(*       vars *)
+
+(* Test LMI 2 *)
+open SOS.Float
+
+(* let test lambda = *)
 let _ =
-  let l = Monomial.list_le 3 2 in
-  Format.printf "@[[%a@]]@." (Utils.fprintf_list ~sep:",@ " Monomial.pp) l;
+  let lambda = 0.84 in
+  let names = ["x"; "y"; "u"] in
+  let pp_poly = Poly.pp ~names in
   let pol_of_list l =
-    let l = List.map (fun (s, m) -> Monomial.of_list m, Num.num_of_int s) l in
-    Polynomial.Num.of_list l in
-  let p1 = pol_of_list [2, [4]; 2, [3; 1]; -1, [2; 2]; 5, [0; 4]] in
-  Format.printf "p1 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p1;
-  let p2 = Polynomial.Num.mult_scalar (Num.num_of_int 2) p1 in
-  Format.printf "p2 = 2 p1 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p2;
-  let p3 = pol_of_list [3, [1; 1]; -2, [0; 3]; -2, [4]] in
-  Format.printf "p3 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p3;
-  let p4 = Polynomial.Num.add p1 p3 in
-  Format.printf "p4 = p1 + p3 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p4;
-  let p5 = Polynomial.Num.power p1 2 in
-  Format.printf "p5 = p1^2 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p5;
-  let p6 = pol_of_list [1, [2]] in
-  Format.printf "p6 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p6;
-  let p7 = pol_of_list [1, [0; 2]] in
-  Format.printf "p7 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p7;
-  let p8 = pol_of_list [1, [1; 1]] in
-  Format.printf "p8 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p8;
-  let l1 = Polynomial.Num.mult_scalar
-             (Num.div_num (Num.num_of_int 1) (Num.num_of_int 10))
-             (pol_of_list [15, [1]; -7, [0; 1]]) in
-  Format.printf "l1 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) l1;
-  let l2 = pol_of_list [1, [1]] in
-  Format.printf "l2 = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) l2;
-  let p9 = Polynomial.Num.compose p6 [l1; l2] in
-  Format.printf "p9 = p6(l1, l2) = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p9;
-  let p10 = Polynomial.Num.compose p7 [l1; l2] in
-  Format.printf "p10 = p7(l1, l2) = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p10;
-  let p11 = Polynomial.Num.compose p8 [l1; l2] in
-  Format.printf "p11 = p8(l1, l2) = %a@." (Polynomial.Num.pp ~names:["x"; "y"]) p11;
-  let l = Monomial.list_eq 2 2 in
-  Format.printf "@[[%a@]]@." (Utils.fprintf_list ~sep:",@ " Monomial.pp) l;
+    Poly.of_list (List.map (fun (s, m) -> Monomial.of_list m, s) l) in
+  let cp f = pol_of_list [f, []] in
+  let deg = 4 in
   let p = { name = Ident.create "p";
             nb_vars = 2;
-            degree = 4;
+            degree = deg;
             homogeneous = true } in
-  (* solve Purefeas [PLvar p]; *)
-  let pe = PLcompose (PLvar p, [PLconst l1; PLconst l2]) in
-  Format.printf "pe = @[%a@]@." (pp ~names:[]) pe;
-  solve Purefeas [PLcompose (PLvar p, [PLconst l1; PLconst l2])]
+  Format.printf "cp lambda = %a@." pp_poly (cp lambda);
+  let tau_id = Ident.create "tau" in
+  let lambda'_id = Ident.create "lambda'" in
+  let l1 = pol_of_list [1.5, [1]; -0.7, [0; 1]; 1.6, [0; 0; 1]] in
+  Format.printf "l1 = %a@." pp_poly l1;
+  let l1' = pol_of_list [1.5, [1]; -0.7, [0; 1]] in
+  Format.printf "l1' = %a@." pp_poly l1';
+  let l2 = pol_of_list [1., [1]] in
+  Format.printf "l2 = %a@." pp_poly l2;
+  let pe1 = PLsub (PLsub (PLsub (PLconst (cp 1.),
+                                 PLcompose (PLvar p, [PLconst l1; PLconst l2])),
+                          PLmult (PLconst (cp lambda),
+                                  PLsub (PLconst (cp 1.), PLvar p))),
+                   PLmult_scalar (tau_id,
+                                  PLsub (PLconst (cp 1.),
+                                         PLconst (pol_of_list [1., [0; 0; deg]])))) in
+  Format.printf "pe1 = %a@." (pp ~names) pe1;
+  let pe1' = PLsub (PLmult (PLconst (cp lambda), PLvar p),
+                    PLcompose (PLvar p, [PLconst l1'; PLconst l2])) in
+  Format.printf "pe1' = %a@." (pp ~names) pe1';
+  let pe2 = PLsub (PLvar p,
+                   PLmult_scalar (lambda'_id,
+                                  PLconst (pol_of_list [1., [deg]; 1., [0; deg]]))) in
+  Format.printf "pe2 = %a@." (pp ~names) pe2;
+  let pe2' = PLsub (PLvar p,
+                   PLmult (PLconst (cp 0.00001),
+                           PLconst (pol_of_list [1., [deg]; 1., [0; deg]]))) in
+  Format.printf "pe2' = %a@." (pp ~names) pe2';
+  let res, vars = solve (Maximize lambda'_id) [pe1; pe2] in
+  Format.printf "res = %f@." res;
+  if Ident.Map.is_empty vars then
+    Format.printf "erreur SDP@."
+  else
+    Ident.Map.iter
+      (fun id v ->
+         match v with
+         | Scalar e -> Format.printf "%a = %a@." Ident.pp id Scalar.Float.pp e
+         | Poly p -> Format.printf "%a = %a@." Ident.pp id pp_poly p)
+      vars(* ; *)
+  (* let Scalar l' = Ident.Map.find lambda'_id vars in l' *)
+
+(* let _ = *)
+(*   let lambda = ref 0.48 in *)
+(*   let best_lambda = ref neg_infinity in *)
+(*   let best_lambda' = ref neg_infinity in *)
+(*   while !lambda < 1. do *)
+(*     let l' = test !lambda in *)
+(*     if l' > !best_lambda' then begin *)
+(*       best_lambda := !lambda; *)
+(*       best_lambda' := l' *)
+(*     end; *)
+(*     lambda := !lambda +. 0.1 *)
+(*   done; *)
+(*   Format.printf "best_lambda = %f (best_lambda' = %f)@." *)
+(*                 !best_lambda !best_lambda' *)
 
 (* Local Variables: *)
 (* compile-command:"make -C .. test" *)

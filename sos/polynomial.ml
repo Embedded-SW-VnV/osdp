@@ -48,14 +48,15 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
     else List.map (fun (m, s') -> m, Coeff.mult s s') p
 
   let rec map2 f l1 l2 = match l1, l2 with
-    | [], _ -> l2
-    | _, [] -> l1
-    | ((m1, c1) as mc1) :: t1, ((m2, c2) as mc2) :: t2 ->
+    | [], [] -> []
+    | [], (m2, c2) :: t2 -> (m2, f Coeff.zero c2) :: map2 f [] t2
+    | (m1, c1) :: t1, [] -> (m1, f c1 Coeff.zero) :: map2 f t1 []
+    | (m1, c1) :: t1, (m2, c2) :: t2 ->
        let cmp = Monomial.compare m1 m2 in
        if cmp < 0 then
-         mc1 :: map2 f t1 l2
+         (m1, f c1 Coeff.zero) :: map2 f t1 l2
        else if cmp > 0 then
-         mc2 :: map2 f l1 t2
+         (m2, f Coeff.zero c2) :: map2 f l1 t2
        else  (* cmp = 0 *)
          let c = f c1 c2 in
          if Coeff.is_zero c then map2 f t1 t2
