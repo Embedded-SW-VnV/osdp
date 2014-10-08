@@ -195,15 +195,11 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     let scalarized, binding = scalarize el in
 
-    List.iter (Format.printf "scalarized : @[%a@]@." (LEPoly.pp ~names:[])) scalarized;
-
     (* count variables and associate an index to each one *)
     let var_total, var_idx =
       Ident.Map.fold
         (fun id _ (i, var_idx) -> i + 1, Ident.Map.add id i var_idx)
         env (0, Ident.Map.empty) in
-
-    Format.printf "var_total = %i@." var_total;
 
     (* associate its base to each variable index *)
     let idx_base =
@@ -213,50 +209,32 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            let b = match ty with
              | TYscal -> [|Monomial.of_list []|]
              | TYpoly p -> base_of_params p in
-           Format.printf "base for variable %a: @[%a@]@." Ident.pp id
-                         (Utils.fprintf_array
-                            ~sep:",@ " (Monomial.pp ~names:[])) b;
            a.(Ident.Map.find id var_idx) <- b) env; a in
-
-    Format.printf "idx_base@.";
 
     let le_zero = LinExprSC.const Poly.Coeff.zero in
 
-    Format.printf "le_zero@.";
-
     (* build the A_i and a_i (see csdp.mli) *)
     let build_cstr ei e =
-      Format.printf "build_cstr %i@." ei;
       let eq_params = { name = Ident.create ("eq" ^ string_of_int ei);
                         nb_vars = LEPoly.nb_vars e;
                         degree = LEPoly.degree e;
                         homogeneous = LEPoly.is_homogeneous e } in
-      Format.printf "params for eq %i: { name = %a; nb_vars = %i; degree = %i; homogeneous = %b }@." ei
-                    Ident.pp eq_params.name eq_params.nb_vars eq_params.degree eq_params.homogeneous;
       let eq_base = base_of_params eq_params in
-      Format.printf "base for eq %i: @[%a@]@." ei
-                    (Utils.fprintf_array
-                       ~sep:",@ " (Monomial.pp ~names:[])) eq_base;
       let eq_poly, eq_binding = identspoly_of_params eq_params in
-      Format.printf "eq_params, eq_poly@.";
       let eq_binding = List.fold_left
                          (fun m ((_, ij), id) -> Ident.Map.add id ij m)
                          Ident.Map.empty eq_binding in
-      Format.printf "eq_binding@.";
       (* Encode equality le_vars = le_eq (i.e., l_vars - l_eq = -c_var
          with l_vars and l_eq the linear part of le_vars and le_eq and
          c_vars the constant part of le_vars (constant part of le_eq
          is 0)). Eventually, A_i (var_blks and eq_blk) encodes l_vars
          - l_eq and a_i encodes -c_var. *)
       let equate le_vars le_eq =
-        Format.printf "equate (%a) (%a)@." LinExprSC.pp le_vars LinExprSC.pp le_eq;
         let var_blks = Array.init var_total
                                   (fun i ->
                                    let n = Array.length idx_base.(i) in
                                    Array.make_matrix n n 0.) in
-        Format.printf "var_blks@.";
         let l_vars, c_vars = LinExprSC.to_list le_vars in
-        Format.printf "l_vars, c_vars@.";
         List.iter
           (fun (id, c) ->
            let id, (i, j) = try Ident.Map.find id binding
@@ -265,9 +243,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            let c = Poly.Coeff.to_float c /. 2. in
            var_blks.(idx).(i).(j) <- var_blks.(idx).(i).(j) +. c;
            var_blks.(idx).(j).(i) <- var_blks.(idx).(j).(i) +. c) l_vars;
-        Format.printf "List.iter l_vars@.";
         let eq_blk = let n = Array.length eq_base in Array.make_matrix n n 0. in
-        Format.printf "eq_blk@.";
         let l_eq, _ = LinExprSC.to_list le_eq in
         List.iter
           (fun (id, c) ->
@@ -275,9 +251,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            let c = Poly.Coeff.to_float c /. 2. in
            eq_blk.(i).(j) <- eq_blk.(i).(j) -. c;
            eq_blk.(j).(i) <- eq_blk.(j).(i) -. c) l_eq;
-        Format.printf "List.iter l_eq@.";
         let var_blks = Array.to_list (Array.mapi (fun i b -> i, b) var_blks) in
-        Format.printf "var_blks@.";
         (* A_i, a_i *)
         (var_total + ei, eq_blk) :: var_blks, -. Poly.Coeff.to_float c_vars in
       (* equate coefficients (linear expressions) of polynomials
@@ -294,26 +268,6 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       match_polys [] (LEPoly.to_list e) (LEPoly.to_list eq_poly) in
     let cstrs = List.flatten (List.mapi build_cstr scalarized) in
 
-    List.iteri
-      (fun i (cstrA, cstra) ->
-       Format.printf
-         "cstr%i: [@[%a@]], %f@." i
-         (Utils.fprintf_list
-            ~sep:",@ "
-            (fun fmt (i, a) ->
-             Format.fprintf
-               fmt "%i, [|@[%a@]|]" i
-               (Utils.fprintf_array
-                  ~sep:",@ "
-                  (fun fmt a ->
-                   Format.fprintf
-                     fmt "[|@[%a@]|]"
-                     (Utils.fprintf_array
-                        ~sep:",@ "
-                        (fun fmt -> Format.fprintf fmt "%f")) a)) a))
-         cstrA cstra)
-      cstrs;
-
     (* build the objective C (see csdp.mli) *)
     let obj = match obj with
       | Minimize id ->
@@ -328,25 +282,6 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     (* call SDP solver *)
     let res, (primal_sol, dual_sol) = Sdp.solve obj cstrs in
-
-    Format.printf "res = %f@." res;
-
-    Format.printf
-      "primal_sol: [@[%a@]]@."
-      (Utils.fprintf_list
-         ~sep:",@ "
-         (fun fmt (i, a) ->
-          Format.fprintf
-            fmt "%i, [|@[%a@]|]" i
-            (Utils.fprintf_array
-               ~sep:",@ "
-               (fun fmt a ->
-                Format.fprintf
-                  fmt "[|@[%a@]|]"
-                  (Utils.fprintf_array
-                     ~sep:",@ "
-                     (fun fmt -> Format.fprintf fmt "%f")) a)) a))
-         primal_sol;
 
     (* rebuild polynomial variables *)
     if res = infinity || res = neg_infinity then

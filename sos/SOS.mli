@@ -43,8 +43,8 @@ module type S = sig
       @raise Type_error with an explanatory message in case something
       inconsistent is found.
 
-      @raise Not_linear if one of the input polynomial expressions in
-      [l] is non linear. *)
+      @raise LinExpr.Not_linear if one of the input polynomial
+      expressions in [l] is non linear. *)
   val solve : obj_t -> polynomial_expr list ->
               float * (Poly.Coeff.t, Poly.t) value_t Ident.Map.t
 

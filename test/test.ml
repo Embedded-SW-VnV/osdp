@@ -39,20 +39,29 @@
 (*   let ratio i j = Num.div_num (Num.num_of_int i) (Num.num_of_int j) in *)
 (*   let a = Matrix.NumMat.of_list_list *)
 (*             [[ratio 15 10; ratio (-7) 10]; [ratio 1 1; ratio 0 1]] in *)
+(*   let b = Matrix.NumMat.of_list_list *)
+(*             [[ratio 16 10]; [ratio 0 10]] in *)
 (*   let p = Ident.create "P" in *)
-(*   let lambda = Scalar.Num.of_float 0.7 in *)
-(*   let e1 = MEsub (MEvar p, MEscale_const (Scalar.Num.of_float 0.00001, MEeye 2)) in *)
-(*   let e2 = MEsub (MEscale_const (lambda, MEvar p), *)
-(*                   MEmult (MEmult (MEtranspose (MEconst a), MEvar p), MEconst a)) in *)
-(*   (\* let q = Ident.create "Q" in *\) *)
-(*   (\* let lambda = Ident.create "lambda" in *\) *)
-(*   (\* let e1 = MEsub (MEmult (MEmult (MEtranspose (MEconst a), MEvar p), MEconst a), *\) *)
-(*   (\*                MEvar p) in *\) *)
-(*   (\* let e2 = MEadd (MEvar q, MEmult_scalar (lambda, MEeye 3)) in *\) *)
-(*   Format.printf "%a\n%!" pp e1; *)
-(*   Format.printf "%a\n%!" pp e2; *)
+(*   let dim_a = 2 in *)
+(*   let dim_b = 1 in *)
+(*   let lambda = Scalar.Num.of_float 0.84 in *)
+(*   let tau_id = Ident.create "tau" in *)
+(*   let lambda'_id = Ident.create "lambda'" in *)
+(*   let i0 = MEblock [|[|MEeye dim_a; MEzeros (dim_a, dim_b)|]|] in *)
+(*   let ab = MEblock [|[|MEconst a; MEconst b|]|] in *)
+(*   let e1 = MEsub (MEsub (MEblock [|[|MEminus (MEmult (MEmult (MEtranspose ab, MEvar p), ab)); MEzeros (dim_a + dim_b, 1)|]; *)
+(*                                    [|MEzeros (1, dim_a + dim_b); MEeye 1|]|], *)
+(*                          MEscale_const (lambda, *)
+(*                                         MEblock [|[|MEminus (MEmult (MEmult (MEtranspose i0, MEvar p), i0)); MEzeros (dim_a + dim_b, 1)|]; *)
+(*                                                   [|MEzeros (1, dim_a + dim_b); MEeye 1|]|])), *)
+(*                   MEscale_var (tau_id, MEblock [|[|MEminus (MEkronecker_sym (dim_a + dim_b, dim_a, dim_a)); MEzeros (dim_a + dim_b, 1)|]; *)
+(*                                                  [|MEzeros (1, dim_a + dim_b); MEeye 1|]|])) in *)
+(*   let e2 = MEsub (MEvar p, MEscale_var (lambda'_id, MEeye dim_a)) in *)
+(*   let e3 = MEscale_var (tau_id, MEeye 1) in *)
+(*   Format.printf "e1 = %a\n%!" pp e1; *)
+(*   Format.printf "e2 = %a\n%!" pp e2; *)
 (*   let el = [e1; e2] in *)
-(*   let res, vars = solve Purefeas el in *)
+(*   let res, vars = solve (Maximize lambda'_id) el in *)
 (*   Format.printf "res = %f@." res; *)
 (*   if Ident.Map.is_empty vars then *)
 (*     Format.printf "erreur SDP@." *)
@@ -60,11 +69,35 @@
 (*     Ident.Map.iter *)
 (*       (fun id v -> *)
 (*          match v with *)
-(*          | Scalar e -> Format.printf "%a = %a@." Ident.pp id Scalar.Num.pp e *)
+(*          | Scalar e -> Format.printf "%a = %a (%g)@." Ident.pp id Scalar.Num.pp e (Scalar.Num.to_float e) *)
+(*          | Mat m -> Format.printf "%a = %a@." Ident.pp id Matrix.NumMat.pp m) *)
+(*       vars; *)
+(*   let Mat m = Ident.Map.find p vars in *)
+(*   let lambda''_id = Ident.create "lambda''" in *)
+(*   let e3 = MEsub (MEconst m, *)
+(*                   MEscale_var (lambda''_id, *)
+(*                                MEconst (Matrix.NumMat.of_list_list *)
+(*                                           [[ratio 1 10000; ratio 0 1]; *)
+(*                                            [ratio 0 1; ratio 1 1]]))) in *)
+(*   Format.printf "e3 = %a@." pp e3; *)
+(*   let res, vars = solve (Maximize lambda''_id) [e3] in *)
+(*   Format.printf "res = %f@." res; *)
+(*   if Ident.Map.is_empty vars then *)
+(*     Format.printf "erreur SDP@." *)
+(*   else *)
+(*     Ident.Map.iter *)
+(*       (fun id v -> *)
+(*          match v with *)
+(*          | Scalar e -> Format.printf "%a = %a (%g)@." Ident.pp id Scalar.Num.pp e (Scalar.Num.to_float e) *)
 (*          | Mat m -> Format.printf "%a = %a@." Ident.pp id Matrix.NumMat.pp m) *)
 (*       vars *)
+(*       (\* bounds: |x| <= 16.06, |y| <= 17.52 *)
+(*          (.01909721391381722505 x^2 -.03124999027762423442 x y + .01604166373440409423 y^2 <= 1) *\) *)
+(*       (\* PI + x^2 + itv: |x| <= 15.98, |y| <= 15.98 *)
+(*          (.01885522766262599791 x^2 -.03101999134118256506 x y + .01602705872706839881 y^2 <= 1.00032 *)
+(*           /\ x^2 <= 255.157) *\) *)
 
-(* (\* Test LMI *\) *)
+(* (\* Test SOS *\) *)
 (* open SOS.Num *)
 
 (* let _ = *)
@@ -127,7 +160,7 @@
 (*          | Poly p -> Format.printf "%a = %a@." Ident.pp id (Polynomial.Num.pp ~names:["x"; "y"]) p) *)
 (*       vars *)
 
-(* Test LMI 2 *)
+(* Test SOS 2 *)
 open SOS.Float
 
 (* let test lambda = *)
@@ -181,8 +214,45 @@ let _ =
          match v with
          | Scalar e -> Format.printf "%a = %a@." Ident.pp id Scalar.Float.pp e
          | Poly p -> Format.printf "%a = %a@." Ident.pp id pp_poly p)
-      vars(* ; *)
-  (* let Scalar l' = Ident.Map.find lambda'_id vars in l' *)
+      vars;
+  let Poly p = Ident.Map.find p.name vars in
+  let lambda''_id = Ident.create "lambda''" in
+  let pe3 = PLsub (PLconst p,
+                   PLmult_scalar (lambda''_id,
+                                  PLconst (pol_of_list [1., [deg]; 0.0001, [0; deg]]))) in
+  Format.printf "pe3 = %a@." (pp ~names) pe3;
+  let res, vars = solve (Maximize lambda''_id) [pe3] in
+  Format.printf "res = %f@." res;
+  if Ident.Map.is_empty vars then
+    Format.printf "erreur SDP@."
+  else
+    Ident.Map.iter
+      (fun id v ->
+         match v with
+         | Scalar e -> Format.printf "%a = %a@." Ident.pp id Scalar.Float.pp e
+         | Poly p -> Format.printf "%a = %a@." Ident.pp id pp_poly p)
+      vars
+      (* bounds (degree 4): |x| <= 15.57, |y| <= 16.64
+         (0.000299013671468 y^4 + -0.00116129107886 x y^3 + 0.0018468906396
+          x^2 y^2 + -0.00139235326831 x^3 y + 0.000425080699248 x^4 <= 1) *)
+      (* bounds (degree 6): |x| <= 15.44, |y| <= 16.28
+         (5.67584790715e-06 y^6 + -3.30073547184e-05 x y^5
+          + 8.41566023528e-05 x^2 y^4 + -0.000119401915527 x^3 y^3
+          + 9.93706446912e-05 x^4 y^2 + -4.60592130938e-05 x^5 y
+          + 9.34269976033e-06 x^6 <= 1) *)
+      (* bounds (degree 8 (numerical problems ?)): |x| <= 16.64, |y| <= 17.65
+         (6.92661602697e-08 y^8 + -5.37224572792e-07 x y^7
+          + 1.89408048343e-06 x^2 y^6 + -3.9480321158e-06 x^3 y^5
+          + 5.30962943268e-06 x^4 y^4 + -4.71135602647e-06 x^5 y^3
+          + 2.69251953052e-06 x^6 y^2 + -9.06892465936e-07 x^7 y
+          + 1.38236764031e-07 x^8 <= 1) *)
+      (* bounds (degree 10 (false)): |x| <= 12.32, |y| <= 14.03
+         (5.34096105338e-10 y^10 + -6.19049102191e-09 x y^9
+          + 3.28183155997e-08 x^2 y^8 + -1.03925168567e-07 x^3 y^7
+          + 2.16175011125e-07 x^4 y^6 + -3.07271725778e-07 x^5 y^5
+          + 3.01847942477e-07 x^6 y^4 + -2.02733551642e-07 x^7 y^3
+          + 8.95507588387e-08 x^8 y^2 + -2.36814750873e-08 x^9 y
+          + 2.87630122667e-09 x^10 <= 1)*)
 
 (* let _ = *)
 (*   let lambda = ref 0.48 in *)
