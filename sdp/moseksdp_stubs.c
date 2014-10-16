@@ -266,7 +266,7 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
                    Double_val(Field(Field(tmp, 0), 1))));
   }
 
-  MS(optimize(task));
+  MS(optimizetrm(task, NULL));
 
   /* Print a summary containing information
      about the solution for debugging purposes*/
