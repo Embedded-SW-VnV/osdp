@@ -48,9 +48,6 @@ module type S = sig
   val solve : ?solver:Sdp.solver -> obj_t -> polynomial_expr list ->
               float * (Poly.Coeff.t, Poly.t) value_t Ident.Map.t
 
-  val solve_sparse : ?solver:Sdp.solver -> obj_t -> polynomial_expr list ->
-                     float * (Poly.Coeff.t, Poly.t) value_t Ident.Map.t
-
   (** Printer for polynomial expressions. *)
   val pp : ?names:string list -> Format.formatter -> polynomial_expr -> unit
 end

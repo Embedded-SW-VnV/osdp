@@ -267,7 +267,7 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
   }
 
   MS(optimize(task));
-  
+
   /* Print a summary containing information
      about the solution for debugging purposes*/
   MS(solutionsummary(task, MSK_STREAM_MSG));

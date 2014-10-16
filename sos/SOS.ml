@@ -19,8 +19,6 @@ module type S = sig
   exception Type_error of string
   val solve : ?solver:Sdp.solver -> obj_t -> polynomial_expr list ->
               float * (Poly.Coeff.t, Poly.t) value_t Ident.Map.t
-  val solve_sparse : ?solver:Sdp.solver -> obj_t -> polynomial_expr list ->
-                     float * (Poly.Coeff.t, Poly.t) value_t Ident.Map.t
   val pp : ?names:string list -> Format.formatter -> polynomial_expr -> unit
 end
 
@@ -193,123 +191,6 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   type ('a, 'b) value_t = Scalar of 'a | Poly of 'b
 
   let solve ?solver obj el =
-    let env = type_check el in
-
-    let scalarized, binding = scalarize el in
-
-    (* count variables and associate an index to each one *)
-    let var_total, var_idx =
-      Ident.Map.fold
-        (fun id _ (i, var_idx) -> i + 1, Ident.Map.add id i var_idx)
-        env (0, Ident.Map.empty) in
-
-    (* associate its base to each variable index *)
-    let idx_base =
-      let a = Array.make var_total [||] in
-      Ident.Map.iter
-        (fun id ty ->
-           let b = match ty with
-             | TYscal -> [|Monomial.of_list []|]
-             | TYpoly p -> base_of_params p in
-           a.(Ident.Map.find id var_idx) <- b) env; a in
-
-    let le_zero = LinExprSC.const Poly.Coeff.zero in
-
-    (* build the A_i and a_i (see csdp.mli) *)
-    let build_cstr ei e =
-      let eq_params = { name = Ident.create ("eq" ^ string_of_int ei);
-                        nb_vars = LEPoly.nb_vars e;
-                        degree = LEPoly.degree e;
-                        homogeneous = LEPoly.is_homogeneous e } in
-      let eq_base = base_of_params eq_params in
-      let eq_poly, eq_binding = identspoly_of_params eq_params in
-      let eq_binding = List.fold_left
-                         (fun m ((_, ij), id) -> Ident.Map.add id ij m)
-                         Ident.Map.empty eq_binding in
-      (* Encode equality le_vars = le_eq (i.e., l_vars - l_eq = -c_var
-         with l_vars and l_eq the linear part of le_vars and le_eq and
-         c_vars the constant part of le_vars (constant part of le_eq
-         is 0)). Eventually, A_i (var_blks and eq_blk) encodes l_vars
-         - l_eq and a_i encodes -c_var. *)
-      let equate le_vars le_eq =
-        let var_blks = Array.init var_total
-                                  (fun i ->
-                                   let n = Array.length idx_base.(i) in
-                                   Array.make_matrix n n 0.) in
-        let l_vars, c_vars = LinExprSC.to_list le_vars in
-        List.iter
-          (fun (id, c) ->
-           let id, (i, j) = try Ident.Map.find id binding
-                            with Not_found -> id, (0, 0) in
-           let idx = Ident.Map.find id var_idx in
-           let c = Poly.Coeff.to_float c /. 2. in
-           var_blks.(idx).(i).(j) <- var_blks.(idx).(i).(j) +. c;
-           var_blks.(idx).(j).(i) <- var_blks.(idx).(j).(i) +. c) l_vars;
-        let eq_blk = let n = Array.length eq_base in Array.make_matrix n n 0. in
-        let l_eq, _ = LinExprSC.to_list le_eq in
-        List.iter
-          (fun (id, c) ->
-           let i, j = Ident.Map.find id eq_binding in
-           let c = Poly.Coeff.to_float c /. 2. in
-           eq_blk.(i).(j) <- eq_blk.(i).(j) -. c;
-           eq_blk.(j).(i) <- eq_blk.(j).(i) -. c) l_eq;
-        let var_blks = Array.to_list (Array.mapi (fun i b -> i, b) var_blks) in
-        (* A_i, a_i *)
-        (var_total + ei, eq_blk) :: var_blks, -. Poly.Coeff.to_float c_vars in
-      (* equate coefficients (linear expressions) of polynomials
-         corresponding to the same monomial *)
-      let rec match_polys l p1 p2 = match p1, p2 with
-        | [], [] -> l
-        | [], (_, c2) :: t2 -> match_polys (equate le_zero c2 :: l) [] t2
-        | (_, c1) :: t1, [] -> match_polys (equate c1 le_zero :: l) t1 []
-        | (m1, c1) :: t1, (m2, c2) :: t2 ->
-           let cmp =  Monomial.compare m1 m2 in
-           if cmp = 0 then match_polys (equate c1 c2 :: l) t1 t2
-           else if cmp > 0 then match_polys (equate le_zero c2 :: l) p1 t2
-           else (* cmp < 0 *) match_polys (equate c1 le_zero :: l) t1 p2 in
-      match_polys [] (LEPoly.to_list e) (LEPoly.to_list eq_poly) in
-    let cstrs = List.flatten (List.mapi build_cstr scalarized) in
-
-    (* build the objective C (see csdp.mli) *)
-    let obj = match obj with
-      | Minimize id ->
-         begin
-           try [Ident.Map.find id var_idx, [|[|-1.|]|]] with Not_found -> []
-         end
-      | Maximize id ->
-         begin
-           try [Ident.Map.find id var_idx, [|[|1.|]|]] with Not_found -> []
-         end
-      | Purefeas -> [] in
-
-    (* call SDP solver *)
-    let res, (primal_sol, dual_sol) = Sdp.solve ?solver obj cstrs in
-
-    (* rebuild polynomial variables *)
-    if res = infinity || res = neg_infinity then
-      res, Ident.Map.empty
-    else
-      let vars =
-        let a = Array.of_list primal_sol in
-        Ident.Map.map (fun i -> snd a.(i), idx_base.(i)) var_idx in
-      let vars =
-        Ident.Map.mapi
-          (fun id (var, base) ->
-           match Ident.Map.find id env with
-           | TYscal -> Scalar (Poly.Coeff.of_float var.(0).(0))
-           | TYpoly _ ->
-              let p = ref Poly.zero in
-              let sz = Array.length base in
-              for i = 0 to sz - 1 do
-                for j = 0 to sz - 1 do
-                  p := Poly.add
-                         !p (Poly.of_list [Monomial.mult base.(i) base.(j),
-                                           Poly.Coeff.of_float var.(i).(j)]);
-                done
-              done; Poly !p) vars in
-      res, vars
-
-  let solve_sparse ?solver obj el =
     let env = type_check el in
 
     let scalarized, binding = scalarize el in
