@@ -2,11 +2,12 @@
 <utils> : include
 <sdp>: include
 <sos>: include
-<sdp/*.{byte,native}>: thread,use_unix,use_str,use_nums,use_graph,use_csdp,use_posdef
 <sdp/csdp_stubs.c>: use_csdp
 "sdp/csdp_stubs.o": use_csdp
-<cholesky/posdef_stubs.c>: use_posdef, debug
+<sdp/moseksdp_stubs.c>: use_mosek
+"sdp/moseksdp_stubs.o": use_mosek
+<cholesky/posdef_stubs.c>: use_posdef
 "cholesky/posdef_stubs.o": use_posdef
-<**/*.{byte,native}>: thread,use_unix,use_str,use_nums,use_graph,use_csdp,use_posdef
-<osdp.cmxa>: use_csdp
-<osdp.cma>: use_csdp,custom
+<**/*.{byte,native}>: thread,use_unix,use_str,use_nums,use_graph,use_csdp,use_mosek,use_posdef
+<osdp.cmxa>: use_csdp,use_mosek
+<osdp.cma>: use_csdp,use_mosek,custom

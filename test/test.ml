@@ -160,99 +160,99 @@
 (*          | Poly p -> Format.printf "%a = %a@." Ident.pp id (Polynomial.Num.pp ~names:["x"; "y"]) p) *)
 (*       vars *)
 
-(* Test SOS 2 *)
-open SOS.Float
+(* (\* Test SOS 2 *\) *)
+(* open SOS.Float *)
 
-(* let test lambda = *)
-let _ =
-  let lambda = 0.84 in
-  let names = ["x"; "y"; "u"] in
-  let pp_poly = Poly.pp ~names in
-  let pol_of_list l =
-    Poly.of_list (List.map (fun (s, m) -> Monomial.of_list m, s) l) in
-  let cp f = pol_of_list [f, []] in
-  let deg = 4 in
-  let p = { name = Ident.create "p";
-            nb_vars = 2;
-            degree = deg;
-            homogeneous = true } in
-  Format.printf "cp lambda = %a@." pp_poly (cp lambda);
-  let tau_id = Ident.create "tau" in
-  let lambda'_id = Ident.create "lambda'" in
-  let l1 = pol_of_list [1.5, [1]; -0.7, [0; 1]; 1.6, [0; 0; 1]] in
-  Format.printf "l1 = %a@." pp_poly l1;
-  let l1' = pol_of_list [1.5, [1]; -0.7, [0; 1]] in
-  Format.printf "l1' = %a@." pp_poly l1';
-  let l2 = pol_of_list [1., [1]] in
-  Format.printf "l2 = %a@." pp_poly l2;
-  let pe1 = PLsub (PLsub (PLsub (PLconst (cp 1.),
-                                 PLcompose (PLvar p, [PLconst l1; PLconst l2])),
-                          PLmult (PLconst (cp lambda),
-                                  PLsub (PLconst (cp 1.), PLvar p))),
-                   PLmult_scalar (tau_id,
-                                  PLsub (PLconst (cp 1.),
-                                         PLconst (pol_of_list [1., [0; 0; deg]])))) in
-  Format.printf "pe1 = %a@." (pp ~names) pe1;
-  let pe1' = PLsub (PLmult (PLconst (cp lambda), PLvar p),
-                    PLcompose (PLvar p, [PLconst l1'; PLconst l2])) in
-  Format.printf "pe1' = %a@." (pp ~names) pe1';
-  let pe2 = PLsub (PLvar p,
-                   PLmult_scalar (lambda'_id,
-                                  PLconst (pol_of_list [1., [deg]; 1., [0; deg]]))) in
-  Format.printf "pe2 = %a@." (pp ~names) pe2;
-  let pe2' = PLsub (PLvar p,
-                   PLmult (PLconst (cp 0.00001),
-                           PLconst (pol_of_list [1., [deg]; 1., [0; deg]]))) in
-  Format.printf "pe2' = %a@." (pp ~names) pe2';
-  let res, vars = solve (Maximize lambda'_id) [pe1; pe2] in
-  Format.printf "res = %f@." res;
-  if Ident.Map.is_empty vars then
-    Format.printf "erreur SDP@."
-  else
-    Ident.Map.iter
-      (fun id v ->
-         match v with
-         | Scalar e -> Format.printf "%a = %a@." Ident.pp id Scalar.Float.pp e
-         | Poly p -> Format.printf "%a = %a@." Ident.pp id pp_poly p)
-      vars;
-  let Poly p = Ident.Map.find p.name vars in
-  let lambda''_id = Ident.create "lambda''" in
-  let pe3 = PLsub (PLconst p,
-                   PLmult_scalar (lambda''_id,
-                                  PLconst (pol_of_list [1., [deg]; 0.0001, [0; deg]]))) in
-  Format.printf "pe3 = %a@." (pp ~names) pe3;
-  let res, vars = solve (Maximize lambda''_id) [pe3] in
-  Format.printf "res = %f@." res;
-  if Ident.Map.is_empty vars then
-    Format.printf "erreur SDP@."
-  else
-    Ident.Map.iter
-      (fun id v ->
-         match v with
-         | Scalar e -> Format.printf "%a = %a@." Ident.pp id Scalar.Float.pp e
-         | Poly p -> Format.printf "%a = %a@." Ident.pp id pp_poly p)
-      vars
-      (* bounds (degree 4): |x| <= 15.57, |y| <= 16.64
-         (0.000299013671468 y^4 + -0.00116129107886 x y^3 + 0.0018468906396
-          x^2 y^2 + -0.00139235326831 x^3 y + 0.000425080699248 x^4 <= 1) *)
-      (* bounds (degree 6): |x| <= 15.44, |y| <= 16.28
-         (5.67584790715e-06 y^6 + -3.30073547184e-05 x y^5
-          + 8.41566023528e-05 x^2 y^4 + -0.000119401915527 x^3 y^3
-          + 9.93706446912e-05 x^4 y^2 + -4.60592130938e-05 x^5 y
-          + 9.34269976033e-06 x^6 <= 1) *)
-      (* bounds (degree 8 (numerical problems ?)): |x| <= 16.64, |y| <= 17.65
-         (6.92661602697e-08 y^8 + -5.37224572792e-07 x y^7
-          + 1.89408048343e-06 x^2 y^6 + -3.9480321158e-06 x^3 y^5
-          + 5.30962943268e-06 x^4 y^4 + -4.71135602647e-06 x^5 y^3
-          + 2.69251953052e-06 x^6 y^2 + -9.06892465936e-07 x^7 y
-          + 1.38236764031e-07 x^8 <= 1) *)
-      (* bounds (degree 10 (false)): |x| <= 12.32, |y| <= 14.03
-         (5.34096105338e-10 y^10 + -6.19049102191e-09 x y^9
-          + 3.28183155997e-08 x^2 y^8 + -1.03925168567e-07 x^3 y^7
-          + 2.16175011125e-07 x^4 y^6 + -3.07271725778e-07 x^5 y^5
-          + 3.01847942477e-07 x^6 y^4 + -2.02733551642e-07 x^7 y^3
-          + 8.95507588387e-08 x^8 y^2 + -2.36814750873e-08 x^9 y
-          + 2.87630122667e-09 x^10 <= 1)*)
+(* (\* let test lambda = *\) *)
+(* let _ = *)
+(*   let lambda = 0.84 in *)
+(*   let names = ["x"; "y"; "u"] in *)
+(*   let pp_poly = Poly.pp ~names in *)
+(*   let pol_of_list l = *)
+(*     Poly.of_list (List.map (fun (s, m) -> Monomial.of_list m, s) l) in *)
+(*   let cp f = pol_of_list [f, []] in *)
+(*   let deg = 4 in *)
+(*   let p = { name = Ident.create "p"; *)
+(*             nb_vars = 2; *)
+(*             degree = deg; *)
+(*             homogeneous = true } in *)
+(*   Format.printf "cp lambda = %a@." pp_poly (cp lambda); *)
+(*   let tau_id = Ident.create "tau" in *)
+(*   let lambda'_id = Ident.create "lambda'" in *)
+(*   let l1 = pol_of_list [1.5, [1]; -0.7, [0; 1]; 1.6, [0; 0; 1]] in *)
+(*   Format.printf "l1 = %a@." pp_poly l1; *)
+(*   let l1' = pol_of_list [1.5, [1]; -0.7, [0; 1]] in *)
+(*   Format.printf "l1' = %a@." pp_poly l1'; *)
+(*   let l2 = pol_of_list [1., [1]] in *)
+(*   Format.printf "l2 = %a@." pp_poly l2; *)
+(*   let pe1 = PLsub (PLsub (PLsub (PLconst (cp 1.), *)
+(*                                  PLcompose (PLvar p, [PLconst l1; PLconst l2])), *)
+(*                           PLmult (PLconst (cp lambda), *)
+(*                                   PLsub (PLconst (cp 1.), PLvar p))), *)
+(*                    PLmult_scalar (tau_id, *)
+(*                                   PLsub (PLconst (cp 1.), *)
+(*                                          PLconst (pol_of_list [1., [0; 0; deg]])))) in *)
+(*   Format.printf "pe1 = %a@." (pp ~names) pe1; *)
+(*   let pe1' = PLsub (PLmult (PLconst (cp lambda), PLvar p), *)
+(*                     PLcompose (PLvar p, [PLconst l1'; PLconst l2])) in *)
+(*   Format.printf "pe1' = %a@." (pp ~names) pe1'; *)
+(*   let pe2 = PLsub (PLvar p, *)
+(*                    PLmult_scalar (lambda'_id, *)
+(*                                   PLconst (pol_of_list [1., [deg]; 1., [0; deg]]))) in *)
+(*   Format.printf "pe2 = %a@." (pp ~names) pe2; *)
+(*   let pe2' = PLsub (PLvar p, *)
+(*                    PLmult (PLconst (cp 0.00001), *)
+(*                            PLconst (pol_of_list [1., [deg]; 1., [0; deg]]))) in *)
+(*   Format.printf "pe2' = %a@." (pp ~names) pe2'; *)
+(*   let res, vars = solve (Maximize lambda'_id) [pe1; pe2] in *)
+(*   Format.printf "res = %f@." res; *)
+(*   if Ident.Map.is_empty vars then *)
+(*     Format.printf "erreur SDP@." *)
+(*   else *)
+(*     Ident.Map.iter *)
+(*       (fun id v -> *)
+(*          match v with *)
+(*          | Scalar e -> Format.printf "%a = %a@." Ident.pp id Scalar.Float.pp e *)
+(*          | Poly p -> Format.printf "%a = %a@." Ident.pp id pp_poly p) *)
+(*       vars; *)
+(*   let Poly p = Ident.Map.find p.name vars in *)
+(*   let lambda''_id = Ident.create "lambda''" in *)
+(*   let pe3 = PLsub (PLconst p, *)
+(*                    PLmult_scalar (lambda''_id, *)
+(*                                   PLconst (pol_of_list [1., [deg]; 0.0001, [0; deg]]))) in *)
+(*   Format.printf "pe3 = %a@." (pp ~names) pe3; *)
+(*   let res, vars = solve (Maximize lambda''_id) [pe3] in *)
+(*   Format.printf "res = %f@." res; *)
+(*   if Ident.Map.is_empty vars then *)
+(*     Format.printf "erreur SDP@." *)
+(*   else *)
+(*     Ident.Map.iter *)
+(*       (fun id v -> *)
+(*          match v with *)
+(*          | Scalar e -> Format.printf "%a = %a@." Ident.pp id Scalar.Float.pp e *)
+(*          | Poly p -> Format.printf "%a = %a@." Ident.pp id pp_poly p) *)
+(*       vars *)
+(*       (\* bounds (degree 4): |x| <= 15.57, |y| <= 16.64 *)
+(*          (0.000299013671468 y^4 + -0.00116129107886 x y^3 + 0.0018468906396 *)
+(*           x^2 y^2 + -0.00139235326831 x^3 y + 0.000425080699248 x^4 <= 1) *\) *)
+(*       (\* bounds (degree 6): |x| <= 15.44, |y| <= 16.28 *)
+(*          (5.67584790715e-06 y^6 + -3.30073547184e-05 x y^5 *)
+(*           + 8.41566023528e-05 x^2 y^4 + -0.000119401915527 x^3 y^3 *)
+(*           + 9.93706446912e-05 x^4 y^2 + -4.60592130938e-05 x^5 y *)
+(*           + 9.34269976033e-06 x^6 <= 1) *\) *)
+(*       (\* bounds (degree 8 (numerical problems ?)): |x| <= 16.64, |y| <= 17.65 *)
+(*          (6.92661602697e-08 y^8 + -5.37224572792e-07 x y^7 *)
+(*           + 1.89408048343e-06 x^2 y^6 + -3.9480321158e-06 x^3 y^5 *)
+(*           + 5.30962943268e-06 x^4 y^4 + -4.71135602647e-06 x^5 y^3 *)
+(*           + 2.69251953052e-06 x^6 y^2 + -9.06892465936e-07 x^7 y *)
+(*           + 1.38236764031e-07 x^8 <= 1) *\) *)
+(*       (\* bounds (degree 10 (false)): |x| <= 12.32, |y| <= 14.03 *)
+(*          (5.34096105338e-10 y^10 + -6.19049102191e-09 x y^9 *)
+(*           + 3.28183155997e-08 x^2 y^8 + -1.03925168567e-07 x^3 y^7 *)
+(*           + 2.16175011125e-07 x^4 y^6 + -3.07271725778e-07 x^5 y^5 *)
+(*           + 3.01847942477e-07 x^6 y^4 + -2.02733551642e-07 x^7 y^3 *)
+(*           + 8.95507588387e-08 x^8 y^2 + -2.36814750873e-08 x^9 y *)
+(*           + 2.87630122667e-09 x^10 <= 1)*\) *)
 
 (* let _ = *)
 (*   let lambda = ref 0.48 in *)
@@ -268,6 +268,37 @@ let _ =
 (*   done; *)
 (*   Format.printf "best_lambda = %f (best_lambda' = %f)@." *)
 (*                 !best_lambda !best_lambda' *)
+
+(* test MOSEK *)
+(* test SOS : F(x, y) = 2x^4+2x^3y-x^2y^2+5y^4
+   = (sqrt(2)x^2-1.455122518091861y^2+0.707106781186547xy)^2
+     + (1.697827569967575y^2+0.606025616617623xy)^2
+     + (1.499479893830934xy)^2 *)
+let _ =
+  let mA1 = [0, [0, 0, 1.]] in
+  let a1 = 2. in
+  let mA2 = [0, [1, 1, 1.]] in
+  let a2 = 5. in
+  let mA3 = [0, [1, 0, 1.; 2, 2, 1.]] in
+  let a3 = -1. in
+  let mA4 = [0, [2, 0, 1.]] in
+  let a4 = 2. in
+  let mA5 = [0, [2, 1, 1.]] in
+  let a5 = 0. in
+  let obj = [] in
+  let cstrs = [mA1, a1; mA2, a2; mA3, a3; mA4, a4; mA5, a5] in
+  let res, (mX, y) = Moseksdp.solve obj cstrs in
+  Format.printf "res = %f@." res;
+  Format.printf "X = ";
+  List.iter
+    (fun a ->
+       Format.printf "[@[%a@]]@."
+         (Utils.fprintf_array ~sep:";@ "
+            (fun fmt -> Format.fprintf fmt "@[%a@]"
+               (Utils.fprintf_array ~sep:",@ " (fun fmt -> Format.fprintf fmt "%g")))) a) mX;
+  Format.printf
+    "y = [|@[%a@]|]@."
+    (Utils.fprintf_array ~sep:";@ " (fun fmt -> Format.fprintf fmt "%g")) y
 
 (* Local Variables: *)
 (* compile-command:"make -C .. test" *)

@@ -48,7 +48,7 @@ module type S = sig
 
       @raise Not_symmetric if one of the input matrix expressions in [l]
       is non symmetric. *)
-  val solve : obj_t -> matrix_expr list ->
+  val solve : ?solver:Sdp.solver -> obj_t -> matrix_expr list ->
               float * (Mat.Elem.t, Mat.t) value_t Ident.Map.t
 
   (** Printer for LMI. *)

@@ -36,4 +36,4 @@ val list_le : int -> int -> t list
     variables will be printed as x0, x1,... Provided a too short
     [names] list is not advisable however as the generated names may
     collide with the provided ones. *)
-val pp : ?names:string list ->  Format.formatter -> t -> unit
+val pp : ?names:string list -> Format.formatter -> t -> unit

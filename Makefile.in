@@ -25,7 +25,12 @@ doc:
 
 test:
 	$(OCAMLBUILD) test/test.native
-
+test2:
+	$(OCAMLBUILD) test/test2.native
+test3:
+	$(OCAMLBUILD) test/test3.native
+test_linear:
+	$(OCAMLBUILD) test/test_linear.native
 
 test-sos:
 	$(OCAMLBUILD) sos/test.native

@@ -19,7 +19,7 @@ module type S = sig
   type ('a, 'b) value_t = Scalar of 'a | Mat of 'b
   exception Type_error of string
   exception Not_symmetric
-  val solve : obj_t -> matrix_expr list ->
+  val solve : ?solver:Sdp.solver -> obj_t -> matrix_expr list ->
     float * (Mat.Elem.t, Mat.t) value_t Ident.Map.t
   val pp : Format.formatter -> matrix_expr -> unit
 end
@@ -341,7 +341,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
 
   exception Not_symmetric
 
-  let solve obj el = 
+  let solve ?solver obj el = 
     let env = type_check el in
 
     let scalarized, binding = scalarize el env in
@@ -404,7 +404,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
        id :: lv, (blks, a_i) :: lc) blks_A ([], []) in
 
     (* call SDP solver *)
-    let res, (primal_sol, dual_sol) = Sdp.solve !blks_C constraints in
+    let res, (primal_sol, dual_sol) = Sdp.solve ?solver !blks_C constraints in
 
     (* rebuild matrix variables *)
     if res = infinity || res = neg_infinity then

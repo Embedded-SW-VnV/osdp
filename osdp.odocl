@@ -4,6 +4,7 @@ LinExpr
 LMI
 Matrix
 Monomial
+Moseksdp
 Polynomial
 Posdef
 Scalar

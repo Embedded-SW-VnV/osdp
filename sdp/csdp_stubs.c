@@ -4,6 +4,7 @@
 
 #include <stdlib.h>
 
+#include <stdio.h>
 #include "declarations.h"
 
 static void *malloc_fail(int nb, int size)
@@ -23,7 +24,7 @@ static struct blockmatrix *create_blockmatrix(int n)
 
   b = (struct blockmatrix*)malloc_fail(1, sizeof(struct blockmatrix));
   b->nblocks = n;
-  b->blocks = (struct blockrec *)malloc_fail(n + 1, sizeof(struct blockrec));
+  b->blocks = (struct blockrec*)malloc_fail(n + 1, sizeof(struct blockrec));
   for (k = 1; k <= n; ++k) {
     b->blocks[k].blockcategory = MATRIX;
     b->blocks[k].blocksize = 0;
@@ -188,6 +189,7 @@ static void solve(int dim_X, int nb_cstrs, struct blockmatrix *obj,
   case 0:  /* success */
   case 3:  /* partial success */
     *res = pobj > dobj ? pobj : dobj;
+    printf("pobj, dobj, res: % e, % e, % e\n", pobj, dobj, *res);
     break;
   case 1:  /* primal infeasible */
     *((long long*)res) = 2047LL << 52;

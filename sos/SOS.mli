@@ -45,8 +45,11 @@ module type S = sig
 
       @raise LinExpr.Not_linear if one of the input polynomial
       expressions in [l] is non linear. *)
-  val solve : obj_t -> polynomial_expr list ->
+  val solve : ?solver:Sdp.solver -> obj_t -> polynomial_expr list ->
               float * (Poly.Coeff.t, Poly.t) value_t Ident.Map.t
+
+  val solve_sparse : ?solver:Sdp.solver -> obj_t -> polynomial_expr list ->
+                     float * (Poly.Coeff.t, Poly.t) value_t Ident.Map.t
 
   (** Printer for polynomial expressions. *)
   val pp : ?names:string list -> Format.formatter -> polynomial_expr -> unit

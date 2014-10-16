@@ -1,5 +1,3 @@
-module IntMap =  Map.Make (struct type t = int let compare = compare end)
-
 let fprintf_list ~sep f fmt l =
   let rec aux fmt = function
     | []   -> ()
@@ -14,6 +12,11 @@ let fprintf_array ~sep f fmt a =
       Format.fprintf fmt "%(%)%a" sep f a.(i)
     done
   end
+
+let fprintf_matrix ~begl ~endl ~sepl ~sepc f =
+  let print_line fmt l =
+    Format.fprintf fmt "%(%)%a%(%)" begl (fprintf_array ~sep:sepc f) l endl in
+  fprintf_array ~sep:sepl print_line
 
 let profile c =
   let be = Unix.gettimeofday () in
