@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "sdp_ret.h"
 #include "mosek.h"
 
 #define MS(c)                                   \
@@ -214,7 +215,8 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
 {
   CAMLparam2(ml_obj, ml_cstrs);
 
-  CAMLlocal5(ml_res_X, ml_res_y, cons, matrix, line);
+  CAMLlocal5(ml_res, ml_res_obj, ml_res_Xy, ml_res_X, ml_res_y);
+  CAMLlocal3(cons, matrix, line);
 
   value tmp, tmp2;
   int i, j;
@@ -225,9 +227,10 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
   MSKsolstae solsta;
   MSKint64t idx;
   double falpha;
-  double pobj, dobj, resv, *res;
+  double pobj, dobj;
   char symname[MSK_MAX_STR_LEN];
   char desc[MSK_MAX_STR_LEN];
+  sdp_ret_t sdp_ret;
         
   collect_sizes(ml_obj, ml_cstrs, &idx_offset, &nb_vars, &nb_cstrs, &dimvar);
 
@@ -275,40 +278,41 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
   MS(getsolsta(task, MSK_SOL_ITR, &solsta));
 
   /* default values */
-  res = &resv;
-  *res = 0.0;
+  pobj = dobj = 0;
   ml_res_X = Val_emptylist;
   ml_res_y = Atom(Double_array_tag);
 
-  switch(solsta) {
-  case MSK_SOL_STA_OPTIMAL:
-  case MSK_SOL_STA_NEAR_OPTIMAL:
+  if (solsta == MSK_SOL_STA_OPTIMAL || solsta == MSK_SOL_STA_NEAR_OPTIMAL) {
     /* printf("Optimal primal solution\n"); */
     MS(getprimalobj(task, MSK_SOL_ITR, &pobj));
     MS(getdualobj(task, MSK_SOL_ITR, &dobj));
-    *res = pobj < dobj ? -pobj : -dobj;
-    printf("pobj, dobj, res: % e, % e, % e\n", pobj, dobj, *res);
+    /* printf("pobj, dobj, res: % e, % e, % e\n", pobj, dobj, *res); */
     MS(read_barx(task, nb_vars, dimvar, &matrix, &ml_res_X));
     MS(read_y(task, nb_cstrs, &ml_res_y));
+  }
+
+  switch(solsta) {
+  case MSK_SOL_STA_OPTIMAL:
+    sdp_ret = SDP_RET_SUCCESS;
+    break;
+  case MSK_SOL_STA_NEAR_OPTIMAL:
+    sdp_ret = SDP_RET_PARTIAL_SUCCESS;
     break;
   case MSK_SOL_STA_PRIM_INFEAS_CER:
-    /* printf("Primal or dual infeasibility certificate found.\n"); */
-    *((long long*)res) = 2047LL << 52;
-    *res = -(*res);  /* -inf */
+    sdp_ret = SDP_RET_PRIMAL_INFEASIBLE;
     break;
   case MSK_SOL_STA_DUAL_INFEAS_CER:
-  case MSK_SOL_STA_NEAR_DUAL_INFEAS_CER:
+    sdp_ret = SDP_RET_DUAL_INFEASIBLE;
+    break;
   case MSK_SOL_STA_NEAR_PRIM_INFEAS_CER:  
-    /* printf("Primal or dual infeasibility certificate found.\n"); */
-    *((long long*)res) = 2047LL << 52;  /* inf */
+    sdp_ret = SDP_RET_NEAR_PRIMAL_INFEASIBLE;
+    break;
+  case MSK_SOL_STA_NEAR_DUAL_INFEAS_CER:
+    sdp_ret = SDP_RET_NEAR_DUAL_INFEASIBLE;
     break;
   case MSK_SOL_STA_UNKNOWN:
-    /* printf("The status of the solution could not be determined.\n"); */
-    *((long long*)res) = 2047LL << 52;  /* inf */
-    break;
   default:
-    /* printf("Other solution status."); */
-    *((long long*)res) = 2047LL << 52;  /* inf */
+    sdp_ret = SDP_RET_UNKNOWN;
     break;
   }
 
@@ -324,12 +328,16 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
 
   free(dimvar);
   
-  line = caml_alloc(2, 0);
-  Store_field(line, 0, caml_copy_double(*res));
-  cons = caml_alloc(2, 0);
-  Store_field(cons, 0, ml_res_X);
-  Store_field(cons, 1, ml_res_y);
-  Store_field(line, 1, cons);
+  ml_res = caml_alloc(3, 0);
+  Store_field(ml_res, 0, Val_int(sdp_ret));
+  ml_res_obj = caml_alloc(2, 0);
+  Store_field(ml_res_obj, 0, caml_copy_double(pobj));
+  Store_field(ml_res_obj, 1, caml_copy_double(dobj));
+  Store_field(ml_res, 1, ml_res_obj);
+  ml_res_Xy = caml_alloc(2, 0);
+  Store_field(ml_res_Xy, 0, ml_res_X);
+  Store_field(ml_res_Xy, 1, ml_res_y);
+  Store_field(ml_res, 2, ml_res_Xy);
 
-  CAMLreturn(line);
+  CAMLreturn(ml_res);
 }

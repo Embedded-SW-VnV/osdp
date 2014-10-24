@@ -1,4 +1,5 @@
-(** Slightly higher level interface to the {!Csdp} module. *)
+(** Slightly higher level interface to the {!Csdp} or {!Moseksdp}
+    module. *)
 
 (** Primal-dual correspondence: the primal problem {[max tr(C X)
     tr(A_1 X) = a_1
@@ -57,12 +58,12 @@ val block_diag_to_sparse : block_diag_matrix -> block_diag_matrix_sparse
     indice present in the input. *)
 val solve : ?solver:solver -> block_diag_matrix ->
             (block_diag_matrix * float) list ->
-            float * (block_diag_matrix * float array)
+            SdpRet.t * (float * float) * (block_diag_matrix * float array)
 
 (** Same as {!solve} with sparse matrices as input. *)
 val solve_sparse : ?solver:solver -> block_diag_matrix_sparse ->
                    (block_diag_matrix_sparse * float) list ->
-                   float * (block_diag_matrix * float array)
+                   SdpRet.t * (float * float) * (block_diag_matrix * float array)
 
 (* Local Variables: *)
 (* compile-command:"make -C .." *)

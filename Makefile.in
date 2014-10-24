@@ -31,13 +31,15 @@ test3:
 	$(OCAMLBUILD) test/test3.native
 test_linear:
 	$(OCAMLBUILD) test/test_linear.native
+test_linear2:
+	$(OCAMLBUILD) test/test_linear2.native
 
 test-sos:
 	$(OCAMLBUILD) sos/test.native
 
 clean:
 	$(OCAMLBUILD) -clean
-	rm -f *~ sdp/*~ 
+	rm -f *~ sdp/*~ sos/*~ utils/*~ cholesky/*~
 
 dist-clean: clean
 	rm -f Makefile myocamlbuild.ml global.ml Makefile config.log config.status configure
@@ -49,7 +51,7 @@ dist-clean: clean
 install-deps: /usr/local/share/csdp/param.csdp
 
 install-findlib:
-	ocamlfind install osdp META _build/libosdp.a _build/osdp.a _build/osdp.cmxa _build/osdp.cma _build/sdp/sdp.cmi _build/sdp/LMI.cmi _build/sdp/matrix.cmi _build/cholewski/posdef.cmi _build/sdp/csdp.cmi _build/sdp/csdp_stubs.o 
+	ocamlfind install osdp META _build/osdp.a _build/osdp.cmxa _build/osdp.cma _build/sdp/csdp.cmi _build/sdp/ident.cmi _build/sdp/linExpr.cmi _build/sdp/sdp.cmi _build/sdp/LMI.cmi _build/sdp/matrix.cmi _build/sdp/moseksdp.cmi _build/sdp/scalar.cmi _build/cholesky/posdef.cmi _build/utils/utils.cmi _build/sos/monomial.cmi _build/sos/polynomial.cmi _build/sos/SOS.cmi _build/sdp/csdp_stubs.o _build/sdp/moseksdp_stubs.o
 
 uninstall-findlib:
 	ocamlfind remove osdp

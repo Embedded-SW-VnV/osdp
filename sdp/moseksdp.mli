@@ -25,7 +25,7 @@ type block_diag_matrix = (int * matrix) list
     the maximum and a witness for X (primal) and y (dual, see
     {!Sdp}). *)
 val solve : block_diag_matrix -> (block_diag_matrix * float) list ->
-            float * (float array array list * float array)
+            SdpRet.t * (float * float) * (float array array list * float array)
 
 (* Local Variables: *)
 (* compile-command:"make -C .." *)

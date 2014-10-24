@@ -21,13 +21,14 @@ dispatch begin function
 | After_rules ->
     (* CSDP *)
     flag ["c"; "compile"; "use_csdp"]
-      (S[A"-ccopt"; A"-DNOSHORTS"; A"-ccopt"; A csdp_include]);
+      (S[A"-ccopt"; A"-DNOSHORTS";
+         A"-ccopt"; A"-Isdp"; A"-ccopt"; A csdp_include]);
     flag ["ocaml"; "link"; "use_csdp"]
       (S([A"-ccopt"; A csdp_libdir]@cclib csdp_libs));
     dep  ["ocaml"; "link"; "use_csdp"] ["sdp/csdp_stubs.o"];
     (* MOSEK *)
     flag ["c"; "compile"; "use_mosek"]
-      (S[A"-ccopt"; A mosek_include]);
+      (S[A"-ccopt"; A"-Isdp"; A"-ccopt"; A mosek_include]);
     flag ["ocaml"; "link"; "use_mosek"]
       (S([A"-ccopt"; A mosek_libdir]
          @[A"-ccopt"; A"-Wl,-rpath-link=@MOSEK_LIBPATH@"]@cclib mosek_libs));

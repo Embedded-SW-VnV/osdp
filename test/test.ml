@@ -287,7 +287,7 @@ let _ =
   let a5 = 0. in
   let obj = [] in
   let cstrs = [mA1, a1; mA2, a2; mA3, a3; mA4, a4; mA5, a5] in
-  let res, (mX, y) = Moseksdp.solve obj cstrs in
+  let _, (res, _), (mX, y) = Moseksdp.solve obj cstrs in
   Format.printf "res = %f@." res;
   Format.printf "X = ";
   List.iter

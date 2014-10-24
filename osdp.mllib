@@ -9,5 +9,6 @@ Polynomial
 Posdef
 Scalar
 Sdp
+SdpRet
 SOS
 Utils

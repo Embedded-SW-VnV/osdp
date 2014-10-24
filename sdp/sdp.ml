@@ -92,49 +92,23 @@ let solve_csdp obj constraints =
                        * of a list of size at least one (thanks to obj). *)
       | obj :: cstrs, sizes -> obj, cstrs, sizes in
     obj, List.combine cstrs bounds, sizes in
-  let res, (res_X, res_y) = Csdp.solve obj constraints in
-  Format.printf "res = %g@." res;
+  let ret, res, (res_X, res_y) = Csdp.solve obj constraints in
   let res_X = read_block_matrix sizes res_X in
-  res, (res_X, res_y)
+  ret, res, (res_X, res_y)
 
 let solve_mosek obj constraints =
-  let res, (res_X, res_y) = Moseksdp.solve obj constraints in
-  Format.printf "res = %g@." res;
+  let ret, res, (res_X, res_y) = Moseksdp.solve obj constraints in
   let min_idx_block_diag = List.fold_left (fun o (i, _) -> min o i) max_int in
   let offset =
     List.fold_left (fun o (m, _) -> min o (min_idx_block_diag m))
     (min_idx_block_diag obj) constraints in
   let res_X = List.mapi (fun i m -> i + offset, m) res_X in
-  res, (res_X, res_y)
+  ret, res, (res_X, res_y)
 
 let solve ?solver obj constraints =
   match get_solver solver with
   | Csdp -> solve_csdp obj constraints
   | Mosek ->
-     (* Format.printf *)
-     (*   "obj = [@[%a@]]@." *)
-     (*   (Utils.fprintf_list *)
-     (*      ~sep:";@ " *)
-     (*      (fun fmt (i, m) -> *)
-     (*       Format.fprintf *)
-     (*         fmt "%d, [@[%a@]]" i *)
-     (*         (Utils.fprintf_matrix *)
-     (*            ~begl:"@[" ~endl:"@]" ~sepl:";@ " ~sepc:",@ " *)
-     (*            (fun fmt -> Format.fprintf fmt "%g")) *)
-     (*         m)) obj; *)
-     (* List.iteri *)
-     (*   (fun i (c, f) -> *)
-     (* Format.printf *)
-     (*   "A%d = [@[%a@]] : %g@." i *)
-     (*   (Utils.fprintf_list *)
-     (*      ~sep:";@ " *)
-     (*      (fun fmt (i, m) -> *)
-     (*       Format.fprintf *)
-     (*         fmt "%d, [@[%a@]]" i *)
-     (*         (Utils.fprintf_matrix *)
-     (*            ~begl:"@[" ~endl:"@]" ~sepl:";@ " ~sepc:",@ " *)
-     (*            (fun fmt -> Format.fprintf fmt "%g")) *)
-     (*         m)) c f) constraints; *)
      let obj = block_diag_to_sparse obj in
      let constraints =
        List.map (fun (c, b) -> block_diag_to_sparse c, b) constraints in

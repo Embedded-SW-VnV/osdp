@@ -49,7 +49,7 @@ module type S = sig
       @raise Not_symmetric if one of the input matrix expressions in [l]
       is non symmetric. *)
   val solve : ?solver:Sdp.solver -> obj_t -> matrix_expr list ->
-              float * (Mat.Elem.t, Mat.t) value_t Ident.Map.t
+              SdpRet.t * (float * float) * (Mat.Elem.t, Mat.t) value_t Ident.Map.t
 
   (** Printer for LMI. *)
   val pp : Format.formatter -> matrix_expr -> unit
@@ -58,6 +58,8 @@ end
 module Make (M : Matrix.S) : S with module Mat = M
 
 module NumLMI : S with module Mat = Matrix.NumMat
+
+module Float : S with module Mat = Matrix.FloatMat
 
 (* Local Variables: *)
 (* compile-command:"make -C .." *)

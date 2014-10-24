@@ -3,9 +3,10 @@
 #include <caml/fail.h>
 
 #include <stdlib.h>
-
 #include <stdio.h>
+
 #include "declarations.h"
+#include "sdp_ret.h"
 
 static void *malloc_fail(int nb, int size)
 {
@@ -174,36 +175,47 @@ static void build_cstrs(value ml_cstrs, int *nb_cstrs,
 
 static void solve(int dim_X, int nb_cstrs, struct blockmatrix *obj,
                   double *b, struct constraintmatrix *cstrs,
-                  double *res, struct blockmatrix *res_X, double **res_y)
+                  sdp_ret_t *sdp_ret, double *pobj, double *dobj,
+                  struct blockmatrix *res_X, double **res_y)
 {
   struct blockmatrix X,Z;
-  double *y, pobj, dobj;
+  double *y;
   int i, ret;
 
   /* write_prob("prob.prob", dim_X, nb_cstrs, *obj, b, cstrs); */
 
   initsoln(dim_X, nb_cstrs, *obj, b, cstrs, &X, &y, &Z);
   ret = easy_sdp(dim_X, nb_cstrs, *obj, b, cstrs, 0.0,
-                 &X, &y, &Z, &pobj, &dobj);
+                 &X, &y, &Z, pobj, dobj);
   switch (ret) {
-  case 0:  /* success */
-  case 3:  /* partial success */
-    *res = pobj > dobj ? pobj : dobj;
-    printf("pobj, dobj, res: % e, % e, % e\n", pobj, dobj, *res);
+  case 0:
+    *sdp_ret = SDP_RET_SUCCESS;
     break;
-  case 1:  /* primal infeasible */
-    *((long long*)res) = 2047LL << 52;
-    *res = -(*res);  /* -inf */
+  case 3:
+    *sdp_ret = SDP_RET_PARTIAL_SUCCESS;
     break;
-  case 2:  /* dual infeasible */
-  case 4:  /* maximum iteration reached */
+  case 1:
+    *sdp_ret = SDP_RET_PRIMAL_INFEASIBLE;
+    break;
+  case 2:
+    *sdp_ret = SDP_RET_DUAL_INFEASIBLE;
+    break;
+  case 4:
+    *sdp_ret = SDP_RET_MAX_ITER_REACHED;
+    break;
   case 5:  /* stuck at edge of primal infeasibility */
+    *sdp_ret = SDP_RET_NEAR_PRIMAL_INFEASIBLE;
+    break;
   case 6:  /* stuck at edge of dual infeasibility */
+    *sdp_ret = SDP_RET_NEAR_DUAL_INFEASIBLE;
+    break;
   case 7:  /* lack of progress */
+    *sdp_ret = SDP_RET_LACK_OF_PROGRESS;
+    break;
   case 8:  /* X, Z or O was singular */
   case 9:  /* detected NaN or Inf values */
   default:
-    *((long long*)res) = 2047LL << 52;  /* inf */
+    *sdp_ret = SDP_RET_UNKNOWN;
     break;
   }
 
@@ -272,13 +284,15 @@ value csdp_solve(value ml_obj, value ml_cstrs)
 {
   CAMLparam2(ml_obj, ml_cstrs);
 
-  CAMLlocal5(ml_res_X, ml_res_y, cons, matrix, line);
+  CAMLlocal5(ml_res, ml_res_obj, ml_res_Xy, ml_res_X, ml_res_y);
+  CAMLlocal3(cons, matrix, line);
 
   value lit;
   struct blockmatrix *obj, res_X;
   int nb_cstrs, dim_X;
   struct constraintmatrix *cstrs;
-  double *b, res, *res_y;
+  double *b, pobj, dobj, *res_y;
+  sdp_ret_t sdp_ret;
 
   dim_X = 0;
   for (lit = ml_obj; lit != Val_emptylist; lit = Field(lit, 1))
@@ -287,18 +301,23 @@ value csdp_solve(value ml_obj, value ml_cstrs)
   build_obj(ml_obj, &obj);
 
   build_cstrs(ml_cstrs, &nb_cstrs, &cstrs, &b);
-  solve(dim_X, nb_cstrs, obj, b, cstrs, &res, &res_X, &res_y);
+  solve(dim_X, nb_cstrs, obj, b, cstrs, &sdp_ret, &pobj, &dobj, &res_X, &res_y);
   build_res_X(&res_X, &ml_res_X, &cons, &matrix, &line);
   build_res_y(nb_cstrs, res_y, &ml_res_y);
 
   /* TODO: free res_X and res_y */
 
-  line = caml_alloc(2, 0);
-  Store_field(line, 0, caml_copy_double(res));
-  cons = caml_alloc(2, 0);
-  Store_field(cons, 0, ml_res_X);
-  Store_field(cons, 1, ml_res_y);
-  Store_field(line, 1, cons);
+  ml_res = caml_alloc(3, 0);
 
-  CAMLreturn(line);
+  Store_field(ml_res, 0, Val_int(sdp_ret));
+  ml_res_obj = caml_alloc(2, 0);
+  Store_field(ml_res_obj, 0, caml_copy_double(pobj));
+  Store_field(ml_res_obj, 1, caml_copy_double(dobj));
+  Store_field(ml_res, 1, ml_res_obj);
+  ml_res_Xy = caml_alloc(2, 0);
+  Store_field(ml_res_Xy, 0, ml_res_X);
+  Store_field(ml_res_Xy, 1, ml_res_y);
+  Store_field(ml_res, 2, ml_res_Xy);
+
+  CAMLreturn(ml_res);
 }

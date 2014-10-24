@@ -21,7 +21,7 @@ type block_diag_matrix = matrix list
     corresponding blocks of same size. The resulting block diagonal
     matrix X will also have this shape. *)
 val solve : block_diag_matrix -> (block_diag_matrix * float) list ->
-            float * (block_diag_matrix * float array)
+            SdpRet.t * (float * float) * (block_diag_matrix * float array)
 
 (* Local Variables: *)
 (* compile-command:"make -C .." *)

@@ -18,7 +18,8 @@ module type S = sig
   type ('a, 'b) value_t = Scalar of 'a | Poly of 'b
   exception Type_error of string
   val solve : ?solver:Sdp.solver -> obj_t -> polynomial_expr list ->
-              float * (Poly.Coeff.t, Poly.t) value_t Ident.Map.t
+              SdpRet.t * (float * float)
+              * (Poly.Coeff.t, Poly.t) value_t Ident.Map.t
   val pp : ?names:string list -> Format.formatter -> polynomial_expr -> unit
 end
 
@@ -124,7 +125,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     let new_ids = ref [] in
     let new_id i j =
       let s = Format.asprintf "%a" Ident.pp p.name in
-      let new_id = Ident.create ("__SOS__" ^  s ^ "_"
+      let new_id = Ident.create ((*"__SOS__" ^*) s ^ "_"
                                  ^ string_of_int i ^ "_" ^ string_of_int j) in
       new_ids := ((p.name, (i, j)), new_id) :: !new_ids; new_id in
     let base = base_of_params p in
@@ -176,7 +177,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     (* scalarize *)
     let el = try List.map scalarize el
-             with LEPoly.Dimension_error -> type_error None "imension error" in
+             with LEPoly.Dimension_error -> type_error None "dimension error" in
     (* and collect bindings *)
     let b = List.fold_left (fun m (coord, id) -> Ident.Map.add id coord m)
                            Ident.Map.empty !new_ids in
@@ -281,31 +282,38 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | Purefeas -> [] in
 
     (* call SDP solver *)
-    let res, (primal_sol, dual_sol) = Sdp.solve_sparse ?solver obj cstrs in
+    let ret, res, (primal_sol, dual_sol) = Sdp.solve_sparse ?solver obj cstrs in
 
     (* rebuild polynomial variables *)
-    if res = infinity || res = neg_infinity then
-      res, Ident.Map.empty
-    else
-      let vars =
-        let a = Array.of_list primal_sol in
-        Ident.Map.map (fun i -> snd a.(i), idx_base.(i)) var_idx in
-      let vars =
-        Ident.Map.mapi
-          (fun id (var, base) ->
-           match Ident.Map.find id env with
-           | TYscal -> Scalar (Poly.Coeff.of_float var.(0).(0))
-           | TYpoly _ ->
-              let p = ref Poly.zero in
-              let sz = Array.length base in
-              for i = 0 to sz - 1 do
-                for j = 0 to sz - 1 do
-                  p := Poly.add
-                         !p (Poly.of_list [Monomial.mult base.(i) base.(j),
-                                           Poly.Coeff.of_float var.(i).(j)]);
-                done
-              done; Poly !p) vars in
-      res, vars
+    match ret with
+    | SdpRet.PrimalInfeasible
+    | SdpRet.DualInfeasible
+    | SdpRet.NearPrimalInfeasible
+    | SdpRet.NearDualInfeasible
+    | SdpRet.MaxIterReached
+    | SdpRet.LackOfProgress
+    | SdpRet.Unknown -> ret, res, Ident.Map.empty
+    | SdpRet.Success
+    | SdpRet.PartialSuccess ->
+       let vars =
+         let a = Array.of_list primal_sol in
+         Ident.Map.map (fun i -> snd a.(i), idx_base.(i)) var_idx in
+       let vars =
+         Ident.Map.mapi
+           (fun id (var, base) ->
+            match Ident.Map.find id env with
+            | TYscal -> Scalar (Poly.Coeff.of_float var.(0).(0))
+            | TYpoly _ ->
+               let p = ref Poly.zero in
+               let sz = Array.length base in
+               for i = 0 to sz - 1 do
+                 for j = 0 to sz - 1 do
+                   p := Poly.add
+                          !p (Poly.of_list [Monomial.mult base.(i) base.(j),
+                                            Poly.Coeff.of_float var.(i).(j)]);
+                 done
+               done; Poly !p) vars in
+       ret, res, vars
 end
 
 module Num = Make (Polynomial.Num)
