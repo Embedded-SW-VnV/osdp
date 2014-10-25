@@ -3,7 +3,9 @@
 #include <caml/fail.h>
 
 #include <stdlib.h>
-#include <stdio.h>
+
+#include "config.h"
+#ifdef WITH_CSDP_yes
 
 #include "declarations.h"
 #include "sdp_ret.h"
@@ -13,7 +15,7 @@ static void *malloc_fail(int nb, int size)
   void *p;
 
   p = malloc(nb * size);
-  if (p == NULL) caml_failwith("caml_csdp: out of memory!");
+  if (p == NULL) caml_failwith("caml_osdp: out of memory!");
 
   return p;
 }
@@ -260,7 +262,7 @@ static void build_res_X(struct blockmatrix *res_X, value *ml_res_X,
       }
       break;
     case PACKEDMATRIX:
-      caml_failwith("caml_csdp: unexpected packed matrix in result!");
+      caml_failwith("caml_osdp: unexpected packed matrix in result!");
       break;
     }
     *cons = caml_alloc(2, 0);
@@ -321,3 +323,18 @@ value csdp_solve(value ml_obj, value ml_cstrs)
 
   CAMLreturn(ml_res);
 }
+
+#else
+
+value csdp_solve(value ml_obj, value ml_cstrs)
+{
+  CAMLparam2(ml_obj, ml_cstrs);
+
+  CAMLlocal1(ml_res);
+
+  caml_failwith("caml_osdp: compiled without CSDP support!");
+
+  CAMLreturn(ml_res);
+}
+
+#endif  /* WITH_CSDP_yes */

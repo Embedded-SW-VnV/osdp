@@ -1,0 +1,10 @@
+OSDP is an OCaml frontend library to semi-definite programming (SDP)
+solvers.
+
+See INSTALL for installation instruction.
+
+See directory example for how to use the library.
+
+Type
+% make doc
+to generate documentation (then see doc/index.html).

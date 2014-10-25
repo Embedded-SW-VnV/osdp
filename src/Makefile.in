@@ -1,0 +1,23 @@
+OCAMLC=../revert_cclib.sh @OCAMLC@
+OCAMLOPT=../revert_cclib.sh @OCAMLOPT@
+OCAMLBUILD=@OCAMLBUILD@ -classic-display -no-links \
+           -ocamlc "${OCAMLC}" -ocamlopt "${OCAMLOPT}"
+OCAMLFIND=@OCAMLFIND@
+
+osdp:
+	$(OCAMLBUILD) osdp.cma osdp.cmxa osdp.cmxs
+
+doc:
+	$(OCAMLBUILD) osdp.docdir/index.html
+
+install:
+	$(OCAMLFIND) install osdp META _build/libosdp.a _build/osdp.a _build/osdp.cma _build/osdp.cmxa _build/osdp.cmxs _build/osdp.cmi _build/*.mli
+
+uninstall:
+	$(OCAMLFIND) remove osdp
+
+clean:
+	$(OCAMLBUILD) -clean
+	rm -f *~
+
+.PHONY: osdp doc clean install uninstall

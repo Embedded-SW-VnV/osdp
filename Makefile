@@ -22,9 +22,10 @@ uninstall:
 
 clean:
 	make -C src clean
+	make -C example clean
 	rm -f *~
 
 dist-clean: clean
-	rm -f doc Makefile config.log config.status configure
+	rm -rf doc autom4te.cache config.log config.status
 
 .PHONY: osdp doc install-deps install uninstall clean dist-clean

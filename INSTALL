@@ -1,36 +1,24 @@
-Requires ocaml, csdp (no Debian package)
-
+Requires OCaml (>= 4.01), CSDP (no Debian package), MOSEK (optional).
 
 To install Csdp:
-* download it from https://projects.coin-or.org/Csdp/
-  http://www.coin-or.org/download/source/Csdp/Csdp-6.1.1.tgz
-* Apply our patchs (modified install target and enable the use of global
-param.csdp)
-  cd Csdp-6.1.1.tgz
-  for i in path_to_osdp/external/csdp_*.patch; do patch -p0 < $i; done
 * install dependencies:
   * libatlas-base-dev
   * libatlas-dev
   * libblas-dev
   * gfortran
+* download it from https://projects.coin-or.org/Csdp/
+  http://www.coin-or.org/download/source/Csdp/Csdp-6.1.1.tgz
+* Apply our patchs (modified install target and enable the use of global
+  param.csdp)
+  cd Csdp-6.1.1.tgz
+  for i in path_to_osdp/external/csdp_*.patch; do patch -p0 < $i; done
 * type make, sudo make install
 
-
-Autoconf :
-% autoconf
-
-
-Configure :
+Configure:
 % ./configure
-or
-% ./configure --with-csdp-lib-path=PATH --with-csdp-inc-path=PATH
 
-the default path is /usr/local/
-
-
-To compile:
+Compile:
 % make
 
-
-To install (optional):
+Install:
 # make install

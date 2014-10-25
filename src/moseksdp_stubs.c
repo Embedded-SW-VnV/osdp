@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include "config.h"
+#ifdef WITH_MOSEK_yes
+
 #include "sdp_ret.h"
 #include "mosek.h"
 
@@ -18,7 +21,7 @@ static void *malloc_fail(int nb, int size)
   void *p;
 
   p = malloc(nb * size);
-  if (p == NULL) caml_failwith("caml_csdp: out of memory!");
+  if (p == NULL) caml_failwith("caml_osdp: out of memory!");
 
   return p;
 }
@@ -341,3 +344,18 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
 
   CAMLreturn(ml_res);
 }
+
+#else
+
+value moseksdp_solve(value ml_obj, value ml_cstrs)
+{
+  CAMLparam2(ml_obj, ml_cstrs);
+
+  CAMLlocal1(ml_res);
+
+  caml_failwith("caml_osdp: compiled without MOSEK support!");
+
+  CAMLreturn(ml_res);
+}
+
+#endif  /* WITH_MOSEK_yes */

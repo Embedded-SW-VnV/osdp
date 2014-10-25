@@ -1,13 +1,13 @@
 open Ocamlbuild_plugin
 open Command
 
-(* Configuration section *)
+let with_csdp = "@with_csdp@"
 let csdp_libs = ["-lsdp"; "-llapack"; "-lblas"; "-lm"]
 let csdp_libdir = "-L@CSDP_LIBPATH@"
 let csdp_include = "-I@CSDP_INCPATH@"
 
-let mosek_libs = ["-lmosek"; "-pthread"]
-(* replace -lmosek with -lmosek64 for 64 bits systems *)
+let with_mosek = "@with_mosek@"
+let mosek_libs = ["-l@MOSEK_LIB@"; "-pthread"]
 let mosek_libdir = "-L@MOSEK_LIBPATH@"
 let mosek_include = "-I@MOSEK_INCPATH@"
 
@@ -17,7 +17,7 @@ let cclib l = List.flatten (List.map (fun x -> [A"-cclib"; A x]) l)
 
 dispatch begin function
 | After_rules ->
-   dep ["compile"; "c"] ["sdp_ret.h"];
+   dep ["compile"; "c"] ["config.h"; "sdp_ret.h"];
    flag ["link"; "ocaml"; "library"; "use_libosdp"] &
      S[A"-cclib"; A"-losdp"];
    dep ["link"; "ocaml"; "use_libosdp"] ["libosdp.a"];
@@ -26,18 +26,24 @@ dispatch begin function
    (* posdef *)
    flag ["link"; "ocaml"] & S(cclib ["-lm"]);
    (* CSDP *)
-   flag ["compile"; "c"] &
-     S[A"-ccopt"; A"-DNOSHORTS"; A"-ccopt"; A csdp_include];
-   flag ["ocamlmklib"; "c"] &
-      S([A"-ccopt"; A csdp_libdir]@cclib csdp_libs);
-   flag ["link"; "ocaml"; "library"] &
-      S([A"-ccopt"; A csdp_libdir]@cclib csdp_libs);
+   if with_csdp = "yes" then
+     begin
+       flag ["compile"; "c"] &
+         S[A"-ccopt"; A"-DNOSHORTS"; A"-ccopt"; A csdp_include];
+       flag ["ocamlmklib"; "c"] &
+         S([A"-ccopt"; A csdp_libdir]@cclib csdp_libs);
+       flag ["link"; "ocaml"; "library"] &
+         S([A"-ccopt"; A csdp_libdir]@cclib csdp_libs)
+     end;
    (* MOSEK *)
-   flag ["compile"; "c"] &
-     S[A"-ccopt"; A"-I./sdp"; A"-ccopt"; A mosek_include];
-   flag ["ocamlmklib"; "c"] &
-     S([A"-ccopt"; A mosek_libdir]@cclib mosek_libs);
-   flag ["link"; "ocaml"] &
-     S([A"-ccopt"; A mosek_libdir]@cclib mosek_libs);
+   if with_mosek = "yes" then
+     begin
+       flag ["compile"; "c"] &
+         S[A"-ccopt"; A"-I./sdp"; A"-ccopt"; A mosek_include];
+       flag ["ocamlmklib"; "c"] &
+         S([A"-ccopt"; A mosek_libdir]@cclib mosek_libs);
+       flag ["link"; "ocaml"] &
+         S([A"-ccopt"; A mosek_libdir]@cclib mosek_libs)
+     end
 | _ -> ()
 end
