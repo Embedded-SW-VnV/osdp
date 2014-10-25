@@ -1,4 +1,5 @@
-Requires OCaml (>= 4.01), CSDP (no Debian package), MOSEK (optional).
+Requires OCaml (>= 4.01), Zarith (Debian package libzarith-ocaml-dev),
+CSDP (no Debian package), MOSEK (no Debian package, optional).
 
 To install Csdp:
 * install dependencies:
