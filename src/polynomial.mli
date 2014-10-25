@@ -61,7 +61,7 @@ end
 
 module Make (SC : Scalar.S) : S with module Coeff = SC
 
-module Num : S with module Coeff = Scalar.Num
+module Q : S with module Coeff = Scalar.Q
 
 module Float : S with module Coeff = Scalar.Float
 

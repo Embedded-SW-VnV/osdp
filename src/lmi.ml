@@ -442,9 +442,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
        ret, (-. dres, -. pres), vars
 end
 
-module NumLMI = Make (Matrix.NumMat)
-
-module Float = Make (Matrix.FloatMat)
+module Float = Make (Matrix.Float)
 
 (* Local Variables: *)
 (* compile-command:"make -C .." *)

@@ -1,10 +1,10 @@
 external check_c : float array array -> bool = "posdef_check"
 
 let check m =
-  (* TODO: This relies on the assumption that Num.float_of_num
-   * returns the closest floating point value. But there is not really any
-   * guarantee of that. *)
-  let m = Array.map (Array.map Num.float_of_num) m in
+  (* TODO: This relies on the assumption that Scalar.Q.to_float
+     returns a closest floating point value. But that could be wrong
+     in some cases. *)
+  let m = Array.map (Array.map Scalar.Q.to_float) m in
   check_c m
 
 (* Local Variables: *)

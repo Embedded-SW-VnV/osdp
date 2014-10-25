@@ -309,8 +309,6 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       ret, res, vars
 end
 
-module Num = Make (Polynomial.Num)
-
 module Float = Make (Polynomial.Float)
 
 (* Local Variables: *)

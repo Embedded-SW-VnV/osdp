@@ -12,5 +12,3 @@ val fprintf_matrix :
   sepl:('i, 'j, 'k, 'l, 'l, 'i) format6 ->
   sepc:('m, 'n, 'o, 'p, 'p, 'm) format6 ->
   (Format.formatter -> 'q -> unit) -> Format.formatter -> 'q array array -> unit
-
-val num_of_float : float -> Num.num

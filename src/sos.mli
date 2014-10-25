@@ -55,8 +55,6 @@ end
 
 module Make (P : Polynomial.S) : S with module Poly = P
 
-module Num : S with module Poly = Polynomial.Num
-
 module Float : S with module Poly = Polynomial.Float
 
 (* Local Variables: *)

@@ -1,7 +1,4 @@
-OCAMLC=../revert_cclib.sh @OCAMLC@
-OCAMLOPT=../revert_cclib.sh @OCAMLOPT@
-OCAMLBUILD=@OCAMLBUILD@ -classic-display -no-links \
-           -ocamlc "${OCAMLC}" -ocamlopt "${OCAMLOPT}"
+OCAMLBUILD=@OCAMLBUILD@ -use-ocamlfind -classic-display -no-links
 OCAMLFIND=@OCAMLFIND@
 
 osdp:

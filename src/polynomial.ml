@@ -116,7 +116,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
                       (List.rev l)
 end
 
-module Num = Make (Scalar.Num)
+module Q = Make (Scalar.Q)
 
 module Float = Make (Scalar.Float)
 

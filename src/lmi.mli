@@ -57,9 +57,7 @@ end
 
 module Make (M : Matrix.S) : S with module Mat = M
 
-module NumLMI : S with module Mat = Matrix.NumMat
-
-module Float : S with module Mat = Matrix.FloatMat
+module Float : S with module Mat = Matrix.Float
 
 (* Local Variables: *)
 (* compile-command:"make -C .." *)

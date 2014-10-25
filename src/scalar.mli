@@ -28,6 +28,6 @@ module type S = sig
   val pp : Format.formatter -> t -> unit
 end
 
-module Num : S with type t = Num.num
+module Q : S with type t = Q.t
 
 module Float : S with type t = float

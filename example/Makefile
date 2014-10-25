@@ -1,11 +1,12 @@
 ocamlbuild:
 	ocamlbuild -use-ocamlfind demo.native
+# Ocamlbuild requires a _tags file with <*>: package(osdp)
 
 ocamlfind:
-	ocamlfind ocamlopt -linkpkg -package num -package osdp -o demo demo.ml
+	ocamlfind ocamlopt -linkpkg -package osdp -o demo demo.ml
 
 ocamlopt:
-	ocamlopt -I $$(ocamlfind query osdp) nums.cmxa osdp.cmxa -o demo demo.ml
+	ocamlopt -I $$(ocamlfind query zarith) -I $$(ocamlfind query osdp) zarith.cmxa osdp.cmxa -o demo demo.ml
 
 clean:
 	ocamlbuild -clean

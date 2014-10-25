@@ -128,11 +128,11 @@ end
 
 module Make (ET : Scalar.S) : S with module Elem = ET
 
-(** Matrix with Num.num coefficients. *)
-module NumMat : S with module Elem = Scalar.Num
+(** Matrix with Q.t coefficients from the library Zarith. *)
+module Q : S with module Elem = Scalar.Q
 
 (** Matrix with float coefficients *)
-module FloatMat : S with module Elem = Scalar.Float
+module Float : S with module Elem = Scalar.Float
 
 (* Local Variables: *)
 (* compile-command:"make -C .." *)

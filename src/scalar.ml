@@ -12,18 +12,27 @@ module type S = sig
   val pp : Format.formatter -> t -> unit
 end
 
-module Num : S with type t = Num.num = struct 
-  type t = Num.num
-  let zero = Num.num_of_int 0
-  let one = Num.num_of_int 1
-  let is_zero n = Num.sign_num n = 0
-  let of_float = Utils.num_of_float
-  let to_float = Num.float_of_num
-  let add = Num.add_num
-  let sub = Num.sub_num
-  let mult = Num.mult_num
-  let div = Num.div_num
-  let pp fmt num = Format.fprintf fmt "%s" (Num.string_of_num num)
+module Q : S with type t = Q.t = struct 
+  type t = Q.t
+  let zero = Q.zero
+  let one = Q.one
+  let is_zero n = Q.equal n zero
+  let of_float = Q.of_float
+  let to_float q =
+    let s = Q.to_string q in
+    try
+      let i = String.index s '/' in
+      let n = float_of_string (String.sub s 0 i) in
+      let d =
+        let l = String.length s - i - 1 in
+        float_of_string (String.sub s (i + 1) l) in
+      n /. d
+    with Not_found -> float_of_string s
+  let add = Q.add
+  let sub = Q.sub
+  let mult = Q.mul
+  let div = Q.div
+  let pp = Q.pp_print
 end
 
 module Float : S with type t = float = struct

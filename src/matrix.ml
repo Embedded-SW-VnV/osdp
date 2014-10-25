@@ -331,9 +331,9 @@ module Make (ET : Scalar.S) : S with module Elem = ET = struct
     rank, m, base_change
 end
 
-module NumMat = Make (Scalar.Num) 
+module Q = Make (Scalar.Q) 
 
-module FloatMat = Make (Scalar.Float)
+module Float = Make (Scalar.Float)
 
 (* Local Variables: *)
 (* compile-command:"make -C .." *)

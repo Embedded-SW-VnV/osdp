@@ -1,5 +1,5 @@
 description = "OCaml interface to SDP libraries"
 version = "1.0.1"
-requires = ""
+requires = "zarith"
 archive(byte) = "osdp.cma"
 archive(native) = "osdp.cmxa"

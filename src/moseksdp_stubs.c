@@ -209,10 +209,10 @@ static MSKrescodee MSK_read_y(MSKtask_t task, int nb_cstrs, value *ml_res_y)
   return r;
 }
 
-static void MSKAPI printstr(void *handle, MSKCONST char str[])
-{
-  printf("%s", str);
-}
+/* static void MSKAPI printstr(void *handle, MSKCONST char str[]) */
+/* { */
+/*   printf("%s", str); */
+/* } */
 
 value moseksdp_solve(value ml_obj, value ml_cstrs)
 {

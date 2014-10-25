@@ -90,7 +90,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
                      Coeff.pp a.const
 end
 
-module Num = Make (Scalar.Num) 
+module Q = Make (Scalar.Q) 
 
 module Float = Make (Scalar.Float)
 
