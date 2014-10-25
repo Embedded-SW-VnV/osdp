@@ -1,7 +1,7 @@
 Csdp
 Ident
 LinExpr
-LMI
+Lmi
 Matrix
 Monomial
 Moseksdp
@@ -10,5 +10,5 @@ Posdef
 Scalar
 Sdp
 SdpRet
-SOS
+Sos
 Utils

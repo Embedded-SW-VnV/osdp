@@ -408,44 +408,37 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       Sdp.solve ?solver !blks_C constraints in
 
     (* rebuild matrix variables *)
-    match ret with
-    | SdpRet.PrimalInfeasible
-    | SdpRet.DualInfeasible
-    | SdpRet.NearPrimalInfeasible
-    | SdpRet.NearDualInfeasible
-    | SdpRet.MaxIterReached
-    | SdpRet.LackOfProgress
-    | SdpRet.Unknown -> ret, (-. dres, -. pres), Ident.Map.empty
-    | SdpRet.Success
-    | SdpRet.PartialSuccess ->
-       let vars = List.mapi (fun i id -> id, dual_sol.(i)) vars in
-       let scalars, matrices =
-         List.fold_left
-           (fun (scalars, matrices) (id, f) ->
-            try
-              let mid, (i, j) = Ident.Map.find id binding in
-              (* coefficient of matrix variable *)
-              let mat =
-                try Ident.Map.find mid matrices
-                with Not_found ->
-                  let sz =
-                    try
-                      match Ident.Map.find mid env with
-                      | TYmat (Some sz) -> sz
-                      | _ -> assert false  (* should never happen *)
-                    with Not_found -> assert false in  (* should never happen *)
-                  Array.make_matrix sz sz Mat.Elem.zero in
-              mat.(i).(j) <- Mat.Elem.of_float f; mat.(j).(i) <- mat.(i).(j);
-              scalars, Ident.Map.add mid mat matrices
-            with Not_found ->
-              (* scalar variable *)
-              Ident.Map.add id (Mat.Elem.of_float f) scalars, matrices)
-           (Ident.Map.empty, Ident.Map.empty) vars in
-       let vars = Ident.Map.map (fun e -> Scalar e) scalars in
-       let vars =
-         Ident.Map.fold
-           (fun id m vars -> Ident.Map.add id (Mat (Mat.of_array_array m)) vars)
-           matrices vars in
+    if not (SdpRet.is_success ret) then
+      ret, (-. dres, -. pres), Ident.Map.empty
+    else
+      let vars = List.mapi (fun i id -> id, dual_sol.(i)) vars in
+      let scalars, matrices =
+        List.fold_left
+          (fun (scalars, matrices) (id, f) ->
+           try
+             let mid, (i, j) = Ident.Map.find id binding in
+             (* coefficient of matrix variable *)
+             let mat =
+               try Ident.Map.find mid matrices
+               with Not_found ->
+                 let sz =
+                   try
+                     match Ident.Map.find mid env with
+                     | TYmat (Some sz) -> sz
+                     | _ -> assert false  (* should never happen *)
+                   with Not_found -> assert false in  (* should never happen *)
+                 Array.make_matrix sz sz Mat.Elem.zero in
+             mat.(i).(j) <- Mat.Elem.of_float f; mat.(j).(i) <- mat.(i).(j);
+             scalars, Ident.Map.add mid mat matrices
+           with Not_found ->
+             (* scalar variable *)
+             Ident.Map.add id (Mat.Elem.of_float f) scalars, matrices)
+          (Ident.Map.empty, Ident.Map.empty) vars in
+      let vars = Ident.Map.map (fun e -> Scalar e) scalars in
+      let vars =
+        Ident.Map.fold
+          (fun id m vars -> Ident.Map.add id (Mat (Mat.of_array_array m)) vars)
+          matrices vars in
        ret, (-. dres, -. pres), vars
 end
 

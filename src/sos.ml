@@ -285,35 +285,28 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     let ret, res, (primal_sol, dual_sol) = Sdp.solve_sparse ?solver obj cstrs in
 
     (* rebuild polynomial variables *)
-    match ret with
-    | SdpRet.PrimalInfeasible
-    | SdpRet.DualInfeasible
-    | SdpRet.NearPrimalInfeasible
-    | SdpRet.NearDualInfeasible
-    | SdpRet.MaxIterReached
-    | SdpRet.LackOfProgress
-    | SdpRet.Unknown -> ret, res, Ident.Map.empty
-    | SdpRet.Success
-    | SdpRet.PartialSuccess ->
-       let vars =
-         let a = Array.of_list primal_sol in
-         Ident.Map.map (fun i -> snd a.(i), idx_base.(i)) var_idx in
-       let vars =
-         Ident.Map.mapi
-           (fun id (var, base) ->
-            match Ident.Map.find id env with
-            | TYscal -> Scalar (Poly.Coeff.of_float var.(0).(0))
-            | TYpoly _ ->
-               let p = ref Poly.zero in
-               let sz = Array.length base in
-               for i = 0 to sz - 1 do
-                 for j = 0 to sz - 1 do
-                   p := Poly.add
-                          !p (Poly.of_list [Monomial.mult base.(i) base.(j),
-                                            Poly.Coeff.of_float var.(i).(j)]);
-                 done
-               done; Poly !p) vars in
-       ret, res, vars
+    if not (SdpRet.is_success ret) then
+      ret, res, Ident.Map.empty
+    else
+      let vars =
+        let a = Array.of_list primal_sol in
+        Ident.Map.map (fun i -> snd a.(i), idx_base.(i)) var_idx in
+      let vars =
+        Ident.Map.mapi
+          (fun id (var, base) ->
+           match Ident.Map.find id env with
+           | TYscal -> Scalar (Poly.Coeff.of_float var.(0).(0))
+           | TYpoly _ ->
+              let p = ref Poly.zero in
+              let sz = Array.length base in
+              for i = 0 to sz - 1 do
+                for j = 0 to sz - 1 do
+                  p := Poly.add
+                         !p (Poly.of_list [Monomial.mult base.(i) base.(j),
+                                           Poly.Coeff.of_float var.(i).(j)]);
+                done
+              done; Poly !p) vars in
+      ret, res, vars
 end
 
 module Num = Make (Polynomial.Num)
