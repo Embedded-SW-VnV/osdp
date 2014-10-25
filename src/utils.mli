@@ -13,6 +13,4 @@ val fprintf_matrix :
   sepc:('m, 'n, 'o, 'p, 'p, 'm) format6 ->
   (Format.formatter -> 'q -> unit) -> Format.formatter -> 'q array array -> unit
 
-val profile : 'a Lazy.t -> 'a * float
-
 val num_of_float : float -> Num.num

@@ -18,13 +18,6 @@ let fprintf_matrix ~begl ~endl ~sepl ~sepc f =
     Format.fprintf fmt "%(%)%a%(%)" begl (fprintf_array ~sep:sepc f) l endl in
   fprintf_array ~sep:sepl print_line
 
-let profile c =
-  let be = Unix.gettimeofday () in
-  let r = Lazy.force c in
-  let en = Unix.gettimeofday () in
-  let elapsed_time = en -. be in
-  r, elapsed_time
-
 let num_of_float f = match classify_float f with
   | FP_normal ->
      let f64 = Int64.bits_of_float f in
