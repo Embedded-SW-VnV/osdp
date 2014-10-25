@@ -1,11 +1,12 @@
 (** Type of scalars along with basic scalar operations.
 
-    Useful to build matrices over it (see module {!Matrix}). *)
+    Useful to build matrices over it (see module
+    {{:./Matrix.html}Matrix}). *)
 
 module type S = sig
-  type t 
+    type t 
 
-  (** {2 A few values.} *)
+    (** {2 A few values.} *)
 
   val zero : t
   val one : t

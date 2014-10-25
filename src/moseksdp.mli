@@ -2,9 +2,9 @@
 
     Mosek SDP is a semidefinite programming optimization
     procedure. You may be interested in the slightly higher level
-    interface {!Sdp}. *)
+    interface {{:./Sdp.html}Sdp}. *)
 
-(** See {!Sdp} for definition of SDP with primal and dual. *)
+(** See  {{:./Sdp.html}Sdp} for definition of SDP with primal and dual. *)
 
 (** Matrices. Sparse representation as triplet [(i, j, x)] meaning
     that the coefficient at line [i] and column [j] has value [x]. All
@@ -21,12 +21,8 @@ type block_diag_matrix = (int * matrix) list
 
 (** [solve obj constraints] solves the SDP problem: max\{ tr(obj X) |
     tr(A_1 X) = a_1,..., tr(A_n X) = a_n, X psd \} with [\[(A_1,
-    a_1);...; (A_n, a_n)\]] the [constraints] list.  It returns both
-    the maximum and a witness for X (primal) and y (dual, see
-    {!Sdp}). *)
+    a_1);...; (A_n, a_n)\]] the [constraints] list. It returns both
+    the primal and dual objective values and a witness for X (primal)
+    and y (dual, see {{:./Sdp.html}Sdp}). *)
 val solve : block_diag_matrix -> (block_diag_matrix * float) list ->
             SdpRet.t * (float * float) * (float array array list * float array)
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

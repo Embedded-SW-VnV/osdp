@@ -6,7 +6,3 @@
     otherwise (i.e. the matrix is either not symmetric positive definite
     or its smallest eigenvalue is too small for the proof to succeed). *)
 val check : Q.t array array -> bool
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

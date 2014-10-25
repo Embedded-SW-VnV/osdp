@@ -10,12 +10,14 @@ module type S = sig
   (** {2 Conversion functions.} *)
 
   (** [of_list \[(m_1, a_1);..; (m_n, a_n)\]] builds the polynomial
-      a_1 m_1 + ... + a_n m_n.
-
-      TODO: duplicates accepted *)
+      a_1 m_1 + ... + a_n m_n. Duplicates or zeros coefficients are
+      accepted (for instance 2 x_0 + 0 x_1 + 3 x_0 is a valid input
+      for 5 x_0). *)
   val of_list : (Monomial.t * Coeff.t) list -> t
 
-  (** TODO: return sorted list without duplicates *)
+  (** Returns a list sorted in increasing order of
+      {{:./Monomial.html#VALcompare}Monomial.compare} without
+      duplicates nor zeros. *)
   val to_list : t -> (Monomial.t * Coeff.t) list
 
   (** {2 A few values.} *)
@@ -55,16 +57,13 @@ module type S = sig
                                          
   (** {2 Printing.} *)
 
-  (** See {!Monomial.pp} for details about [names]. *)                                         
+  (** See {{:./Monomial.html#VALpp}Monomial.pp} for details about
+      [names]. *)
   val pp : ?names:string list -> Format.formatter -> t -> unit
-end
+  end
 
 module Make (SC : Scalar.S) : S with module Coeff = SC
 
 module Q : S with module Coeff = Scalar.Q
 
 module Float : S with module Coeff = Scalar.Float
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

@@ -11,12 +11,8 @@ type t =
   | LackOfProgress
   | Unknown
 
-(** [is_success t] returns [true] if and only if [t] is {!Success} or
-    {!PartialSuccess}. *)
+(** [is_success t] returns [true] if and only if [t] is [Success] or
+    [PartialSuccess]. *)
 val is_success : t -> bool
 
 val pp : Format.formatter -> t -> unit
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

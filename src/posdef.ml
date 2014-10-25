@@ -6,7 +6,3 @@ let check m =
      in some cases. *)
   let m = Array.map (Array.map Scalar.Q.to_float) m in
   check_c m
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

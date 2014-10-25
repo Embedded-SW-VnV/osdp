@@ -48,7 +48,3 @@ let pp ?names fmt m =
                                         else
                                           Format.fprintf fmt "%s^%i" n e))
        l
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

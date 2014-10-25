@@ -17,57 +17,62 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   module Coeff = SC
 
   (* type invariant: lin doesn't contain any zero coefficient *)
-  type t = { const : Coeff.t; lin : Coeff.t Ident.Map.t }
+  type t = { const : Coeff.t; lin : (Ident.t * Coeff.t) list }
 
   let of_list l c =
-    let lin = List.fold_left
-                (fun m (x, a) ->
-                   if Coeff.is_zero a then m else Ident.Map.add x a m)
-                Ident.Map.empty l in
-    { const = c; lin = lin }
+    let l = List.filter (fun (_, s) -> not (Coeff.is_zero s)) l in
+    let l = List.sort (fun (i1, _) (i2, _) -> Ident.compare i1 i2) l in
+    let rec remove_duplicates = function
+      | [] -> []
+      | ((i, c) as ic) :: t ->
+         match remove_duplicates t with
+         | [] -> [ic]
+         | ((i', c') :: t) as t' ->
+            if Ident.compare i i' = 0 then (i, Coeff.add c c') :: t
+            else ic :: t' in
+    let l = remove_duplicates l in
+    { const = c; lin = l }
 
-  let to_list a = Ident.Map.bindings a.lin, a.const
+  let to_list a = a.lin, a.const
 
-  let const c = { const = c; lin = Ident.Map.empty }
+  let const c = { const = c; lin = [] }
 
-  let var id = { const = Coeff.zero; lin = Ident.Map.singleton id Coeff.one }
+  let var id = { const = Coeff.zero; lin = [id, Coeff.one] }
 
   let mult_scalar s a =
     if Coeff.is_zero s then
       const Coeff.zero
     else
       { const = Coeff.mult s a.const;
-        lin = Ident.Map.map (Coeff.mult s) a.lin }
+        lin = List.map (fun (i, c) -> i, Coeff.mult s c) a.lin }
 
-  let add a1 a2 =
-    let lin = Ident.Map.merge
-      (fun _ s1 s2 ->
-         match s1, s2 with
-         | None, None -> None
-         | None, Some _ -> s2
-         | Some _, None -> s1
-         | Some s1, Some s2 ->
-            let s = Coeff.add s1 s2 in if Coeff.is_zero s then None else Some s)
-      a1.lin a2.lin in
-    { const = Coeff.add a1.const a2.const; lin = lin }
-
-  let sub a1 a2 =
-    let lin = Ident.Map.merge
-      (fun _ s1 s2 ->
-         match s1, s2 with
-         | None, None -> None
-         | None, Some s2 -> Some (Coeff.sub Coeff.zero s2)
-         | Some _, None -> s1
-         | Some s1, Some s2 ->
-            let s = Coeff.sub s1 s2 in if Coeff.is_zero s then None else Some s)
-      a1.lin a2.lin in
-    { const = Coeff.sub a1.const a2.const; lin = lin }
+  let rec map2 f l1 l2 = match l1, l2 with
+    | [], [] -> []
+    | [], (i2, c2) :: t2 -> (i2, f Coeff.zero c2) :: map2 f [] t2
+    | (i1, c1) :: t1, [] -> (i1, f c1 Coeff.zero) :: map2 f t1 []
+    | (i1, c1) :: t1, (i2, c2) :: t2 ->
+       let cmp = Ident.compare i1 i2 in
+       if cmp < 0 then
+         (i1, f c1 Coeff.zero) :: map2 f t1 l2
+       else if cmp > 0 then
+         (i2, f Coeff.zero c2) :: map2 f l1 t2
+       else  (* cmp = 0 *)
+         let c = f c1 c2 in
+         if Coeff.is_zero c then map2 f t1 t2
+         else (i1, f c1 c2) :: map2 f t1 t2
+  let map2 f a1 a2 =
+    { const = f a1.const a2.const; lin = map2 f a1.lin a2.lin }
+  let add = map2 Coeff.add
+  let sub = map2 Coeff.sub
 
   let eq a1 a2 =
     let cmp c1 c2 = Coeff.is_zero (Coeff.sub c1 c2) in
-    cmp a1.const a2.const && Ident.Map.equal cmp a1.lin a2.lin
+    try
+      cmp a1.const a2.const
+      && List.for_all2 (fun (_, c1) (_, c2) -> cmp c1 c2)  a1.lin a2.lin
+    with Invalid_argument _ -> false
 
-  let is_const a = Ident.Map.is_empty a.lin
+  let is_const a = a.lin = []
 
   let pp fmt a =
     let pp_coeff fmt (x, a) =
@@ -82,11 +87,11 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
     else if Coeff.is_zero a.const then
       Format.fprintf fmt "@[%a@]"
                      (Utils.fprintf_list ~sep:"@ + " pp_coeff)
-                     (Ident.Map.bindings a.lin)
+                     a.lin
     else
       Format.fprintf fmt "@[%a@ + %a@]"
                      (Utils.fprintf_list ~sep:"@ + " pp_coeff)
-                     (Ident.Map.bindings a.lin)
+                     a.lin
                      Coeff.pp a.const
 end
 
@@ -121,7 +126,3 @@ module MakeScalar (L : S) : Scalar.S with type t = L.t = struct
     if l + l' <= 1 then Format.fprintf fmt "%a" L.pp a
     else Format.fprintf fmt "(%a)" L.pp a
 end
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

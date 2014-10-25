@@ -2,7 +2,7 @@
 
 module type S = sig
   (** Type of coefficients. *)
-  module Elem : Scalar.S  (* TODO : renommer en Coeff *)
+  module Coeff : Scalar.S  (* TODO : renommer en Coeff *)
 
   (** Type of matrices. *)
   type t
@@ -15,34 +15,34 @@ module type S = sig
   (** [of_list_list l] returns the matrix with lines corresponding to
       the elements of the list [l]. All lists in [l] must have the
       same length. *)
-  val of_list_list : Elem.t list list -> t
+  val of_list_list : Coeff.t list list -> t
 
-  val to_list_list : t -> Elem.t list list
+  val to_list_list : t -> Coeff.t list list
                                  
   (** [of_array_array a] returns the matrix with lines corresponding
       to the elements of [a]. All arrays in [a] must have the same
       size. A copy of the array is made internally. *)
-  val of_array_array : Elem.t array array -> t
+  val of_array_array : Coeff.t array array -> t
 
   (** The returned array is a copy that can be freely modified by the
       user. *)
-  val to_array_array : t -> Elem.t array array
+  val to_array_array : t -> Coeff.t array array
 
   (** {2 Construction functions.} *)
                                          
   (** [zeros n m] builds a matrix of size n x m with all coefficients
-      equal to [Elem.of_int O]. [n] and [m] must be non negative. *)
+      equal to [Coeff.of_int O]. [n] and [m] must be non negative. *)
   val zeros : int -> int -> t
                               
   (** [eye n] builds the identity matrix of size n (i.e., a square
-      matrix of size n with coefficients (i, j) equal to [Elem.of_int
-      O] when i != j and [Elem.of_int 1] when i = j). [n] must be non
+      matrix of size n with coefficients (i, j) equal to [Coeff.of_int
+      O] when i != j and [Coeff.of_int 1] when i = j). [n] must be non
       negative. *)
   val eye : int -> t
 
   (** [kronecker_sym n i j] builds the square matrix of size n with
-      all coefficients equal to zero (i.e., [Elem.of_int 0] except
-      coefficients (i, j) and (j, i) which are one (i.e., [Elem.of_int
+      all coefficients equal to zero (i.e., [Coeff.of_int 0] except
+      coefficients (i, j) and (j, i) which are one (i.e., [Coeff.of_int
       1]). [n], [i] and [j] must satisfy 0 <= i < n and 0 <= j < n. *)
   val kronecker_sym: int -> int -> int -> t
 
@@ -71,7 +71,7 @@ module type S = sig
   val minus : t -> t
     
   (** [mult_scalar s m] multiplies matrix [m] by scalar [s]. *)
-  val mult_scalar : Elem.t -> t -> t
+  val mult_scalar : Coeff.t -> t -> t
 
   (** Matrix addition. Both matrices must have the same size. *)
   val add : t -> t -> t
@@ -92,7 +92,7 @@ module type S = sig
     val ( ~: ) : t -> t
 
     (** Same as {!mult_scalar}.  *)
-    val ( */: ) : Elem.t -> t -> t
+    val ( */: ) : Coeff.t -> t -> t
 
     (** Same as {!add}. *)
     val ( +: ) : t -> t -> t
@@ -126,14 +126,10 @@ module type S = sig
   val pp : Format.formatter -> t -> unit
 end
 
-module Make (ET : Scalar.S) : S with module Elem = ET
+module Make (ET : Scalar.S) : S with module Coeff = ET
 
 (** Matrix with Q.t coefficients from the library Zarith. *)
-module Q : S with module Elem = Scalar.Q
+module Q : S with module Coeff = Scalar.Q
 
 (** Matrix with float coefficients *)
-module Float : S with module Elem = Scalar.Float
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)
+module Float : S with module Coeff = Scalar.Float

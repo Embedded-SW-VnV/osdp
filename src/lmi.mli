@@ -1,4 +1,4 @@
-(** Linear Matrix Inequalities (LMI) optimization.
+(** {b Linear Matrix Inequalities (LMI)} optimization.
 
     This module takes LMI problems, transforms them to SDP problems,
     calls an SDP solver and rebuilds the result. *)
@@ -6,7 +6,8 @@
 module type S = sig
   module Mat : Matrix.S
 
-  (** Constructors. See the module {!Matrix.S} for details. *)
+  (** Constructors. See the module {{:./Matrix.S.html}Matrix.S} for
+      details. *)
   type matrix_expr =
     | MEconst of Mat.t
     | MEvar of Ident.t  (** All matrix variables are symmetric. *)
@@ -17,7 +18,7 @@ module type S = sig
     | MElift_block of matrix_expr * int * int * int * int
     | MEtranspose of matrix_expr
     | MEminus of matrix_expr
-    | MEscale_const of Mat.Elem.t * matrix_expr
+    | MEscale_const of Mat.Coeff.t * matrix_expr
     | MEscale_var of Ident.t * matrix_expr
     | MEadd of matrix_expr * matrix_expr
     | MEsub of matrix_expr * matrix_expr
@@ -49,7 +50,7 @@ module type S = sig
       @raise Not_symmetric if one of the input matrix expressions in [l]
       is non symmetric. *)
   val solve : ?solver:Sdp.solver -> obj_t -> matrix_expr list ->
-              SdpRet.t * (float * float) * (Mat.Elem.t, Mat.t) value_t Ident.Map.t
+              SdpRet.t * (float * float) * (Mat.Coeff.t, Mat.t) value_t Ident.Map.t
 
   (** Printer for LMI. *)
   val pp : Format.formatter -> matrix_expr -> unit
@@ -58,7 +59,3 @@ end
 module Make (M : Matrix.S) : S with module Mat = M
 
 module Float : S with module Mat = Matrix.Float
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

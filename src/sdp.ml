@@ -123,7 +123,3 @@ let solve_sparse ?solver obj constraints =
      solve_csdp obj constraints
   | Mosek ->
      solve_mosek obj constraints
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

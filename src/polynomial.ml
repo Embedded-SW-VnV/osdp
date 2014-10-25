@@ -119,7 +119,3 @@ end
 module Q = Make (Scalar.Q)
 
 module Float = Make (Scalar.Float)
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

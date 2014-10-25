@@ -35,7 +35,3 @@ let pp fmt t =
      | MaxIterReached -> "MaxIterReached"
      | LackOfProgress -> "LackOfProgress"
      | Unknown -> "Unknown")
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

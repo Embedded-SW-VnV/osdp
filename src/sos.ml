@@ -310,7 +310,3 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 end
 
 module Float = Make (Polynomial.Float)
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

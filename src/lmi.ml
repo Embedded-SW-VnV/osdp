@@ -10,7 +10,7 @@ module type S = sig
     | MElift_block of matrix_expr * int * int * int * int
     | MEtranspose of matrix_expr
     | MEminus of matrix_expr
-    | MEscale_const of Mat.Elem.t * matrix_expr
+    | MEscale_const of Mat.Coeff.t * matrix_expr
     | MEscale_var of Ident.t * matrix_expr
     | MEadd of matrix_expr * matrix_expr
     | MEsub of matrix_expr * matrix_expr
@@ -20,7 +20,7 @@ module type S = sig
   exception Type_error of string
   exception Not_symmetric
   val solve : ?solver:Sdp.solver -> obj_t -> matrix_expr list ->
-    SdpRet.t * (float * float) * (Mat.Elem.t, Mat.t) value_t Ident.Map.t
+    SdpRet.t * (float * float) * (Mat.Coeff.t, Mat.t) value_t Ident.Map.t
   val pp : Format.formatter -> matrix_expr -> unit
 end
 
@@ -37,7 +37,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
     | MElift_block of matrix_expr * int * int * int * int
     | MEtranspose of matrix_expr
     | MEminus of matrix_expr
-    | MEscale_const of Mat.Elem.t * matrix_expr
+    | MEscale_const of Mat.Coeff.t * matrix_expr
     | MEscale_var of Ident.t * matrix_expr
     | MEadd of matrix_expr * matrix_expr
     | MEsub of matrix_expr * matrix_expr
@@ -62,7 +62,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       | MEminus m -> Format.fprintf fmt "-%a" (pp_prior (max 1 prior)) m
       | MEscale_const (e, m) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
-         Mat.Elem.pp e (pp_prior 1) m
+         Mat.Coeff.pp e (pp_prior 1) m
       | MEscale_var (i, e) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
          Ident.pp i (pp_prior 1) e
@@ -247,7 +247,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
   (* Scalarize *)
   (*************)
 
-  module LinExprSC = LinExpr.Make (Mat.Elem)
+  module LinExprSC = LinExpr.Make (Mat.Coeff)
 
   (* matrices whose coefficients are linear expressions *)
   module LEMat = Matrix.Make (LinExpr.MakeScalar (LinExprSC))
@@ -291,7 +291,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
         try Hashtbl.find htbl id
         with Not_found ->
           let size = get_size id in
-          let a = Array.make_matrix size size LEMat.Elem.zero in
+          let a = Array.make_matrix size size LEMat.Coeff.zero in
           for i = 0 to size - 1 do
             for j = i to size - 1 do
               a.(i).(j) <- LinExprSC.var (new_id id i j); a.(j).(i) <- a.(i).(j)
@@ -427,12 +427,12 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
                      | TYmat (Some sz) -> sz
                      | _ -> assert false  (* should never happen *)
                    with Not_found -> assert false in  (* should never happen *)
-                 Array.make_matrix sz sz Mat.Elem.zero in
-             mat.(i).(j) <- Mat.Elem.of_float f; mat.(j).(i) <- mat.(i).(j);
+                 Array.make_matrix sz sz Mat.Coeff.zero in
+             mat.(i).(j) <- Mat.Coeff.of_float f; mat.(j).(i) <- mat.(i).(j);
              scalars, Ident.Map.add mid mat matrices
            with Not_found ->
              (* scalar variable *)
-             Ident.Map.add id (Mat.Elem.of_float f) scalars, matrices)
+             Ident.Map.add id (Mat.Coeff.of_float f) scalars, matrices)
           (Ident.Map.empty, Ident.Map.empty) vars in
       let vars = Ident.Map.map (fun e -> Scalar e) scalars in
       let vars =
@@ -443,7 +443,3 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
 end
 
 module Float = Make (Matrix.Float)
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

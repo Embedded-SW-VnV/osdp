@@ -1,11 +1,11 @@
 module type S = sig
-  module Elem : Scalar.S
+  module Coeff : Scalar.S
   type t
   exception Dimension_error
-  val of_list_list : Elem.t list list -> t
-  val to_list_list : t -> Elem.t list list
-  val of_array_array : Elem.t array array -> t
-  val to_array_array : t -> Elem.t array array
+  val of_list_list : Coeff.t list list -> t
+  val to_list_list : t -> Coeff.t list list
+  val of_array_array : Coeff.t array array -> t
+  val to_array_array : t -> Coeff.t array array
   val zeros : int -> int -> t
   val eye : int -> t
   val kronecker_sym: int -> int -> int -> t
@@ -13,14 +13,14 @@ module type S = sig
   val lift_block : t -> int -> int -> int -> int -> t
   val transpose : t -> t
   val minus : t -> t
-  val mult_scalar : Elem.t -> t -> t
+  val mult_scalar : Coeff.t -> t -> t
   val add : t -> t -> t
   val sub : t -> t -> t
   val mult : t -> t -> t
   module Infix : sig
     val ( ~:. ) : t -> t
     val ( ~: ) : t -> t
-    val ( */: ) : Elem.t -> t -> t
+    val ( */: ) : Coeff.t -> t -> t
     val ( +: ) : t -> t -> t
     val ( -: ) : t -> t -> t
     val ( *: ) : t -> t -> t
@@ -32,10 +32,10 @@ module type S = sig
   val pp : Format.formatter -> t -> unit
 end
 
-module Make (ET : Scalar.S) : S with module Elem = ET = struct
-  module Elem = ET
+module Make (ET : Scalar.S) : S with module Coeff = ET = struct
+  module Coeff = ET
 
-  type t = { line : int; col : int; content : Elem.t array array }
+  type t = { line : int; col : int; content : Coeff.t array array }
 
   exception Dimension_error
 
@@ -334,7 +334,3 @@ end
 module Q = Make (Scalar.Q) 
 
 module Float = Make (Scalar.Float)
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

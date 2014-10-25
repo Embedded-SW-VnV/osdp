@@ -1,5 +1,5 @@
-(** Slightly higher level interface to the {!Csdp} or {!Moseksdp}
-    module. *)
+(** Slightly higher level interface to the {{:./Csdp.html}Csdp} or
+    {{:./Moseksdp.html}Moseksdp} module. *)
 
 (** Primal-dual correspondence: the primal problem {[max tr(C X)
     tr(A_1 X) = a_1
@@ -47,24 +47,23 @@ val block_diag_to_sparse : block_diag_matrix -> block_diag_matrix_sparse
 (** [solve obj constraints] solves the SDP problem: max\{ tr(obj X) |
     tr(A_1 X) = a_1,..., tr(A_n X) = a_n, X psd \} with [\[(A_1,
     a_1);...; (A_n, a_n)\]] the [constraints] list.  It returns both
-    the maximum and a witness for X (primal) and y (dual). See above
-    for details. There is no requirement for indices in [obj] and
-    [A_i] to be present in every input. However, if an indice is
-    present in one input, potential matrices for that indice in other
-    inputs will be padded with 0 on right and bottom to have the same
-    size. There is no requirement for any indice to be present in any
-    input, for instance there is no need for the indices 0 or 1 to
-    appear, the first block of the output will just be the first
-    indice present in the input. *)
+    the primal and dual objective values and a witness for X (primal)
+    and y (dual). See above for details. There is no requirement for
+    indices in [obj] and [A_i] to be present in every input. However,
+    if an indice is present in one input, potential matrices for that
+    indice in other inputs will be padded with 0 on right and bottom
+    to have the same size. There is no requirement for any indice to
+    be present in any input, for instance there is no need for the
+    indices 0 or 1 to appear, the first block of the output will just
+    be the first indice present in the input. *)
 val solve : ?solver:solver -> block_diag_matrix ->
             (block_diag_matrix * float) list ->
             SdpRet.t * (float * float) * (block_diag_matrix * float array)
 
-(** Same as {!solve} with sparse matrices as input. *)
+(** Same as {!solve} with sparse matrices as input. This can be more
+    efficient with solver handling sparse matrices (fo instance
+    Mosek). Otherwise, this is equivalent to {!solve} after conversion
+    with {!matrix_of_sparse}. *)
 val solve_sparse : ?solver:solver -> block_diag_matrix_sparse ->
                    (block_diag_matrix_sparse * float) list ->
                    SdpRet.t * (float * float) * (block_diag_matrix * float array)
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

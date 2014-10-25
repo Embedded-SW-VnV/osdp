@@ -1,4 +1,4 @@
-(** Sum of Squares (SOS) optimization.
+(** {b Sum of Squares (SOS)} optimization.
 
     This module takes SOS problems, transforms them to SDP problems,
     calls an SDP solver and rebuilds the result. *)
@@ -12,7 +12,8 @@ module type S = sig
     degree : int;  (** must be even *)
     homogeneous : bool }
 
-  (** Constructors. See the module {!Polynomial.S} for details. *)
+  (** Constructors. See the module
+      {{:./Polynomial.S.html}Polynomial.S} for details. *)
   type polynomial_expr =
     | PLconst of Poly.t
     | PLvar of polynomial_var
@@ -56,7 +57,3 @@ end
 module Make (P : Polynomial.S) : S with module Poly = P
 
 module Float : S with module Poly = Polynomial.Float
-
-(* Local Variables: *)
-(* compile-command:"make -C .." *)
-(* End: *)

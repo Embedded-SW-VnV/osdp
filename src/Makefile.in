@@ -4,10 +4,10 @@ OCAMLFIND=@OCAMLFIND@
 osdp:
 	$(OCAMLBUILD) osdp.cma osdp.cmxa osdp.cmxs
 
-doc:
+doc: osdp
 	$(OCAMLBUILD) osdp.docdir/index.html
 
-install:
+install: osdp
 	$(OCAMLFIND) install osdp META _build/libosdp.a _build/osdp.a _build/osdp.cma _build/osdp.cmxa _build/osdp.cmxs _build/osdp.cmi _build/*.mli
 
 uninstall:
