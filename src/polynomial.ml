@@ -90,7 +90,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
     List.fold_left (fun l ms -> add l (mult_monomial ms p2)) zero p1
 
   let rec power p n =
-    if n <= 1 then p
+    if n <= 0 then one
     else
       let p' = power p (n / 2) in
       if n mod 2 = 1 then mult p (mult p' p')

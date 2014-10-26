@@ -52,7 +52,7 @@ module type S = sig
   val sub : t -> t -> t
   val mult : t -> t -> t
 
-  (** [power p n] computes p^n, [n] must be positive. *)
+  (** [power p n] computes p^n, [n] must be non negative. *)
   val power : t -> int -> t
 
   exception Dimension_error
