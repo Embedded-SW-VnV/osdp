@@ -81,6 +81,13 @@ AC_CHECK_TOOL([OCAMLFIND], [ocamlfind], [no])
 AS_IF([test "x$OCAMLFIND" = xno], [AC_MSG_ERROR([Cannot find ocamlfind.])])
 
 # Check for libraries
+AC_MSG_CHECKING(for zarith)
+ZARITH_PATH=`ocamlfind query zarith`
+if test $? -ne 0 ; then
+  AC_MSG_ERROR([Unable to find OCaml library Zarith.])
+fi
+AC_MSG_RESULT($ZARITH_PATH)
+
 if test "x$with_csdp" != xno; then
   AC_MSG_CHECKING(for CSDP headers)
   if test "x$CSDP_INCPATH" = xno; then
