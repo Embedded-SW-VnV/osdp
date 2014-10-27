@@ -41,6 +41,7 @@ module type S = sig
               SdpRet.t * (float * float)
               * (Poly.Coeff.t, Poly.t) value_t Ident.Map.t
   val pp : ?names:string list -> Format.formatter -> polynomial_expr -> unit
+  val pp_no_names : Format.formatter -> polynomial_expr -> unit
 end
 
 module Make (P : Polynomial.S) : S with module Poly = P = struct
@@ -84,6 +85,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          Format.fprintf fmt "%a(@[%a@])" (pp_prior prior) e
                         (Utils.fprintf_list ~sep:",@ " (pp_prior 0)) el in
     pp_prior 0 fmt e
+
+  let pp_no_names = pp ~names:[]
 
   (*****************)
   (* Type checking *)

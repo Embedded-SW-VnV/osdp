@@ -36,6 +36,7 @@ module type S = sig
   val degree : t -> int
   val is_homogeneous : t -> bool
   val pp : ?names:string list -> Format.formatter -> t -> unit
+  val pp_no_names : Format.formatter -> t -> unit
 end
 
 module Make (SC : Scalar.S) : S with module Coeff = SC = struct
@@ -134,6 +135,8 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
        Format.fprintf fmt "@[%a@]"
                       (Utils.fprintf_list ~sep:"@ + " pp_coeff)
                       (List.rev l)
+
+  let pp_no_names = pp ~names:[]
 end
 
 module Q = Make (Scalar.Q)

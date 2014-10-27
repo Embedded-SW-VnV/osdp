@@ -43,7 +43,8 @@ clean:
 	make -C example clean
 	rm -f *~
 
-dist-clean: clean
-	rm -rf doc autom4te.cache config.log config.status
+distclean: clean
+	make -C src distclean
+	rm -rf doc autom4te.cache config.log config.status 
 
 .PHONY: osdp doc install-deps install uninstall clean dist-clean

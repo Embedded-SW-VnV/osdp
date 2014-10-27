@@ -38,11 +38,13 @@ let cclib l = List.flatten (List.map (fun x -> [A"-cclib"; A x]) l)
 dispatch begin function
 | After_rules ->
    dep ["compile"; "c"] ["config.h"; "sdp_ret.h"];
+   flag ["link"; "ocaml"; "library"; "byte"; "use_libosdp"] &
+     S[A"-dllib"; A"-losdp"];
    flag ["link"; "ocaml"; "library"; "use_libosdp"] &
      S[A"-cclib"; A"-losdp"];
-   dep ["link"; "ocaml"; "use_libosdp"] ["libosdp.a"];
+   dep ["link"; "ocaml"; "byte"; "use_libosdp"] ["dllosdp.so"];
+   dep ["link"; "ocaml"; "native"; "use_libosdp"] ["libosdp.a"];
    flag ["link"; "ocaml"; "link_libosdp"] (A"libosdp.a");
-   flag ["link"; "ocaml"; "byte"] (A"-custom");
    (* posdef *)
    flag ["link"; "ocaml"] & S(cclib ["-lm"]);
    (* CSDP *)
@@ -51,7 +53,7 @@ dispatch begin function
        flag ["compile"; "c"] &
          S[A"-ccopt"; A"-DNOSHORTS"; A"-ccopt"; A csdp_include];
        flag ["ocamlmklib"; "c"] &
-         S([A"-ccopt"; A csdp_libdir]@cclib csdp_libs);
+         S([A csdp_libdir]@List.map (fun x -> A x) csdp_libs);
        flag ["link"; "ocaml"; "library"] &
          S([A"-ccopt"; A csdp_libdir]@cclib csdp_libs)
      end;
@@ -61,7 +63,7 @@ dispatch begin function
        flag ["compile"; "c"] &
          S[A"-ccopt"; A"-I./sdp"; A"-ccopt"; A mosek_include];
        flag ["ocamlmklib"; "c"] &
-         S([A"-ccopt"; A mosek_libdir]@cclib mosek_libs);
+         S([A mosek_libdir]@List.map (fun x -> A x) mosek_libs);
        flag ["link"; "ocaml"] &
          S([A"-ccopt"; A mosek_libdir]@cclib mosek_libs)
      end

@@ -46,7 +46,10 @@ module Q : S with type t = Q.t = struct
       let d =
         let l = String.length s - i - 1 in
         float_of_string (String.sub s (i + 1) l) in
-      n /. d
+      if Z.equal q.Q.num (Z.of_float n) && Z.equal q.Q.den (Z.of_float d) then
+        n /. d  (* if division is good, we get a closest float *)
+      else
+        assert false
     with Not_found -> float_of_string s
   let add = Q.add
   let sub = Q.sub

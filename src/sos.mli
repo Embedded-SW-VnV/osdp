@@ -72,6 +72,11 @@ module type S = sig
 
   (** Printer for polynomial expressions. *)
   val pp : ?names:string list -> Format.formatter -> polynomial_expr -> unit
+
+  (**/**)
+  (* #install_printer wouldn't accept the previous function in the toplevel. *)
+  val pp_no_names : Format.formatter -> polynomial_expr -> unit
+  (**/**)
 end
 
 module Make (P : Polynomial.S) : S with module Poly = P

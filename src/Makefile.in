@@ -20,13 +20,13 @@ OCAMLBUILD=@OCAMLBUILD@ -use-ocamlfind -classic-display -no-links
 OCAMLFIND=@OCAMLFIND@
 
 osdp:
-	$(OCAMLBUILD) osdp.cma osdp.cmxa osdp.cmxs
+	$(OCAMLBUILD) osdp.cma osdp_top.cmo osdp.cmxa osdp.cmxs
 
 doc: osdp
 	$(OCAMLBUILD) osdp.docdir/index.html
 
 install: osdp
-	$(OCAMLFIND) install osdp META _build/libosdp.a _build/osdp.a _build/osdp.cma _build/osdp.cmxa _build/osdp.cmxs _build/osdp.cmi _build/*.mli
+	$(OCAMLFIND) install osdp META _build/libosdp.a _build/dllosdp.so _build/osdp.a _build/osdp.cma _build/osdp_top.cmo _build/osdp.cmxa _build/osdp.cmxs _build/osdp.cmi _build/*.mli
 
 uninstall:
 	$(OCAMLFIND) remove osdp
@@ -34,5 +34,8 @@ uninstall:
 clean:
 	$(OCAMLBUILD) -clean
 	rm -f *~
+
+distclean: clean
+	rm -f Makefile myocamlbuild.ml config.h META
 
 .PHONY: osdp doc clean install uninstall

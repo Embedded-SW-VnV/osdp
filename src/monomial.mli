@@ -57,3 +57,8 @@ val list_le : int -> int -> t list
     [names] list is not advisable however as the generated names may
     collide with the provided ones. *)
 val pp : ?names:string list -> Format.formatter -> t -> unit
+
+(**/**)
+(* #install_printer wouldn't accept the previous function in the toplevel. *)
+val pp_no_names : Format.formatter -> t -> unit
+(**/**)

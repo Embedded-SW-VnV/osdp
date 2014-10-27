@@ -68,3 +68,5 @@ let pp ?names fmt m =
                                         else
                                           Format.fprintf fmt "%s^%i" n e))
        l
+
+let pp_no_names = pp ~names:[]

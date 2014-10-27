@@ -5,6 +5,7 @@ Lmi
 Matrix
 Monomial
 Moseksdp
+Osdp_top
 Polynomial
 Posdef
 Scalar
