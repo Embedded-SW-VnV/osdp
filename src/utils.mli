@@ -32,3 +32,7 @@ val fprintf_matrix :
   sepl:('i, 'j, 'k, 'l, 'l, 'i) format6 ->
   sepc:('m, 'n, 'o, 'p, 'p, 'm) format6 ->
   (Format.formatter -> 'q -> unit) -> Format.formatter -> 'q array array -> unit
+
+(** [float_of_q q] tries its best to return a float closest to [q] or
+    raises [asser false] (please report, this is a bug). *)
+val float_of_q : Q.t -> float

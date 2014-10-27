@@ -37,3 +37,45 @@ let fprintf_matrix ~begl ~endl ~sepl ~sepc f =
   let print_line fmt l =
     Format.fprintf fmt "%(%)%a%(%)" begl (fprintf_array ~sep:sepc f) l endl in
   fprintf_array ~sep:sepl print_line
+
+let epsilon_under_float = float_of_string "0x1p-1074"
+
+let float_of_q q =
+  let n = Z.to_float q.Q.num in
+  let d = Z.to_float q.Q.den in
+  if Z.equal q.Q.num (Z.of_float n) && Z.equal q.Q.den (Z.of_float d) then
+    n /. d  (* if division is good, we get a closest float *)
+  else
+    let a = n /. d in
+    let l, u =
+      if a >= 0. then
+        (1. -. 8. *. epsilon_float) *. a -. 8. *. epsilon_under_float,
+        (1. +. 8. *. epsilon_float) *. a +. 8. *. epsilon_under_float
+      else
+        (1. +. 8. *. epsilon_float) *. a -. 8. *. epsilon_under_float,
+        (1. -. 8. *. epsilon_float) *. a +. 8. *. epsilon_under_float in
+    (* Check that we have l <= q <= u. *)
+    let () = if Q.lt q (Q.of_float l) then assert false in
+    let () = if Q.lt (Q.of_float u) q then assert false in
+    (* Refine the bounds q \in [l, u] by dichotomy. *)
+    let rec dicho n l u =
+      if n > 0 then
+        let m = (l +. u) /. 2. in
+        if Q.leq (Q.of_float m) q then dicho (n - 1) m u
+        else dicho (n - 1) l m
+      else
+        l, u in
+    let l, u = dicho 10 l u in
+    (* Check that we have two consecutive floats. *)
+    let l, u = match classify_float l, classify_float u with
+      | FP_normal, FP_normal ->
+         let lf, le = frexp l in
+         let uf, ue = frexp u in
+         if uf -. lf > epsilon_float then assert false else l, u
+      | FP_subnormal, _
+      | _, FP_subnormal ->
+         if u -. l > epsilon_under_float then assert false else l, u
+      | FP_zero, FP_zero -> l, u
+      | _ -> assert false in
+    (* Keep a closest one. *)
+    if Q.leq (Q.sub (Q.of_float u) q) (Q.sub q (Q.of_float l)) then u else l

@@ -154,6 +154,9 @@ static int check(value mll)
 
   parse_matrix(mll, &m, &rad);
 
+  /* the test only works for matrices of size < 2^51 - 2 */
+  if (m->s > 1000000000) goto out_no;
+
   /* symmmetry check */
   if (!is_symmetric(m)) goto out_no;
 
@@ -180,8 +183,7 @@ static int check(value mll)
       maxdiag = SEL(m, i, i);
   }  /* tr = tr(m) */
 
-  c = c * (tr + 2 * m->s * m->s * eta)
-    + 2 * eta * (1 + eps) * m->s * (m->s + 1 + maxdiag);
+  c = c * tr + 4 * eta * (m->s + 1) * (2 * (m->s + 2) + maxdiag);
 
   maxrad = 0;
   for (i = 0; i < m->s; ++i) {
@@ -190,7 +192,7 @@ static int check(value mll)
     }
   }
 
-  c += maxrad * m->s * m->s;
+  c += maxrad * (m->s + 1);
 
   rnd(FE_DOWNWARD);
   for (i = 0; i < m->s; ++i)
