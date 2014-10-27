@@ -18,6 +18,20 @@
 
 LOCAL_DOCDIR=doc
 
+DIST_FILES_DIR= \
+  AUTHORS \
+  CHANGES \
+  configure \
+  configure.ac \
+  COPYING \
+  doc \
+  example \
+  external \
+  INSTALL \
+  Makefile.in \
+  README \
+  src
+
 osdp:
 	make -C src osdp
 
@@ -45,6 +59,13 @@ clean:
 
 distclean: clean
 	make -C src distclean
-	rm -rf doc autom4te.cache config.log config.status 
+	rm -rf Makefile autom4te.cache config.log config.status 
+
+dist: doc distclean
+	rm -rf @PACKAGE_TARNAME@-@PACKAGE_VERSION@
+	mkdir @PACKAGE_TARNAME@-@PACKAGE_VERSION@
+	cp -r $(DIST_FILES_DIR) @PACKAGE_TARNAME@-@PACKAGE_VERSION@
+	tar cvzf @PACKAGE_TARNAME@-@PACKAGE_VERSION@.tgz @PACKAGE_TARNAME@-@PACKAGE_VERSION@
+	rm -rf @PACKAGE_TARNAME@-@PACKAGE_VERSION@
 
 .PHONY: osdp doc install-deps install uninstall clean dist-clean

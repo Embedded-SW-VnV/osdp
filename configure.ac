@@ -185,9 +185,9 @@ if test "x$with_csdp" = xno -a "x$with_mosek" = xno; then
 fi
 
 # Create files
-AC_CONFIG_FILES([src/Makefile src/myocamlbuild.ml src/config.h src/META])
+AC_CONFIG_FILES([Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META])
 AC_OUTPUT
-chmod a-w src/Makefile src/myocamlbuild.ml src/config.h src/META
+chmod a-w Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META
 
 echo ""
 echo "*** Configuration for $PACKAGE_NAME $PACKAGE_VERSION:"

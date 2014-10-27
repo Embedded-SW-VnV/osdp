@@ -40,6 +40,7 @@ let fprintf_matrix ~begl ~endl ~sepl ~sepc f =
 
 let epsilon_under_float = float_of_string "0x1p-1074"
 
+(* Please report any assert false raised in this function. *)
 let float_of_q q =
   let n = Z.to_float q.Q.num in
   let d = Z.to_float q.Q.den in

@@ -24,9 +24,9 @@
     {{:./Matrix.html}Matrix}). *)
 
 module type S = sig
-    type t 
+  type t 
 
-    (** {2 A few values.} *)
+  (** {2 A few values.} *)
 
   val zero : t
   val one : t
