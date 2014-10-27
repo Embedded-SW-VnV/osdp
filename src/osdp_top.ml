@@ -64,7 +64,7 @@ let _ =
     begin
       Format.fprintf
         error_fmt
-        "Something weird appened while installing Osdp library printers";
+        "Something weird happened while installing Osdp library printers";
       Format.pp_print_flush error_fmt ()
     end
 (**/**)
