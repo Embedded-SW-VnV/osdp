@@ -18,6 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *)
 
+(** *)
+
 val fprintf_list :
   sep:('a, 'b, 'c, 'd, 'd, 'a) format6 ->
   (Format.formatter -> 'e -> unit) -> Format.formatter -> 'e list -> unit
@@ -34,5 +36,5 @@ val fprintf_matrix :
   (Format.formatter -> 'q -> unit) -> Format.formatter -> 'q array array -> unit
 
 (** [float_of_q q] tries its best to return a float closest to [q] or
-    raises [asser false] (please report, this is a bug). *)
+    raises [assert false] (please report, this is a bug). *)
 val float_of_q : Q.t -> float

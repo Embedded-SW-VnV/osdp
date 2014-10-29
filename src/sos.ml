@@ -65,8 +65,10 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
   let pp ?names fmt e =
     let rec pp_prior prior fmt = function
-      | PLconst p -> Format.fprintf fmt
-         (if 0 < prior then "(%a)" else "%a") (Poly.pp ?names) p
+      | PLconst p ->
+         let par =
+           2 < prior || 0 < prior && List.length (Poly.to_list p) >= 2 in
+         Format.fprintf fmt (if par then "(%a)" else "%a") (Poly.pp ?names) p
       | PLvar v -> Ident.pp fmt v.name
       | PLmult_scalar (i, e) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
@@ -80,9 +82,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | PLmult (e1, e2) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
          (pp_prior 1) e1 (pp_prior 1) e2
-      | PLpower (e, d) -> Format.fprintf fmt "%a^%i" (pp_prior 2) e d
+      | PLpower (e, d) -> Format.fprintf fmt "%a^%i" (pp_prior 3) e d
       | PLcompose (e, el) ->
-         Format.fprintf fmt "%a(@[%a@])" (pp_prior prior) e
+         Format.fprintf fmt "%a(@[%a@])" (pp_prior 2) e
                         (Utils.fprintf_list ~sep:",@ " (pp_prior 0)) el in
     pp_prior 0 fmt e
 
