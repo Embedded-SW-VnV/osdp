@@ -40,7 +40,10 @@ let p = { name = Osdp.Ident.create "p";
           nb_vars = 2;
           degree = deg;
           homogeneous = true }
-let e1 = <:sos< ?p - ?p(1.5 x0 - 0.7 x1, x0) >>
+let a0 = <:sos< 1.5 x0 - 0.7 x1 >>
+let a1 = <:sos< x0 >>
+let e1 = <:sos< ?p - ?p(a0, x0) >>
+(* or let l = [a0; a1] in let e1 = <:sos< ?p - ?p($l$) >> *)
 let e2 = <:sos< ?p - (x0^4 + x1^4) >>
 let () = Format.printf "e1 = %a@." pp e1
 let () = Format.printf "e2 = %a@." pp e2
