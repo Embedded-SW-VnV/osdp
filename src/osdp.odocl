@@ -6,6 +6,7 @@ Matrix
 Monomial
 Moseksdp
 Osdp_top
+Pa_sos
 Polynomial
 Posdef
 Scalar

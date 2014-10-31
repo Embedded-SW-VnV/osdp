@@ -58,6 +58,11 @@ AC_ARG_WITH([mosek-lib-path],
   [MOSEK_LIBPATH=no])
 MOSEK_LIB=no
 
+AC_ARG_WITH([camlp4],
+  [AS_HELP_STRING([--without-camlp4], [disable support for Camlp4 parsers])],
+  [],
+  [with_camlp4=check])
+
 # Check for programs
 AC_CHECK_TOOL([OCAMLC], [ocamlc], [no])
 AS_IF([test "x$OCAMLC" = xno], [AC_MSG_ERROR([Cannot find ocamlc.])])
@@ -79,6 +84,42 @@ AS_IF([test "x$OCAMLBUILD" = xno], [AC_MSG_ERROR([Cannot find ocamlbuild.])])
 
 AC_CHECK_TOOL([OCAMLFIND], [ocamlfind], [no])
 AS_IF([test "x$OCAMLFIND" = xno], [AC_MSG_ERROR([Cannot find ocamlfind.])])
+
+if test "x$with_camlp4" != xno; then
+  AC_CHECK_TOOL([OCAMLLEX], [ocamllex], [no])
+  if test "x$OCAMLLEX" = xno; then
+    AS_IF([test "x$with_camlp4" = xcheck],
+      [AC_MSG_WARN([Cannot find Ocamllex, will compile without it but installing it and reruning this configure script is highly recommended.])],
+      [AC_MSG_ERROR([Cannot find Ocamllex.])])
+    with_camlp4=no
+  fi
+fi
+if test "x$with_camlp4" != xno; then
+  AC_CHECK_TOOL([OCAMLYACC], [ocamlyacc], [no])
+  if test "x$OCAMLYACC" = xno; then
+    AS_IF([test "x$with_camlp4" = xcheck],
+      [AC_MSG_WARN([Cannot find Ocamlyacc, will compile without it but installing it and reruning this configure script is highly recommended.])],
+      [AC_MSG_ERROR([Cannot find Ocamlyacc.])])
+    with_camlp4=no
+  fi
+fi
+if test "x$with_camlp4" != xno; then
+  AC_CHECK_TOOL([CAMLP4], [camlp4of], [no])
+  if test "x$CAMLP4" = xno; then
+    AS_IF([test "x$with_camlp4" = xcheck],
+      [AC_MSG_WARN([Cannot find Camlp4, will compile without it but installing Camlp4 (packages camlp4 *and* camlp4-extra on Debian based systems) and reruning this configure script is highly recommended.])],
+      [AC_MSG_ERROR([Cannot find Camlp4.])])
+    with_camlp4=no
+  fi
+fi
+if test "x$with_camlp4" != xno; then
+  with_camlp4=yes
+  CAMLP4_PARSERS="pa_sos.cma"
+else
+  CAMLP4_PARSERS=""
+fi
+AC_SUBST(with_camlp4)
+AC_SUBST(CAMLP4_PARSERS)
 
 # Check for libraries
 AC_MSG_CHECKING(for zarith)
@@ -185,9 +226,9 @@ if test "x$with_csdp" = xno -a "x$with_mosek" = xno; then
 fi
 
 # Create files
-AC_CONFIG_FILES([Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META])
+AC_CONFIG_FILES([Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META src/osdp_top.ml])
 AC_OUTPUT
-chmod a-w Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META
+chmod a-w Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META src/osdp_top.ml
 
 echo ""
 echo "*** Configuration for $PACKAGE_NAME $PACKAGE_VERSION:"
@@ -203,6 +244,7 @@ if test "x$with_mosek" = xyes; then
   echo "    MOSEK_LIBPATH ............ : $MOSEK_LIBPATH"
   echo "    MOSEK_LIB ................ : $MOSEK_LIB"
 fi
+echo "  Compiled with Camlp4 ....... : $with_camlp4"
 echo ""
 echo "  Now type 'make' to build $PACKAGE $VERSION"
 echo "  then 'make install' to install."

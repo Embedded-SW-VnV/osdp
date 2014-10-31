@@ -1,5 +1,7 @@
 Requires OCaml (>= 4.01), Zarith (Debian package libzarith-ocaml-dev),
-CSDP (no Debian package), MOSEK (no Debian package, optional).
+Camlp4 (optional but highly recommended, Debian packages camlp4 and
+camlp4-extra), CSDP (no Debian package), MOSEK (no Debian package,
+optional).
 
 To install Csdp:
 * install dependencies:
@@ -11,7 +13,8 @@ To install Csdp:
   http://www.coin-or.org/download/source/Csdp/Csdp-6.1.1.tgz
 * Apply our patchs (modified install target and enable the use of global
   param.csdp)
-  cd Csdp-6.1.1.tgz
+  tar xvzf Csdp-6.1.1.tgz
+  cd Csdp-6.1.1
   for i in path_to_osdp/external/csdp_*.patch; do patch -p0 < $i; done
 * type make, sudo make install
 

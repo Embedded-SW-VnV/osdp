@@ -2,6 +2,14 @@
 (* #use "topfind";; *)
 (* #require "osdp";; *)
 
+(* To compile: *)
+(* % ocamlbuild -use-ocamlfind demo_no_camlp4.native *)
+(* with a _tags file containing a line <*>: package(osdp) *)
+(* or *)
+(* % ocamlfind ocamlopt -linkpkg -package osdp -o demo_no_camlp4 demo_no_camlp4.ml *)
+(* or directly *)
+(* % ocamlopt -I $(ocamlfind query zarith) -I $(ocamlfind query osdp) zarith.cmxa osdp.cmxa -o demo_no_camlp4 demo_no_camlp4.ml *)
+
 let solver = Osdp.Sdp.Csdp  (* Sdp.Mosek *)
 
 open Osdp.Lmi.Float
@@ -14,8 +22,6 @@ let e1 = MEsub (MEvar p_id,
                                 MEvar p_id),
                         MEconst a))
 let e2 = MEsub (MEvar p_id, MEeye 2)
-(* let e1 = << ?p_id - a' * ?p_id * a >> *)
-(* let e2 = << ?p_id - eye(2) >> *)
 let () = Format.printf "e1 = %a@." pp e1
 let () = Format.printf "e2 = %a@." pp e2
 let _, _, vars = solve ~solver Purefeas [e1; e2]
@@ -36,12 +42,15 @@ let deg = 4
 let names = ["x"; "y"]
 let pp = pp ~names
 let pp_poly = Poly.pp ~names
+let pol_of_list l =
+  Poly.of_list (List.map (fun (s, m) -> Osdp.Monomial.of_list m, s) l)
+let a = List.map pol_of_list [[1.5, [1]; -0.7, [0; 1]]; [1., [1]; 0., [0; 1]]]
 let p = { name = Osdp.Ident.create "p";
           nb_vars = 2;
           degree = deg;
           homogeneous = true }
-let e1 = <:sos< ?p - ?p(1.5 x0 - 0.7 x1, x0) >>
-let e2 = <:sos< ?p - (x0^4 + x1^4) >>
+let e1 = PLsub (PLvar p, PLcompose (PLvar p, List.map (fun p -> PLconst p) a))
+let e2 = PLsub (PLvar p, PLconst (pol_of_list [1., [deg]; 1., [0; deg]]))
 let () = Format.printf "e1 = %a@." pp e1
 let () = Format.printf "e2 = %a@." pp e2
 let _, _, vars = solve ~solver Purefeas [e1; e2]

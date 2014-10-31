@@ -30,7 +30,8 @@
 (* This is highly inspired from num_top.ml for the Num library. *)
 
 (**/**)
-let print_outcome = false
+let with_camlp4 = "@with_camlp4@"
+let print_outcome = true
 let error_fmt = Format.err_formatter
 
 let printers = [
@@ -48,23 +49,36 @@ let printers = [
   "Osdp.Sos.Float.pp_no_names";
 ]
 
+let parsers = [
+  "pa_sos.cma";
+]
+
+let install_commands =
+  List.map (fun s -> "#install_printer " ^ s ^ ";;") printers
+  @ (if with_camlp4 <> "yes" then []
+     else
+       "#camlp4o;;" :: List.map (fun s -> "#load \"" ^ s ^ "\";;") parsers)
+
 let eval_phrase s =
+  (* Format.fprintf *)
+  (*   error_fmt *)
+  (*   "evaluating \"%s\"@." s; *)
+  (* Format.pp_print_flush error_fmt (); *)
   let lexbuf = Lexing.from_string s in
   let phrase = !Toploop.parse_toplevel_phrase lexbuf in
   Toploop.execute_phrase print_outcome error_fmt phrase
 
 let install_all () =
   List.fold_left
-    (fun outcome phrase ->
-     outcome && eval_phrase (Printf.sprintf "#install_printer %s;;" phrase))
-    true printers
+    (fun outcome phrase -> outcome && eval_phrase phrase)
+    true install_commands
 
 let _ =
   if not (install_all ()) then
     begin
       Format.fprintf
         error_fmt
-        "Something weird happened while installing Osdp library printers";
+        "Something weird happened while installing Osdp library printers/parsers";
       Format.pp_print_flush error_fmt ()
     end
 (**/**)
