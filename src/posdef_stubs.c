@@ -36,8 +36,6 @@
 #include <fenv.h>
 #include <math.h>
 
-#include <stdio.h>
-
 typedef struct {
   int s;
   double *t;
@@ -48,7 +46,7 @@ static void *malloc_fail(int nb, int size)
   void *p;
 
   p = malloc(nb * size);
-  if (p == NULL) caml_failwith("caml_posdef: out of memory!");
+  if (p == NULL) caml_failwith("caml_osdp: out of memory!");
 
   return p;
 }
@@ -76,7 +74,7 @@ static double eps = 0x1p-53, eta = 0x1p-1074;
 static void rnd(int mode)
 {
   if (fesetround(mode))
-    caml_failwith("caml_posdef: unable to change rounding mode!");
+    caml_failwith("caml_osdp: unable to change rounding mode!");
 }
 
 /* parse matrix, returning two matrices of doubles

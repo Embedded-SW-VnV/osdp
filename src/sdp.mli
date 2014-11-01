@@ -39,30 +39,24 @@ type solver = Csdp | Mosek
     Type invariant: all lines have the same size. *)
 type matrix = float array array
 
-(** Block diagonal matrices (sparse representation, forgetting null
-    blocks). For instance, [\[(1, m1), (3, m2)\]] will be transformed
-    into [\[m1; 0; m2\]]. There is no requirement for indices to be
-    sorted. *)
-type block_diag_matrix = (int * matrix) list
-
 (** Matrices. Sparse representation as triplet [(i, j, x)] meaning
     that the coefficient at line [i] and column [j] has value [x]. All
     forgotten coefficients are assumed to be [0.0]. Since matrices are
     symmetric, only the lower triangular part (j <= i) must be
     given. No duplicates are allowed. *)
-type matrix_sparse = (int * int * float) list
+type sparse_matrix = (int * int * float) list
 
 (** Block diagonal matrices (sparse representation, forgetting null
     blocks). For instance, [\[(1, m1), (3, m2)\]] will be transformed
     into [\[m1; 0; m2\]]. There is no requirement for indices to be
     sorted. *)
-type block_diag_matrix_sparse = (int * matrix_sparse) list
+type 'a block_diag = (int * 'a) list
 
-val matrix_of_sparse : matrix_sparse -> matrix
-val matrix_to_sparse : matrix -> matrix_sparse
+val matrix_of_sparse : sparse_matrix -> matrix
+val matrix_to_sparse : matrix -> sparse_matrix
 
-val block_diag_of_sparse : block_diag_matrix_sparse -> block_diag_matrix
-val block_diag_to_sparse : block_diag_matrix -> block_diag_matrix_sparse
+val block_diag_of_sparse : sparse_matrix block_diag -> matrix block_diag
+val block_diag_to_sparse : matrix block_diag -> sparse_matrix block_diag
 
 (** [solve obj constraints] solves the SDP problem: max\{ tr(obj X) |
     tr(A_1 X) = a_1,..., tr(A_n X) = a_n, X psd \} with [\[(A_1,
@@ -76,14 +70,14 @@ val block_diag_to_sparse : block_diag_matrix -> block_diag_matrix_sparse
     be present in any input, for instance there is no need for the
     indices 0 or 1 to appear, the first block of the output will just
     be the first indice present in the input. *)
-val solve : ?solver:solver -> block_diag_matrix ->
-            (block_diag_matrix * float) list ->
-            SdpRet.t * (float * float) * (block_diag_matrix * float array)
+val solve : ?solver:solver -> matrix block_diag ->
+            (matrix block_diag * float) list ->
+            SdpRet.t * (float * float) * (matrix block_diag * float array)
 
 (** Same as {!solve} with sparse matrices as input. This can be more
     efficient with solver handling sparse matrices (fo instance
     Mosek). Otherwise, this is equivalent to {!solve} after conversion
     with {!matrix_of_sparse}. *)
-val solve_sparse : ?solver:solver -> block_diag_matrix_sparse ->
-                   (block_diag_matrix_sparse * float) list ->
-                   SdpRet.t * (float * float) * (block_diag_matrix * float array)
+val solve_sparse : ?solver:solver -> sparse_matrix block_diag ->
+                   (sparse_matrix block_diag * float) list ->
+                   SdpRet.t * (float * float) * (matrix block_diag * float array)

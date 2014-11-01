@@ -21,10 +21,10 @@
 type solver = Csdp | Mosek
 
 type matrix = float array array
-type block_diag_matrix = (int * matrix) list
 
-type matrix_sparse = (int * int * float) list
-type block_diag_matrix_sparse = (int * matrix_sparse) list
+type sparse_matrix = (int * int * float) list
+
+type 'a block_diag = (int * 'a) list
 
 (* define default solver *)
 let get_solver = function None -> Csdp | Some s -> s

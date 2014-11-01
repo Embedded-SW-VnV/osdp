@@ -225,6 +225,13 @@ if test "x$with_csdp" = xno -a "x$with_mosek" = xno; then
   AC_MSG_WARN(this is quite useless. You should at least install either CSDP or MOSEK.)
 fi
 
+AC_CHECK_LIB([m], [fesetround], [],
+  [AC_MSG_ERROR([Could not find function fesetround in math library.])])
+
+# Checks for header files.
+AC_HEADER_STDC
+AC_CHECK_HEADERS([math.h fenv.h])
+
 # Create files
 AC_CONFIG_FILES([Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META src/osdp_top.ml])
 AC_OUTPUT

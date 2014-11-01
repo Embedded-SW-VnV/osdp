@@ -27,7 +27,7 @@ let csdp_libdir = "-L@CSDP_LIBPATH@"
 let csdp_include = "-I@CSDP_INCPATH@"
 
 let with_mosek = "@with_mosek@"
-let mosek_libs = ["-l@MOSEK_LIB@"; "-pthread"]
+let mosek_lib = "-l@MOSEK_LIB@"
 let mosek_libdir = "-L@MOSEK_LIBPATH@"
 let mosek_include = "-I@MOSEK_INCPATH@"
 
@@ -46,6 +46,7 @@ dispatch begin function
    dep ["link"; "ocaml"; "native"; "use_libosdp"] ["libosdp.a"];
    flag ["link"; "ocaml"; "link_libosdp"] (A"libosdp.a");
    (* posdef *)
+   flag ["compile"; "c"] & S[A"-ccopt"; A"-frounding-math"];
    flag ["link"; "ocaml"] & S(cclib ["-lm"]);
    (* CSDP *)
    if with_csdp = "yes" then
@@ -63,9 +64,9 @@ dispatch begin function
        flag ["compile"; "c"] &
          S[A"-ccopt"; A"-I./sdp"; A"-ccopt"; A mosek_include];
        flag ["ocamlmklib"; "c"] &
-         S([A mosek_libdir]@List.map (fun x -> A x) mosek_libs);
+         S([A mosek_libdir; A mosek_lib; A"-cclib"; A"-pthread"]);
        flag ["link"; "ocaml"] &
-         S([A"-ccopt"; A mosek_libdir]@cclib mosek_libs)
+         S([A"-ccopt"; A mosek_libdir]@cclib [mosek_lib; "-pthread"])
      end
 | _ -> ()
 end

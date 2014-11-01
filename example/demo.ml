@@ -7,20 +7,19 @@ let solver = Osdp.Sdp.Csdp  (* Sdp.Mosek *)
 open Osdp.Lmi.Float
 
 let () = Format.printf "LMI@."
-let a = Mat.of_list_list [[1.5; -0.7]; [1.; 0.]]
-let p_id = Osdp.Ident.create "p"
+let p = Osdp.Ident.create "p"
 let a = << [1.5, -0.7; 1, 0] >>  (* or <:lmi< ... >> *)
-let e1 = << ?p_id - a ' * ?p_id * a >>
-let e2 = << ?p_id - eye(2) >>
+let e1 = << ?p - a ' * ?p * a >>
+let e2 = << ?p - eye(2) >>
 let () = Format.printf "e1 = %a@." pp e1
 let () = Format.printf "e2 = %a@." pp e2
 let _, _, vars = solve ~solver Purefeas [e1; e2]
 let () =
   try
-    let p = Osdp.Ident.Map.find p_id vars in
-    match p with
+    let r = Osdp.Ident.Map.find p vars in
+    match r with
     | Scalar _ -> Format.printf "SDP error.@."
-    | Mat p -> Format.printf "%a = %a@." Osdp.Ident.pp p_id Mat.pp p
+    | Mat r -> Format.printf "%a = %a@." Osdp.Ident.pp p Mat.pp r
   with Not_found -> Format.printf "SDP error.@."
 
 let () = Format.printf "@."
@@ -29,7 +28,6 @@ open Osdp.Sos.Float
 
 let () = Format.printf "SOS@."
 let deg = 4
-let names = ["x"; "y"]
 let p = { name = Osdp.Ident.create "p";
           nb_vars = 2;
           degree = deg;
