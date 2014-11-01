@@ -104,10 +104,10 @@ if test "x$with_camlp4" != xno; then
   fi
 fi
 if test "x$with_camlp4" != xno; then
-  AC_CHECK_TOOL([CAMLP4], [camlp4of], [no])
+  AC_CHECK_TOOL([CAMLP4], [camlp4o], [no])
   if test "x$CAMLP4" = xno; then
     AS_IF([test "x$with_camlp4" = xcheck],
-      [AC_MSG_WARN([Cannot find Camlp4, will compile without it but installing Camlp4 (packages camlp4 *and* camlp4-extra on Debian based systems) and reruning this configure script is highly recommended.])],
+      [AC_MSG_WARN([Cannot find Camlp4, will compile without it but installing Camlp4 (package camlp4 on Debian based systems) and reruning this configure script is highly recommended.])],
       [AC_MSG_ERROR([Cannot find Camlp4.])])
     with_camlp4=no
   fi

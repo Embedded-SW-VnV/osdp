@@ -9,7 +9,7 @@ open Osdp.Lmi.Float
 let () = Format.printf "LMI@."
 let a = Mat.of_list_list [[1.5; -0.7]; [1.; 0.]]
 let p_id = Osdp.Ident.create "p"
-let a = << [1.5, -0.7; 1, 0] >>  (* or <:lmi< ... > *)
+let a = << [1.5, -0.7; 1, 0] >>  (* or <:lmi< ... >> *)
 let e1 = << ?p_id - a ' * ?p_id * a >>
 let e2 = << ?p_id - eye(2) >>
 let () = Format.printf "e1 = %a@." pp e1

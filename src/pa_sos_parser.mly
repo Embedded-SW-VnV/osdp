@@ -30,10 +30,34 @@ let loc () =
      end_p.Lexing.pos_lnum, end_p.Lexing.pos_bol, end_p.Lexing.pos_cnum,
      false)
 
-let monom _loc v d =
+let id_of_list loc l =
+  let id_of_str s =
+    if 'A' <= s.[0] && s.[0] <= 'Z'
+       || s = "::" || s = "[]" then Ast.IdUid (loc, s)
+    else Ast.IdLid (loc, s) in
+  Ast.ExId (loc, Ast.idAcc_of_list (List.map id_of_str l))
+
+let osf loc idl el =
+  List.fold_left
+    (fun f e -> Ast.ExApp (loc, f, e))
+    (id_of_list loc (["Osdp"; "Sos"; "Float"] @ idl)) el
+
+let osfl = osf (loc ())
+
+let cons l e1 e2 =
+  Ast.ExApp (l, Ast.ExApp (l, Ast.ExId (l, Ast.IdUid (l, "::")), e1), e2)
+
+let empty_list l = Ast.ExId (l, Ast.IdUid (l, "[]"))
+
+let slist l e = cons l e (empty_list l)
+
+let pair l e1 e2 = Ast.ExTup (l, Ast.ExCom (l, e1, e2))
+
+let monom loc v d =
   let rec aux n =
-    if n <= 0 then <:expr< [$ d $] >> else <:expr< 0 :: $ aux (n - 1) $ >> in
-  aux v
+    if n <= 0 then slist loc d
+    else cons loc (Ast.ExInt (loc, "0")) (aux (n - 1)) in
+  Ast.ExApp (loc, id_of_list loc ["Osdp"; "Monomial"; "of_list"], aux v)
 %}
 
 %token <string> FLOAT
@@ -59,78 +83,73 @@ let monom _loc v d =
 %%
 
 f:
-| INT { let _loc = loc () in <:expr< $flo: $1 $ >> }
-| FLOAT { let _loc = loc () in <:expr< $flo: $1 $ >> }
+| INT { Ast.ExFlo (loc (), $1) }
+| FLOAT { Ast.ExFlo (loc (), $1) }
 
 vid:
 | ID { $1 }
 | UID { $1 }
 
 i:
-| QMARK DQUOTE vid DQUOTE { let _loc = loc () in
-                            <:expr< Osdp.Ident.create $str: $3 $ >> }
-| QMARK ID { let _loc = loc () in <:expr< $lid: $2 $ >> }
+| QMARK DQUOTE vid DQUOTE { let l = loc () in
+                            Ast.ExApp (l,
+                                       id_of_list l ["Osdp"; "Ident"; "create"],
+                                       Ast.ExStr (l, $3)) }
+| QMARK ID { id_of_list (loc ()) [$2] }
 
 ncid:
-| INT { let _loc = loc () in <:expr< $int: $1 $ >> }
-| ID { let _loc = loc () in <:expr< $lid: $1 $ >> }
+| INT { Ast.ExInt (loc (), $1) }
+| ID { id_of_list (loc ()) [$1] }
 | AQ { Camlp4.PreCast.Syntax.AntiquotSyntax.parse_expr (loc ()) $1 }
 
 vm:
-| MID %prec PVM { let _loc = loc () in
-                  <:expr< Osdp.Monomial.of_list ($ monom _loc $1 <:expr< 1 >> $) >> }
-| MID HAT ncid { let _loc = loc () in
-                 <:expr< Osdp.Monomial.of_list ($ monom _loc $1 $3 $) >> }
+| MID %prec PVM { let l = loc () in monom l $1 (Ast.ExInt (l, "1")) }
+| MID HAT ncid { monom (loc ()) $1 $3 }
 
 monom:
 | vm { $1 }
-| monom vm  { let _loc = loc () in <:expr< Osdp.Monomial.mult $ $1 $ $ $2 $ >> }
+| monom vm  { let l = loc () in
+              Ast.ExApp (l,
+                         Ast.ExApp (l,
+                                    id_of_list l ["Osdp"; "Monomial"; "mult"],
+                                    $1),
+                         $2) }
 
 expr:
-| ID { let _loc = loc () in <:expr< $lid: $1 $ >> }
-| QMARK ID { let _loc = loc () in <:expr< Osdp.Sos.Float.PLvar $lid: $2 $ >> }
-| monom { let _loc = loc () in
-          <:expr< Osdp.Sos.Float.PLconst
-                    (Osdp.Sos.Float.Poly.of_list
-                       [$ $1 $, Osdp.Sos.Float.Poly.Coeff.one]) >> }
-| f monom { let _loc = loc () in
-            <:expr< Osdp.Sos.Float.PLconst
-                      (Osdp.Sos.Float.Poly.of_list
-                         [($ $2 $, $ $1 $)]) >> }
-| i TIMESSEMI expr { let _loc = loc () in
-                     <:expr< Osdp.Sos.Float.PLmult_scalar ($ $1 $, $ $3 $) >> }
-| expr PLUS expr { let _loc = loc () in
-                   <:expr< Osdp.Sos.Float.PLadd ($ $1 $, $ $3 $) >> }
-| expr MINUS expr { let _loc = loc () in
-                    <:expr< Osdp.Sos.Float.PLsub ($ $1 $, $ $3 $) >> }
-| MINUS expr %prec UMINUS { let _loc = loc () in
-                            <:expr< Osdp.Sos.Float.PLsub
-                                      (Osdp.Sos.Float.PLconst
-                                         Osdp.Sos.Float.Poly.zero,
-                                       $ $2 $) >> }
-| expr TIMES expr { let _loc = loc () in
-                    <:expr< Osdp.Sos.Float.PLmult ($ $1 $, $ $3 $) >> }
-| expr HAT ncid { let _loc = loc () in
-                  <:expr<Osdp.Sos.Float.PLpower ($ $1 $, $ $3 $) >> }
-| expr LPAR l RPAR { let _loc = loc () in
-                     <:expr< Osdp.Sos.Float.PLcompose ($ $1 $, $ $3 $) >> }
+| ID { id_of_list (loc ()) [$1] }
+| QMARK ID { let l = loc () in osf l ["PLvar"] [id_of_list l [$2]] }
+| monom { let l = loc () in
+          osf l ["PLconst"] [osf l ["Poly"; "of_list"]
+                                 [slist l (pair l $1 (Ast.ExFlo (l, "1.")))]] }
+| f monom { let l = loc () in
+          osf l ["PLconst"] [osf l ["Poly"; "of_list"]
+                                 [slist l (pair l $2 $1)]] }
+| i TIMESSEMI expr { osfl ["PLmult_scalar"] [$1; $3] }
+| expr PLUS expr { osfl ["PLadd"] [$1; $3] }
+| expr MINUS expr { osfl ["PLsub"] [$1; $3] }
+| MINUS expr %prec UMINUS { let l = loc () in
+                            osf l ["PLsub"]
+                                [osf l ["PLconst"] [osf l ["Poly"; "zero"] []];
+                                 $2] }
+| expr TIMES expr { osfl ["PLmult"] [$1; $3] }
+| expr HAT ncid { osfl ["PLpower"] [$1; $3] }
+| expr LPAR l RPAR { osfl ["PLcompose"] [$1; $3] }
 | LPAR expr RPAR { $2 }
-| f { let _loc = loc () in
-      <:expr< Osdp.Sos.Float.PLconst
-                (Osdp.Sos.Float.Poly.of_list
-                   [Osdp.Monomial.of_list [], $ $1 $]) >> }
+| f { let l = loc () in
+      osf l ["PLconst"]
+          [osf l ["Poly"; "of_list"]
+               [slist l (pair l (Ast.ExApp (l, id_of_list l ["Osdp"; "Monomial"; "of_list"], empty_list l)) $1)]] }
 
 l:
 | le { $1 }
-| le COMMA l { let _loc = loc () in <:expr< $ $1 $ @ $ $3 $ >> }
+| le COMMA l { let l = loc () in
+               Ast.ExApp (l, Ast.ExApp (l, id_of_list l ["@"], $1), $3) }
 
 le:
-| expr { let _loc = loc () in <:expr< [$ $1 $] >> }
+| expr { slist (loc ()) $1 }
 | AQ { Camlp4.PreCast.Syntax.AntiquotSyntax.parse_expr (loc ()) $1 }
 
 sos:
 | expr EOF { $1 }
-| expr LEQ expr EOF { let _loc = loc () in
-                      <:expr< Osdp.Sos.Float.PLsub ($ $3 $, $ $1 $) >> }
-| expr GEQ expr EOF { let _loc = loc () in
-                      <:expr< Osdp.Sos.Float.PLsub ($ $1 $, $ $3 $) >> }
+| expr LEQ expr EOF { osfl ["PLsub"] [$3; $1] }
+| expr GEQ expr EOF { osfl ["PLsub"] [$1; $3] }

@@ -7,6 +7,7 @@ Monomial
 Moseksdp
 Osdp_top
 Pa_sos
+Pa_lmi
 Polynomial
 Posdef
 Scalar
