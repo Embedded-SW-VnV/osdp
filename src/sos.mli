@@ -35,18 +35,18 @@ module type S = sig
   (** Constructors. See the module
       {{:./Polynomial.S.html}Polynomial.S} for details. *)
   type polynomial_expr =
-    | PLconst of Poly.t
-    | PLvar of polynomial_var
-    | PLmult_scalar of Ident.t * polynomial_expr
-    | PLadd of polynomial_expr * polynomial_expr
-    | PLsub of polynomial_expr * polynomial_expr
-    | PLmult of polynomial_expr * polynomial_expr
-    | PLpower of polynomial_expr * int
-    | PLcompose of polynomial_expr * polynomial_expr list
+    | Const of Poly.t
+    | Var of polynomial_var
+    | Mult_scalar of Ident.t * polynomial_expr
+    | Add of polynomial_expr * polynomial_expr
+    | Sub of polynomial_expr * polynomial_expr
+    | Mult of polynomial_expr * polynomial_expr
+    | Power of polynomial_expr * int
+    | Compose of polynomial_expr * polynomial_expr list
 
   (** [Minimize var] or [Maximize var] or [Purefeas] (just checking
       feasibility). Ident [var] must appear as scalar variable
-      ([PLmult_scalar]) in the constraints. *)
+      ([Mult_scalar]) in the constraints. *)
   type obj_t = Minimize of Ident.t | Maximize of Ident.t | Purefeas
 
   type ('a, 'b) value_t = Scalar of 'a | Poly of 'b

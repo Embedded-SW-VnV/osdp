@@ -17,11 +17,11 @@ open Osdp.Lmi.Float
 let () = Format.printf "LMI@."
 let a = Mat.of_list_list [[1.5; -0.7]; [1.; 0.]]
 let p_id = Osdp.Ident.create "p"
-let e1 = MEsub (MEvar p_id,
-                MEmult (MEmult (MEtranspose (MEconst a),
-                                MEvar p_id),
-                        MEconst a))
-let e2 = MEsub (MEvar p_id, MEeye 2)
+let e1 = Sub (Var p_id,
+              Mult (Mult (Transpose (Const a),
+                          Var p_id),
+                    Const a))
+let e2 = Sub (Var p_id, Eye 2)
 let () = Format.printf "e1 = %a@." pp e1
 let () = Format.printf "e2 = %a@." pp e2
 let _, _, vars = solve ~solver Purefeas [e1; e2]
@@ -49,8 +49,8 @@ let p = { name = Osdp.Ident.create "p";
           nb_vars = 2;
           degree = deg;
           homogeneous = true }
-let e1 = PLsub (PLvar p, PLcompose (PLvar p, List.map (fun p -> PLconst p) a))
-let e2 = PLsub (PLvar p, PLconst (pol_of_list [1., [deg]; 1., [0; deg]]))
+let e1 = Sub (Var p, Compose (Var p, List.map (fun p -> Const p) a))
+let e2 = Sub (Var p, Const (pol_of_list [1., [deg]; 1., [0; deg]]))
 let () = Format.printf "e1 = %a@." pp e1
 let () = Format.printf "e2 = %a@." pp e2
 let _, _, vars = solve ~solver Purefeas [e1; e2]

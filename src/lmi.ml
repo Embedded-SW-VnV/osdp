@@ -21,20 +21,20 @@
 module type S = sig
   module Mat : Matrix.S
   type matrix_expr =
-    | MEconst of Mat.t
-    | MEvar of Ident.t
-    | MEzeros of int * int
-    | MEeye of int
-    | MEkronecker_sym of int * int * int
-    | MEblock of matrix_expr array array
-    | MElift_block of matrix_expr * int * int * int * int
-    | MEtranspose of matrix_expr
-    | MEminus of matrix_expr
-    | MEscale_const of Mat.Coeff.t * matrix_expr
-    | MEscale_var of Ident.t * matrix_expr
-    | MEadd of matrix_expr * matrix_expr
-    | MEsub of matrix_expr * matrix_expr
-    | MEmult of matrix_expr * matrix_expr
+    | Const of Mat.t
+    | Var of Ident.t
+    | Zeros of int * int
+    | Eye of int
+    | Kronecker_sym of int * int * int
+    | Block of matrix_expr array array
+    | Lift_block of matrix_expr * int * int * int * int
+    | Transpose of matrix_expr
+    | Minus of matrix_expr
+    | Scale_const of Mat.Coeff.t * matrix_expr
+    | Scale_var of Ident.t * matrix_expr
+    | Add of matrix_expr * matrix_expr
+    | Sub of matrix_expr * matrix_expr
+    | Mult of matrix_expr * matrix_expr
   type obj_t = Minimize of Ident.t | Maximize of Ident.t | Purefeas
   type ('a, 'b) value_t = Scalar of 'a | Mat of 'b
   exception Type_error of string
@@ -48,51 +48,51 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
   module Mat = M
 
   type matrix_expr =
-    | MEconst of Mat.t
-    | MEvar of Ident.t
-    | MEzeros of int * int
-    | MEeye of int
-    | MEkronecker_sym of int * int * int
-    | MEblock of matrix_expr array array
-    | MElift_block of matrix_expr * int * int * int * int
-    | MEtranspose of matrix_expr
-    | MEminus of matrix_expr
-    | MEscale_const of Mat.Coeff.t * matrix_expr
-    | MEscale_var of Ident.t * matrix_expr
-    | MEadd of matrix_expr * matrix_expr
-    | MEsub of matrix_expr * matrix_expr
-    | MEmult of matrix_expr * matrix_expr
+    | Const of Mat.t
+    | Var of Ident.t
+    | Zeros of int * int
+    | Eye of int
+    | Kronecker_sym of int * int * int
+    | Block of matrix_expr array array
+    | Lift_block of matrix_expr * int * int * int * int
+    | Transpose of matrix_expr
+    | Minus of matrix_expr
+    | Scale_const of Mat.Coeff.t * matrix_expr
+    | Scale_var of Ident.t * matrix_expr
+    | Add of matrix_expr * matrix_expr
+    | Sub of matrix_expr * matrix_expr
+    | Mult of matrix_expr * matrix_expr
 
   let pp fmt e =
     let rec pp_prior prior fmt = function
-      | MEconst m -> Mat.pp fmt m
-      | MEvar i -> Ident.pp fmt i
-      | MEzeros (n, m) -> Format.fprintf fmt "zeros(%i, %i)" n m
-      | MEeye n -> Format.fprintf fmt "eye(%i, %i)" n n
-      | MEkronecker_sym (n, i, j) -> Mat.pp fmt (Mat.kronecker_sym n i j)
-      | MEblock a ->
+      | Const m -> Mat.pp fmt m
+      | Var i -> Ident.pp fmt i
+      | Zeros (n, m) -> Format.fprintf fmt "zeros(%i, %i)" n m
+      | Eye n -> Format.fprintf fmt "eye(%i, %i)" n n
+      | Kronecker_sym (n, i, j) -> Mat.pp fmt (Mat.kronecker_sym n i j)
+      | Block a ->
          Format.fprintf fmt "[@[%a@]]"
                         (Utils.fprintf_array ~sep:";@ "
                            (fun fmt -> Format.fprintf fmt "@[%a@]"
                               (Utils.fprintf_array ~sep:",@ " (pp_prior 0)))) a
-      | MElift_block (m, i, j, k, l) ->
+      | Lift_block (m, i, j, k, l) ->
          Format.fprintf fmt "lift_block(@[%a,@ %i, %i, %i, %i@])"
                         (pp_prior 0) m i j k l
-      | MEtranspose m -> Format.fprintf fmt "%a'" (pp_prior 2) m
-      | MEminus m -> Format.fprintf fmt "-%a" (pp_prior (max 1 prior)) m
-      | MEscale_const (e, m) -> Format.fprintf fmt
+      | Transpose m -> Format.fprintf fmt "%a'" (pp_prior 2) m
+      | Minus m -> Format.fprintf fmt "-%a" (pp_prior (max 1 prior)) m
+      | Scale_const (e, m) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
          Mat.Coeff.pp e (pp_prior 1) m
-      | MEscale_var (i, e) -> Format.fprintf fmt
+      | Scale_var (i, e) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
          Ident.pp i (pp_prior 1) e
-      | MEadd (e1, e2) -> Format.fprintf fmt
+      | Add (e1, e2) -> Format.fprintf fmt
          (if 0 < prior then "(@[%a@ + %a@])" else "@[%a@ + %a@]")
          (pp_prior 0) e1 (pp_prior 0) e2
-      | MEsub (e1, e2) -> Format.fprintf fmt
+      | Sub (e1, e2) -> Format.fprintf fmt
          (if 0 < prior then "(@[%a@ - %a@])" else "@[%a@ - %a@]")
          (pp_prior 0) e1 (pp_prior 1) e2
-      | MEmult (e1, e2) -> Format.fprintf fmt
+      | Mult (e1, e2) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
          (pp_prior 1) e1 (pp_prior 1) e2 in
     pp_prior 0 fmt e
@@ -177,23 +177,23 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
            set i' (UFr t); set i (UFl i') in
 
     let rec type_check sline scol = function
-      | MEconst m ->
+      | Const m ->
          meet None sline (TYmat (Some (Mat.nb_lines m))),
          meet None scol (TYmat (Some (Mat.nb_cols m))),
          None
-      | MEvar i ->
+      | Var i ->
          let t = TYmat None in  (* i is a square matrix... *)
          let t = meet (Some i) t sline in  (* ...of size sline... *)
          let t = meet (Some i) t scol in  (* ...and scol *)
          constrain i t;
          t, t, Some i
-      | MEzeros (n, m) ->
+      | Zeros (n, m) ->
          meet None sline (TYmat (Some n)), meet None scol (TYmat (Some m)), None
-      | MEeye n | MEkronecker_sym (n, _, _) ->
+      | Eye n | Kronecker_sym (n, _, _) ->
          let t = meet None (TYmat (Some n)) sline in
          let t = meet None t scol in
          t, t, None
-      | MEblock a ->
+      | Block a ->
          if Array.length a <= 0 || Array.length a.(0) <= 0 then
            type_error None "Block matrix dimension error.";
          let nl = Array.length a in
@@ -227,16 +227,16 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
                 | _ -> TYmat None)
              (TYmat (Some 0)) a in
          sum slines, sum scols, None
-      | MElift_block (m, i, j, k, l) ->
+      | Lift_block (m, i, j, k, l) ->
          let sline = meet None sline (TYmat (Some i)) in
          let scol = meet None scol (TYmat (Some j)) in
          sline, scol, None
-      | MEtranspose m ->
+      | Transpose m ->
          let sline, scol, eq = type_check scol sline m in scol, sline, eq
-      | MEminus m | MEscale_const (_, m) -> type_check sline scol m
-      | MEscale_var (i, e) ->
+      | Minus m | Scale_const (_, m) -> type_check sline scol m
+      | Scale_var (i, e) ->
          constrain i TYscal; type_check sline scol e
-      | MEadd (e1, e2) | MEsub (e1, e2) ->
+      | Add (e1, e2) | Sub (e1, e2) ->
          let sline, scol, eq1 = type_check sline scol e1 in
          let sline, scol, eq2 = type_check sline scol e2 in
          let eq = match eq1, eq2 with
@@ -246,7 +246,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
            | Some i, Some j ->
               constrain i scol; equate i j; Some i in
          sline, scol, eq
-      | MEmult (e1, e2) ->
+      | Mult (e1, e2) ->
          let sline, smiddle, eq1 = type_check sline (TYmat None) e1 in
          let smiddle, scol, eq2 = type_check smiddle scol e2 in
          let eq = match eq1, eq2 with
@@ -320,27 +320,27 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
           let m = LEMat.of_array_array a in Hashtbl.add htbl id m; m in
 
     let rec scalarize = function
-      | MEconst m ->
+      | Const m ->
          let l = Mat.to_list_list m in
          let l = List.map (List.map LinExprSC.const) l in
          LEMat.of_list_list l
-      | MEvar i -> scalarize_mat_var i
-      | MEzeros (n, m) -> LEMat.zeros n m
-      | MEeye n -> LEMat.eye n
-      | MEkronecker_sym (n, i, j) -> LEMat.kronecker_sym n i j
-      | MEblock a -> LEMat.block (Array.map (Array.map scalarize) a)
-      | MElift_block (m, i, j, k, l) -> LEMat.lift_block (scalarize m) i j k l
-      | MEtranspose m -> LEMat.transpose (scalarize m)
-      | MEminus m -> LEMat.minus (scalarize m)
-      | MEscale_const (e, m) ->
+      | Var i -> scalarize_mat_var i
+      | Zeros (n, m) -> LEMat.zeros n m
+      | Eye n -> LEMat.eye n
+      | Kronecker_sym (n, i, j) -> LEMat.kronecker_sym n i j
+      | Block a -> LEMat.block (Array.map (Array.map scalarize) a)
+      | Lift_block (m, i, j, k, l) -> LEMat.lift_block (scalarize m) i j k l
+      | Transpose m -> LEMat.transpose (scalarize m)
+      | Minus m -> LEMat.minus (scalarize m)
+      | Scale_const (e, m) ->
          let le = LinExprSC.const e in
          LEMat.mult_scalar le (scalarize m)
-      | MEscale_var (i, e) ->
+      | Scale_var (i, e) ->
          let le = LinExprSC.var i in
          LEMat.mult_scalar le (scalarize e)
-      | MEadd (e1, e2) -> LEMat.add (scalarize e1) (scalarize e2)
-      | MEsub (e1, e2) -> LEMat.sub (scalarize e1) (scalarize e2)
-      | MEmult (e1, e2) -> LEMat.mult (scalarize e1) (scalarize e2) in
+      | Add (e1, e2) -> LEMat.add (scalarize e1) (scalarize e2)
+      | Sub (e1, e2) -> LEMat.sub (scalarize e1) (scalarize e2)
+      | Mult (e1, e2) -> LEMat.mult (scalarize e1) (scalarize e2) in
 
     (* scalarize *)
     let el = try List.map scalarize el

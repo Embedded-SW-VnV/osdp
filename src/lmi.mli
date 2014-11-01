@@ -29,24 +29,24 @@ module type S = sig
   (** Constructors. See the module {{:./Matrix.S.html}Matrix.S} for
       details. *)
   type matrix_expr =
-    | MEconst of Mat.t
-    | MEvar of Ident.t  (** All matrix variables are symmetric. *)
-    | MEzeros of int * int
-    | MEeye of int
-    | MEkronecker_sym of int * int * int
-    | MEblock of matrix_expr array array
-    | MElift_block of matrix_expr * int * int * int * int
-    | MEtranspose of matrix_expr
-    | MEminus of matrix_expr
-    | MEscale_const of Mat.Coeff.t * matrix_expr
-    | MEscale_var of Ident.t * matrix_expr
-    | MEadd of matrix_expr * matrix_expr
-    | MEsub of matrix_expr * matrix_expr
-    | MEmult of matrix_expr * matrix_expr
+    | Const of Mat.t
+    | Var of Ident.t  (** All matrix variables are symmetric. *)
+    | Zeros of int * int
+    | Eye of int
+    | Kronecker_sym of int * int * int
+    | Block of matrix_expr array array
+    | Lift_block of matrix_expr * int * int * int * int
+    | Transpose of matrix_expr
+    | Minus of matrix_expr
+    | Scale_const of Mat.Coeff.t * matrix_expr
+    | Scale_var of Ident.t * matrix_expr
+    | Add of matrix_expr * matrix_expr
+    | Sub of matrix_expr * matrix_expr
+    | Mult of matrix_expr * matrix_expr
 
   (** [Minimize var] or [Maximize var] or [Purefeas] (just checking
       feasibility). Ident [var] must appear as scalar variable
-      ([MEscale_var]) in the LMIs. *)
+      ([Scale_var]) in the LMIs. *)
   type obj_t = Minimize of Ident.t | Maximize of Ident.t | Purefeas
 
   type ('a, 'b) value_t = Scalar of 'a | Mat of 'b

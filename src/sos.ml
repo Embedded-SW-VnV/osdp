@@ -26,14 +26,14 @@ module type S = sig
     degree : int;
     homogeneous : bool }
   type polynomial_expr =
-    | PLconst of Poly.t
-    | PLvar of polynomial_var
-    | PLmult_scalar of Ident.t * polynomial_expr
-    | PLadd of polynomial_expr * polynomial_expr
-    | PLsub of polynomial_expr * polynomial_expr
-    | PLmult of polynomial_expr * polynomial_expr
-    | PLpower of polynomial_expr * int
-    | PLcompose of polynomial_expr * polynomial_expr list
+    | Const of Poly.t
+    | Var of polynomial_var
+    | Mult_scalar of Ident.t * polynomial_expr
+    | Add of polynomial_expr * polynomial_expr
+    | Sub of polynomial_expr * polynomial_expr
+    | Mult of polynomial_expr * polynomial_expr
+    | Power of polynomial_expr * int
+    | Compose of polynomial_expr * polynomial_expr list
   type obj_t = Minimize of Ident.t | Maximize of Ident.t | Purefeas
   type ('a, 'b) value_t = Scalar of 'a | Poly of 'b
   exception Type_error of string
@@ -54,37 +54,37 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     homogeneous : bool }
 
   type polynomial_expr =
-    | PLconst of Poly.t
-    | PLvar of polynomial_var
-    | PLmult_scalar of Ident.t * polynomial_expr
-    | PLadd of polynomial_expr * polynomial_expr
-    | PLsub of polynomial_expr * polynomial_expr
-    | PLmult of polynomial_expr * polynomial_expr
-    | PLpower of polynomial_expr * int
-    | PLcompose of polynomial_expr * polynomial_expr list
+    | Const of Poly.t
+    | Var of polynomial_var
+    | Mult_scalar of Ident.t * polynomial_expr
+    | Add of polynomial_expr * polynomial_expr
+    | Sub of polynomial_expr * polynomial_expr
+    | Mult of polynomial_expr * polynomial_expr
+    | Power of polynomial_expr * int
+    | Compose of polynomial_expr * polynomial_expr list
 
   let pp_names names fmt e =
     let rec pp_prior prior fmt = function
-      | PLconst p ->
+      | Const p ->
          let par =
            2 < prior || 0 < prior && List.length (Poly.to_list p) >= 2 in
          Format.fprintf fmt (if par then "(%a)" else "%a")
                         (Poly.pp_names names) p
-      | PLvar v -> Ident.pp fmt v.name
-      | PLmult_scalar (i, e) -> Format.fprintf fmt
+      | Var v -> Ident.pp fmt v.name
+      | Mult_scalar (i, e) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
          Ident.pp i (pp_prior 1) e
-      | PLadd (e1, e2) -> Format.fprintf fmt
+      | Add (e1, e2) -> Format.fprintf fmt
          (if 0 < prior then "(@[%a@ + %a@])" else "@[%a@ + %a@]")
          (pp_prior 0) e1 (pp_prior 0) e2
-      | PLsub (e1, e2) -> Format.fprintf fmt
+      | Sub (e1, e2) -> Format.fprintf fmt
          (if 0 < prior then "(@[%a@ - %a@])" else "@[%a@ - %a@]")
          (pp_prior 0) e1 (pp_prior 1) e2
-      | PLmult (e1, e2) -> Format.fprintf fmt
+      | Mult (e1, e2) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
          (pp_prior 1) e1 (pp_prior 1) e2
-      | PLpower (e, d) -> Format.fprintf fmt "%a^%i" (pp_prior 3) e d
-      | PLcompose (e, el) ->
+      | Power (e, d) -> Format.fprintf fmt "%a^%i" (pp_prior 3) e d
+      | Compose (e, el) ->
          Format.fprintf fmt "%a(@[%a@])" (pp_prior 2) e
                         (Utils.fprintf_list ~sep:",@ " (pp_prior 0)) el in
     pp_prior 0 fmt e
@@ -117,13 +117,13 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         with Not_found -> t in
       Ident.Map.add i t env in
     let rec type_check env = function
-      | PLconst p -> env
-      | PLvar v -> constrain v.name (TYpoly v) env
-      | PLmult_scalar (i, e) -> type_check (constrain i TYscal env) e
-      | PLpower (e, _) -> type_check env e
-      | PLadd (e1, e2) | PLsub (e1, e2) | PLmult (e1, e2) ->
+      | Const p -> env
+      | Var v -> constrain v.name (TYpoly v) env
+      | Mult_scalar (i, e) -> type_check (constrain i TYscal env) e
+      | Power (e, _) -> type_check env e
+      | Add (e1, e2) | Sub (e1, e2) | Mult (e1, e2) ->
          type_check (type_check env e1) e2
-      | PLcompose (e, el) -> List.fold_left type_check (type_check env e) el in
+      | Compose (e, el) -> List.fold_left type_check (type_check env e) el in
     List.fold_left type_check Ident.Map.empty el
 
   (*************)
@@ -186,19 +186,19 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           Hashtbl.add htbl params.name poly; poly in
 
     let rec scalarize = function
-      | PLconst p ->
+      | Const p ->
          let l = Poly.to_list p in
          let l = List.map (fun (m, c) -> m, LinExprSC.const c) l in
          LEPoly.of_list l
-      | PLvar v -> scalarize_poly_var v
-      | PLmult_scalar (i, e) ->
+      | Var v -> scalarize_poly_var v
+      | Mult_scalar (i, e) ->
          let le = LinExprSC.var i in
          LEPoly.mult_scalar le (scalarize e)
-      | PLpower (e, d) -> LEPoly.power (scalarize e) d
-      | PLadd (e1, e2) -> LEPoly.add (scalarize e1) (scalarize e2)
-      | PLsub (e1, e2) -> LEPoly.sub (scalarize e1) (scalarize e2)
-      | PLmult (e1, e2) -> LEPoly.mult (scalarize e1) (scalarize e2)
-      | PLcompose (e, el) ->
+      | Power (e, d) -> LEPoly.power (scalarize e) d
+      | Add (e1, e2) -> LEPoly.add (scalarize e1) (scalarize e2)
+      | Sub (e1, e2) -> LEPoly.sub (scalarize e1) (scalarize e2)
+      | Mult (e1, e2) -> LEPoly.mult (scalarize e1) (scalarize e2)
+      | Compose (e, el) ->
          LEPoly.compose (scalarize e) (List.map scalarize el) in
 
     (* scalarize *)
