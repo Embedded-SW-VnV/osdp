@@ -3,6 +3,8 @@
 <osdp.cmxs>: link_libosdp
 <*.cmx> and not "osdp.cmx": for-pack(Osdp)
 <osdp_top.ml>: package(compiler-libs.toplevel)
+<pa_osdp.ml>: use_camlp4
+<pa_parser.ml*>: use_camlp4
 <pa_sos.ml>: use_camlp4
 <pa_sos_parser.ml*>: use_camlp4
 <pa_lmi.ml>: use_camlp4

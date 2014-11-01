@@ -28,6 +28,8 @@ n ::= 0 | [1-9][0-9]*
 f ::= n | "0x" [0-9]+ "p" "-"? [0-9]+
     | ("0" | [1-9][0-9]* ) "." [0-9]* | "." [0-9]+
 
+mid ::= 'x'[0-9]+
+
 id ::= [a-z][a-zA-Z0-9_']*  (OCaml id)
 
 uid ::= [A-Z][a-zA-Z0-9_']*
@@ -52,6 +54,21 @@ b ::= l | l ";" b
 l ::= e | e "," l
 
 lmi ::= e | e "<=" "0" | e ">=" "0" | e "<=" e | e ">=" e
+
+m ::= mid | mid "^" ncid | m m
+
+e ::= id | "?" id | m | f m
+    | i "*:" e
+    | e "+" e | e "-" e | "-" e | e "*" e | e "^" ncid
+    | e "(" l ")"
+    | "(" e ")"
+    | f
+
+l ::= le | le "," l
+
+le ::= e | "$" OCaml code (type e list) "$"
+
+sos ::= e | e "<=" e | e ">=" e
     ]} *)
 
 (**/**)
@@ -71,7 +88,7 @@ module Error = struct
   let to_string = Format.asprintf "%a@." print
 end
 
-let parse _loc _ s =
+let parse rule _loc _ s =
   (* let _ = Parsing.set_trace true in *)
   let lexbuf =
     let lexbuf = Lexing.from_string s in
@@ -87,15 +104,19 @@ let parse _loc _ s =
     lexbuf.Lexing.lex_curr_p <- start_p;
     lexbuf in
   try
-    Pa_lmi_parser.lmi Pa_lmi_lexer.token lexbuf
+    rule Pa_lexer.token lexbuf
   with
   | Failure s
-  | Pa_lmi_lexer.Lexing_error s -> raise (Error.E (lexbuf, s))
+  | Pa_lexer.Lexing_error s -> raise (Error.E (lexbuf, s))
   | Parsing.Parse_error -> raise (Error.E (lexbuf, "syntax error"))
+
+let register s rule =
+  Camlp4.PreCast.Quotation.add
+    s Camlp4.PreCast.Quotation.DynAst.expr_tag (parse rule)
 
 let _ =
   let module M = Camlp4.ErrorHandler.Register(Error) in ();
-  Camlp4.PreCast.Quotation.add
-    "lmi" Camlp4.PreCast.Quotation.DynAst.expr_tag parse;
+  register "lmi" Pa_parser.lmi;
+  register "sos" Pa_parser.sos;
   Camlp4.PreCast.Quotation.default := "lmi"
 (**/**)

@@ -6,7 +6,7 @@ ocamlfind:
 	ocamlfind ocamlopt -linkpkg -package osdp -package camlp4 -syntax camlp4o -o demo demo.ml
 
 ocamlopt:
-	ocamlopt -I $$(ocamlfind query zarith) -I $$(ocamlfind query osdp) zarith.cmxa osdp.cmxa -pp 'camlp4o -I $$(ocamlfind query osdp) pa_sos.cma pa_lmi.cma' -o demo demo.ml
+	ocamlopt -I $$(ocamlfind query zarith) -I $$(ocamlfind query osdp) zarith.cmxa osdp.cmxa -pp 'camlp4o -I $$(ocamlfind query osdp) pa_osdp.cma' -o demo demo.ml
 
 clean:
 	ocamlbuild -clean
