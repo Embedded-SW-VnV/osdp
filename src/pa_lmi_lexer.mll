@@ -19,7 +19,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *)
 
-open Pa_sos_parser
+open Pa_lmi_parser
 
 exception Lexing_error of string
 }
@@ -34,21 +34,28 @@ rule token = parse
   | blank+ { token lexbuf }
   | '?' { QMARK }
   | '"' { DQUOTE }
-  | '^' { HAT }
+  | '\'' { SQUOTE }
   | "*:" { TIMESSEMI }
   | '+' { PLUS }
   | '-' { MINUS }
   | '*' { TIMES }
   | '(' { LPAR }
   | ')' { RPAR }
+  | '[' { LBRA }
+  | ']' { RBRA }
   | ',' { COMMA }
+  | ';' { SEMICOL }
+  | "zeros" { ZEROS }
+  | "eye" { EYE }
+  | "krsym" { KRSYM }
+  | "lift" { LIFT }
   | "<=" { LEQ }
   | ">=" { GEQ }
   | ("0x" digit+ 'p' '-'? digit+) as n { FLOAT n }
   | (('0' | (['1'-'9'] digit*)) '.' digit*) as n { FLOAT n }
   | ('.' digit+) as n { FLOAT n }
-  | ('0' | ['1'-'9'] digit*) as n { INT n }
-  | 'x' ((digit+) as n) { MID (int_of_string n) }
+  | '0' { INT0 }
+  | (['1'-'9'] digit*) as n { INT n }
   | (['a'-'z'] (alpha|digit|['_' '\''])*) as n { ID n }
   | (alpha (alpha|digit|['_' '\''])*) as n { UID n }
   | '$' { AQ (antiquotation 0 lexbuf) }

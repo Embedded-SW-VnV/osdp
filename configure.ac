@@ -114,7 +114,7 @@ if test "x$with_camlp4" != xno; then
 fi
 if test "x$with_camlp4" != xno; then
   with_camlp4=yes
-  CAMLP4_PARSERS="pa_sos.cma"
+  CAMLP4_PARSERS="pa_sos.cma pa_lmi.cma"
 else
   CAMLP4_PARSERS=""
 fi

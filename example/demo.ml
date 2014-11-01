@@ -9,13 +9,9 @@ open Osdp.Lmi.Float
 let () = Format.printf "LMI@."
 let a = Mat.of_list_list [[1.5; -0.7]; [1.; 0.]]
 let p_id = Osdp.Ident.create "p"
-let e1 = MEsub (MEvar p_id,
-                MEmult (MEmult (MEtranspose (MEconst a),
-                                MEvar p_id),
-                        MEconst a))
-let e2 = MEsub (MEvar p_id, MEeye 2)
-(* let e1 = << ?p_id - a' * ?p_id * a >> *)
-(* let e2 = << ?p_id - eye(2) >> *)
+let a = << [1.5, -0.7; 1, 0] >>  (* or <:lmi< ... > *)
+let e1 = << ?p_id - a ' * ?p_id * a >>
+let e2 = << ?p_id - eye(2) >>
 let () = Format.printf "e1 = %a@." pp e1
 let () = Format.printf "e2 = %a@." pp e2
 let _, _, vars = solve ~solver Purefeas [e1; e2]

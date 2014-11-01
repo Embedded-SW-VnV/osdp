@@ -51,6 +51,7 @@ let printers = [
 
 let parsers = [
   "pa_sos.cma";
+  "pa_lmi.cma";
 ]
 
 let install_commands =

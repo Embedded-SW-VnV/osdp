@@ -43,7 +43,7 @@ let monom _loc v d =
 %token <string> UID
 %token <string> AQ
 %token QMARK DQUOTE HAT TIMESSEMI PLUS MINUS TIMES
-%token LPAR RPAR LBRA RBRA COMMA LEQ GEQ
+%token LPAR RPAR COMMA LEQ GEQ
 %token UMINUS PVM EOF
 
 %left PLUS MINUS
@@ -96,7 +96,7 @@ expr:
 | f monom { let _loc = loc () in
             <:expr< Osdp.Sos.Float.PLconst
                       (Osdp.Sos.Float.Poly.of_list
-                         [($ $2 $, (Osdp.Sos.Float.Poly.Coeff.of_float $ $1 $))]) >> }
+                         [($ $2 $, $ $1 $)]) >> }
 | i TIMESSEMI expr { let _loc = loc () in
                      <:expr< Osdp.Sos.Float.PLmult_scalar ($ $1 $, $ $3 $) >> }
 | expr PLUS expr { let _loc = loc () in
@@ -114,14 +114,11 @@ expr:
                   <:expr<Osdp.Sos.Float.PLpower ($ $1 $, $ $3 $) >> }
 | expr LPAR l RPAR { let _loc = loc () in
                      <:expr< Osdp.Sos.Float.PLcompose ($ $1 $, $ $3 $) >> }
-| expr LPAR LBRA ID RBRA RPAR { let _loc = loc () in
-                                <:expr< Osdp.Sos.Float.PLcompose ($ $1 $, $lid: $4 $) >> }
 | LPAR expr RPAR { $2 }
 | f { let _loc = loc () in
       <:expr< Osdp.Sos.Float.PLconst
                 (Osdp.Sos.Float.Poly.of_list
-                   [Osdp.Monomial.of_list [],
-                    Osdp.Sos.Float.Poly.Coeff.of_float $ $1 $]) >> }
+                   [Osdp.Monomial.of_list [], $ $1 $]) >> }
 
 l:
 | le { $1 }

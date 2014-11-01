@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *)
 
-(** Camlp4 quotation for {{:./Sos.Float.html#TYPEpolynomial_expr}Sos.Float.polynomial_expr}. *)
+(** Camlp4 quotation for {{:./Lmi.Float.html#TYPEmatrix_expr}Lmi.Float.matrix_expr}. *)
 
 (** See file examples/demo.ml for examples of use.
     Syntax:
@@ -27,8 +27,6 @@ n ::= 0 | [1-9][0-9]*
 
 f ::= n | "0x" [0-9]+ "p" "-"? [0-9]+
     | ("0" | [1-9][0-9]* ) "." [0-9]* | "." [0-9]+
-
-mid ::= 'x'[0-9]+
 
 id ::= [a-z][a-zA-Z0-9_']*  (OCaml id)
 
@@ -40,20 +38,20 @@ i ::= "?" """ vid """ | "?" id
 
 ncid ::= n | id | "$" OCaml code (type int) "$"
 
-m ::= mid | mid "^" ncid | m m
-
-e ::= id | "?" id | m | f m
-    | i "*:" e
-    | e "+" e | e "-" e | "-" e | e "*" e | e "^" ncid
-    | e "(" l ")"
-    | "(" e ")"
+e ::= id | i
+    | "zeros" "(" ncid "," ncid ")" | "eye" "(" ncid ")"
+    | "krsym" "(" ncid "," ncid "," ncid ")"
+    | "[" b "]" | "lift" "(" e "," ncid "," ncid "," ncid "," ncid ")"
+    | e "'" | "-" e
+    | f "*:" e | id "*:" e | i "*:" e
+    | e "+" e | e "-" e | e "*" e | "(" e ")"
     | f
 
-l ::= le | le "," l
+b ::= l | l ";" b
 
-le ::= e | "$" OCaml code (type e list) "$"
+l ::= e | e "," l
 
-sos ::= e | e "<=" e | e ">=" e
+lmi ::= e | e "<=" "0" | e ">=" "0" | e "<=" e | e ">=" e
     ]} *)
 
 (**/**)
@@ -89,15 +87,15 @@ let parse _loc _ s =
     lexbuf.Lexing.lex_curr_p <- start_p;
     lexbuf in
   try
-    Pa_sos_parser.sos Pa_sos_lexer.token lexbuf
+    Pa_lmi_parser.lmi Pa_lmi_lexer.token lexbuf
   with
   | Failure s
-  | Pa_sos_lexer.Lexing_error s -> raise (Error.E (lexbuf, s))
+  | Pa_lmi_lexer.Lexing_error s -> raise (Error.E (lexbuf, s))
   | Parsing.Parse_error -> raise (Error.E (lexbuf, "syntax error"))
 
 let _ =
   let module M = Camlp4.ErrorHandler.Register(Error) in ();
   Camlp4.PreCast.Quotation.add
-    "sos" Camlp4.PreCast.Quotation.DynAst.expr_tag parse;
-  Camlp4.PreCast.Quotation.default := "sos"
+    "lmi" Camlp4.PreCast.Quotation.DynAst.expr_tag parse;
+  Camlp4.PreCast.Quotation.default := "lmi"
 (**/**)
