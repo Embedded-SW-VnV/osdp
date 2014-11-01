@@ -165,8 +165,12 @@ f:
 | INT { Ast.ExFlo (loc (), $1) }
 | FLOAT { Ast.ExFlo (loc (), $1) }
 
-vid:
+id:
+| MID { "x" ^ string_of_int $1 }
 | ID { $1 }
+
+vid:
+| id { $1 }
 | UID { $1 }
 
 i:
@@ -174,16 +178,16 @@ i:
                             Ast.ExApp (l,
                                        id_of_list l ["Osdp"; "Ident"; "create"],
                                        Ast.ExStr (l, $3)) }
-| QMARK ID { id_of_list (loc ()) [$2] }
+| QMARK id { id_of_list (loc ()) [$2] }
 
 ncid:
 | INT0 { Ast.ExInt (loc (), "0") }
 | INT { Ast.ExInt (loc (), $1) }
-| ID { id_of_list (loc ()) [$1] }
+| id { id_of_list (loc ()) [$1] }
 | AQ { Camlp4.PreCast.Syntax.AntiquotSyntax.parse_expr (loc ()) $1 }
 
 exprl:
-| ID { id_of_list (loc ()) [$1] }
+| id { id_of_list (loc ()) [$1] }
 | i { olfl ["MEvar"] [$1] }
 | ZEROS LPAR ncid COMMA ncid RPAR { olfl ["MEzeros"] [$3; $5] }
 | EYE LPAR ncid RPAR { olfl ["MEeye"] [$3] }
@@ -194,7 +198,7 @@ exprl:
 | exprl SQUOTE { olfl ["MEtranspose"] [$1] }
 | MINUS exprl %prec UMINUS { olfl ["MEminus"] [$2] }
 | f TIMESSEMI exprl { olfl ["MEscale_const"] [$1; $3] }
-| ID TIMESSEMI exprl { let l = loc () in olf l ["MEscale_const"]
+| id TIMESSEMI exprl { let l = loc () in olf l ["MEscale_const"]
                                              [id_of_list l [$1]; $3] }
 | i TIMESSEMI exprl { olfl ["MEscale_var"] [$1; $3] }
 | exprl PLUS exprl { olfl ["MEadd"] [$1; $3] }
@@ -234,7 +238,7 @@ monom:
 
 exprs:
 | ID { id_of_list (loc ()) [$1] }
-| QMARK ID { let l = loc () in osf l ["PLvar"] [id_of_list l [$2]] }
+| QMARK id { let l = loc () in osf l ["PLvar"] [id_of_list l [$2]] }
 | monom { let l = loc () in
           osf l ["PLconst"] [osf l ["Poly"; "of_list"]
                                  [slist l (pair l $1 (Ast.ExFlo (l, "1.")))]] }
