@@ -42,14 +42,14 @@ let olf loc idl el =
     (fun f e -> Ast.ExApp (loc, f, e))
     (id_of_list loc (["Osdp"; "Lmi"; "Float"] @ idl)) el
 
-let olfl = olf (loc ())
+let olfl idl el = olf (loc ()) idl el
 
 let osf loc idl el =
   List.fold_left
     (fun f e -> Ast.ExApp (loc, f, e))
     (id_of_list loc (["Osdp"; "Sos"; "Float"] @ idl)) el
 
-let osfl = osf (loc ())
+let osfl idl el = osf (loc ()) idl el
 
 let cons l e1 e2 =
   Ast.ExApp (l, Ast.ExApp (l, Ast.ExId (l, Ast.IdUid (l, "::")), e1), e2)
