@@ -18,7 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *)
 
-(** Camlp4 quotation for {{:./Lmi.Float.html#TYPEmatrix_expr}Lmi.Float.matrix_expr}. *)
+(** Camlp4 quotation for
+    {{:./Lmi.Float.html#TYPEmatrix_expr}Lmi.Float.matrix_expr} and
+    {{:./Sos.Float.html#TYPEpolynomial_expr}Sos.Float.matrix_expr}. *)
 
 (** See file examples/demo.ml for examples of use.
     Syntax:
@@ -49,9 +51,9 @@ e ::= id | i
     | e "+" e | e "-" e | e "*" e | "(" e ")"
     | f
 
-b ::= l | l ";" b
+b ::= li | li ";" b
 
-l ::= e | e "," l
+li ::= e | e "," li
 
 lmi ::= e | e "<=" "0" | e ">=" "0" | e "<=" e | e ">=" e
 

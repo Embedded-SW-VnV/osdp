@@ -209,12 +209,12 @@ exprl:
       olf l ["MEconst"] [olf l ["Mat"; "of_list_list"] [slist l (slist l $1)]] }
 
 b:
-| l { Ast.ExArr (loc (), $1) }
-| l SEMICOL b { Ast.ExSem (loc (), Ast.ExArr (Ast.loc_of_expr $1, $1), $3) }
+| li { Ast.ExArr (loc (), $1) }
+| li SEMICOL b { Ast.ExSem (loc (), Ast.ExArr (Ast.loc_of_expr $1, $1), $3) }
 
-l:
+li:
 | exprl { $1 }
-| exprl COMMA l { Ast.ExSem (loc (), $1, $3) }
+| exprl COMMA li { Ast.ExSem (loc (), $1, $3) }
 
 lmi:
 | exprl EOF { $1 }
@@ -254,16 +254,16 @@ exprs:
                                   $2] }
 | exprs TIMES exprs { osfl ["PLmult"] [$1; $3] }
 | exprs HAT ncid { osfl ["PLpower"] [$1; $3] }
-| exprs LPAR ls RPAR { osfl ["PLcompose"] [$1; $3] }
+| exprs LPAR l RPAR { osfl ["PLcompose"] [$1; $3] }
 | LPAR exprs RPAR { $2 }
 | f { let l = loc () in
       osf l ["PLconst"]
           [osf l ["Poly"; "of_list"]
                [slist l (pair l (Ast.ExApp (l, id_of_list l ["Osdp"; "Monomial"; "of_list"], empty_list l)) $1)]] }
 
-ls:
+l:
 | le { $1 }
-| le COMMA ls { let l = loc () in
+| le COMMA l { let l = loc () in
                 Ast.ExApp (l, Ast.ExApp (l, id_of_list l ["@"], $1), $3) }
 
 le:
