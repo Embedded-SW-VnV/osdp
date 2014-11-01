@@ -35,8 +35,8 @@ module type S = sig
   val nb_vars : t -> int
   val degree : t -> int
   val is_homogeneous : t -> bool
-  val pp : ?names:string list -> Format.formatter -> t -> unit
-  val pp_no_names : Format.formatter -> t -> unit
+  val pp : Format.formatter -> t -> unit
+  val pp_names : string list -> Format.formatter -> t -> unit
 end
 
 module Make (SC : Scalar.S) : S with module Coeff = SC = struct
@@ -120,23 +120,23 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
        let d = Monomial.degree h in
        List.for_all (fun (m, _) -> Monomial.degree m = d) t
 
-  let pp ?names fmt = function
+  let pp_names names fmt = function
     | [] -> Format.fprintf fmt "0"
     | l ->
        let pp_coeff fmt (m, s) =
          if Coeff.is_zero (Coeff.sub s Coeff.one) then
-           Format.fprintf fmt "%a" (Monomial.pp ?names) m
+           Format.fprintf fmt "%a" (Monomial.pp_names names) m
          else if Coeff.is_zero (Coeff.add s Coeff.one) then
-           Format.fprintf fmt "-%a" (Monomial.pp ?names) m
+           Format.fprintf fmt "-%a" (Monomial.pp_names names) m
          else if Monomial.compare m (Monomial.of_list []) = 0 then
            Format.fprintf fmt "%a" Coeff.pp s
          else
-           Format.fprintf fmt "%a %a" Coeff.pp s (Monomial.pp ?names) m in
+           Format.fprintf fmt "%a %a" Coeff.pp s (Monomial.pp_names names) m in
        Format.fprintf fmt "@[%a@]"
                       (Utils.fprintf_list ~sep:"@ + " pp_coeff)
                       (List.rev l)
 
-  let pp_no_names = pp ~names:[]
+  let pp = pp_names []
 end
 
 module Q = Make (Scalar.Q)

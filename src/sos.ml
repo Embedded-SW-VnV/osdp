@@ -40,8 +40,8 @@ module type S = sig
   val solve : ?solver:Sdp.solver -> obj_t -> polynomial_expr list ->
               SdpRet.t * (float * float)
               * (Poly.Coeff.t, Poly.t) value_t Ident.Map.t
-  val pp : ?names:string list -> Format.formatter -> polynomial_expr -> unit
-  val pp_no_names : Format.formatter -> polynomial_expr -> unit
+  val pp : Format.formatter -> polynomial_expr -> unit
+  val pp_names : string list -> Format.formatter -> polynomial_expr -> unit
 end
 
 module Make (P : Polynomial.S) : S with module Poly = P = struct
@@ -63,12 +63,13 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     | PLpower of polynomial_expr * int
     | PLcompose of polynomial_expr * polynomial_expr list
 
-  let pp ?names fmt e =
+  let pp_names names fmt e =
     let rec pp_prior prior fmt = function
       | PLconst p ->
          let par =
            2 < prior || 0 < prior && List.length (Poly.to_list p) >= 2 in
-         Format.fprintf fmt (if par then "(%a)" else "%a") (Poly.pp ?names) p
+         Format.fprintf fmt (if par then "(%a)" else "%a")
+                        (Poly.pp_names names) p
       | PLvar v -> Ident.pp fmt v.name
       | PLmult_scalar (i, e) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
@@ -88,7 +89,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
                         (Utils.fprintf_list ~sep:",@ " (pp_prior 0)) el in
     pp_prior 0 fmt e
 
-  let pp_no_names = pp ~names:[]
+  let pp = pp_names []
 
   (*****************)
   (* Type checking *)

@@ -47,14 +47,13 @@ and list_le n d =
   else if d <= 0 then list_eq n 0
   else list_le n (d - 1) @ list_eq n d
 
-let pp ?names fmt m =
+let pp_names names fmt m =
   let rec name_vars i names = function
     | [] -> []
     | h :: t ->
        let n, names =
          match names with [] -> "x" ^ string_of_int i, [] | n :: t -> n, t in
        (n, h) :: name_vars (i + 1) names t in
-  let names = match names with None -> [] | Some names -> names in
   let l = name_vars 0 names m in
   let l = List.filter (fun (_, e) -> e <> 0) l in
   match l with
@@ -69,4 +68,4 @@ let pp ?names fmt m =
                                           Format.fprintf fmt "%s^%i" n e))
        l
 
-let pp_no_names = pp ~names:[]
+let pp = pp_names []

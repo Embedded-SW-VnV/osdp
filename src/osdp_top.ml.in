@@ -41,12 +41,12 @@ let printers = [
   "Osdp.Lmi.Float.pp";
   "Osdp.Matrix.Q.pp";
   "Osdp.Matrix.Float.pp";
-  "Osdp.Monomial.pp_no_names";
-  "Osdp.Polynomial.Q.pp_no_names";
-  "Osdp.Polynomial.Float.pp_no_names";
+  "Osdp.Monomial.pp";
+  "Osdp.Polynomial.Q.pp";
+  "Osdp.Polynomial.Float.pp";
   "Osdp.Scalar.Q.pp";
   "Osdp.Scalar.Float.pp";
-  "Osdp.Sos.Float.pp_no_names";
+  "Osdp.Sos.Float.pp";
 ]
 
 let parsers = [
@@ -57,7 +57,8 @@ let install_commands =
   List.map (fun s -> "#install_printer " ^ s ^ ";;") printers
   @ (if with_camlp4 <> "yes" then []
      else
-       "#camlp4o;;" :: List.map (fun s -> "#load \"" ^ s ^ "\";;") parsers)
+       "#load \"dynlink.cma\";;" :: "#load \"camlp4o.cma\";;"
+       :: List.map (fun s -> "#load \"" ^ s ^ "\";;") parsers)
 
 let eval_phrase s =
   (* Format.fprintf *)
@@ -78,7 +79,7 @@ let _ =
     begin
       Format.fprintf
         error_fmt
-        "Something weird happened while installing Osdp library printers/parsers";
+        "Something weird happened while installing Osdp library printers/parsers@.";
       Format.pp_print_flush error_fmt ()
     end
 (**/**)

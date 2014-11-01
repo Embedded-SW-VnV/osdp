@@ -77,14 +77,11 @@ module type S = sig
                                          
   (** {2 Printing.} *)
 
+  val pp : Format.formatter -> t -> unit
+
   (** See {{:./Monomial.html#VALpp}Monomial.pp} for details about
       [names]. *)
-  val pp : ?names:string list -> Format.formatter -> t -> unit
-
-  (**/**)
-  (* #install_printer wouldn't accept the previous function in the toplevel. *)
-  val pp_no_names : Format.formatter -> t -> unit
-  (**/**)
+  val pp_names : string list -> Format.formatter -> t -> unit
 end
 
 module Make (SC : Scalar.S) : S with module Coeff = SC

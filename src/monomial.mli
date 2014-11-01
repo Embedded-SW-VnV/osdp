@@ -52,13 +52,11 @@ val list_eq : int -> int -> t list
     x2^2\]]). [n] and [d] must be non negative. *)
 val list_le : int -> int -> t list
 
-(** Pretty printing. If [names] is not provided or is to short,
-    variables will be printed as x0, x1,... Provided a too short
-    [names] list is not advisable however as the generated names may
-    collide with the provided ones. *)
-val pp : ?names:string list -> Format.formatter -> t -> unit
+(** Pretty printing. Variables will be printed as x0, x1,... *)
+val pp : Format.formatter -> t -> unit
 
-(**/**)
-(* #install_printer wouldn't accept the previous function in the toplevel. *)
-val pp_no_names : Format.formatter -> t -> unit
-(**/**)
+(** Pretty printing. If [names] is to short, variables will be printed
+    as x0, x1,... Providing a too short [names] list is not advisable
+    however, as the generated names may collide with the provided
+    ones. *)
+val pp_names : string list -> Format.formatter -> t -> unit

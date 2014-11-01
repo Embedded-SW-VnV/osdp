@@ -74,9 +74,9 @@ sos ::= e | e "<=" e | e ">=" e
     ]} *)
 
 (**/**)
-module Error = struct 
-  type t = Lexing.lexbuf * string 
-  exception E of t 
+module Error = struct
+  type t = Lexing.lexbuf * string
+  exception E of t
   let print fmt (lexbuf, s) =
     let loc =
       let start_p = Lexing.lexeme_start_p lexbuf in
