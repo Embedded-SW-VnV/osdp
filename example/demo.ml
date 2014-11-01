@@ -30,8 +30,6 @@ open Osdp.Sos.Float
 let () = Format.printf "SOS@."
 let deg = 4
 let names = ["x"; "y"]
-let pp = pp ~names
-let pp_poly = Poly.pp ~names
 let p = { name = Osdp.Ident.create "p";
           nb_vars = 2;
           degree = deg;
@@ -49,5 +47,5 @@ let () =
     let p' = Osdp.Ident.Map.find p.name vars in
     match p' with
     | Scalar _ -> Format.printf "SDP error.@."
-    | Poly p' -> Format.printf "%a = %a@." Osdp.Ident.pp p.name pp_poly p'
+    | Poly p' -> Format.printf "%a = %a@." Osdp.Ident.pp p.name Poly.pp p'
   with Not_found -> Format.printf "SDP error.@."
