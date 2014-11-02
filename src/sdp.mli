@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *)
 
-(** Slightly higher level interface to the {{:./Csdp.html}Csdp} or
-    {{:./Moseksdp.html}Moseksdp} module. *)
+(** {b Common interface for SDP} ({{:./Csdp.html}Csdp} or
+    {{:./Moseksdp.html}Moseksdp}). *)
 
 (** Primal-dual correspondence: the primal problem {[max tr(C X)
     tr(A_1 X) = a_1
@@ -62,7 +62,7 @@ val block_diag_to_sparse : matrix block_diag -> sparse_matrix block_diag
 
 type solver = Csdp | Mosek
 
-(** Objective (matric C). *)
+(** Objective (matrix C). *)
 type 'a obj = 'a block_diag
 
 (** Constraints (tr(A_i X) = a_i), [Le (A_i, a_i)] will automatically
