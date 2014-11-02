@@ -421,7 +421,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
          | Minimize id' when Ident.compare id id' = 0 -> 1.
          | Maximize id' when Ident.compare id id' = 0 -> -1.
          | _ -> 0. in
-       id :: lv, (blks, a_i) :: lc) blks_A ([], []) in
+       id :: lv, Sdp.Eq (blks, a_i) :: lc) blks_A ([], []) in
 
     (* call SDP solver *)
     let ret, (pres, dres), (primal_sol, dual_sol) =

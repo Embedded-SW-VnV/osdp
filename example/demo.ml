@@ -2,7 +2,7 @@
 (* #use "topfind";; *)
 (* #require "osdp";; *)
 
-let solver = Osdp.Sdp.Csdp  (* Sdp.Mosek *)
+let solver = Osdp.Sdp.Csdp  (* Osdp.Sdp.Mosek *)
 
 open Osdp.Lmi.Float
 

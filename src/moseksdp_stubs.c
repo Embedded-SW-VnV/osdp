@@ -171,7 +171,7 @@ static MSKrescodee MSK_read_barxj(MSKtask_t task, int j, int dim, value *matrix)
 
   MS(getbarxj(task, MSK_SOL_ITR, j, barx));
   
-  *matrix = caml_alloc(dim, 0);
+  *matrix = dim > 0 ? caml_alloc(dim, 0) : Atom(0);
   for (i = 0; i < dim; ++i) {
     line = caml_alloc(dim * Double_wosize, Double_array_tag);
     Store_field(*matrix, i, line);
@@ -219,7 +219,9 @@ static MSKrescodee MSK_read_y(MSKtask_t task, int nb_cstrs, value *ml_res_y)
 
   MS(gety(task, MSK_SOL_ITR, y));
               
-  *ml_res_y = caml_alloc(nb_cstrs * Double_wosize, Double_array_tag);
+  *ml_res_y = nb_cstrs > 0
+    ? caml_alloc(nb_cstrs * Double_wosize, Double_array_tag)
+    : Atom(Double_array_tag);
   for (i = 0; i < nb_cstrs; ++i) {
     Store_double_field(*ml_res_y, i, -y[i]);
   }

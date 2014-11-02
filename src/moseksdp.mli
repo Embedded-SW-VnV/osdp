@@ -27,10 +27,10 @@
 (** See  {{:./Sdp.html}Sdp} for definition of SDP with primal and dual. *)
 
 (** Matrices. Sparse representation as triplet [(i, j, x)] meaning
-    that the coefficient at line [i] and column [j] has value [x]. All
-    forgotten coefficients are assumed to be [0.0]. Since matrices are
-    symmetric, only the lower triangular part (j <= i) must be
-    given. No duplicates are allowed. *)
+    that the coefficient at line [i] >= 0 and column [j] >= 0 has
+    value [x]. All forgotten coefficients are assumed to be
+    [0.0]. Since matrices are symmetric, only the lower triangular
+    part (j <= i) must be given. No duplicates are allowed. *)
 type matrix = (int * int * float) list
 
 (** Block diagonal matrices (sparse representation, forgetting null
@@ -43,6 +43,14 @@ type block_diag_matrix = (int * matrix) list
     tr(A_1 X) = a_1,..., tr(A_n X) = a_n, X psd \} with [\[(A_1,
     a_1);...; (A_n, a_n)\]] the [constraints] list. It returns both
     the primal and dual objective values and a witness for X (primal)
-    and y (dual, see {{:./Sdp.html}Sdp}). *)
+    and y (dual, see {{:./Sdp.html}Sdp}). In case of success (or
+    partial success), the block diagonal matrix returned for X
+    contains exactly the indices that appear in the objective or one
+    of the constraints. Size of each diagonal block in X is the
+    maximum size appearing for that block in the objective or one of
+    the constraints. In case of success (or partial success), the
+    array returned for y has the same size and same order than the
+    input list of constraints. *)
 val solve : block_diag_matrix -> (block_diag_matrix * float) list ->
-            SdpRet.t * (float * float) * (float array array list * float array)
+            SdpRet.t * (float * float)
+            * ((int * float array array) list * float array)

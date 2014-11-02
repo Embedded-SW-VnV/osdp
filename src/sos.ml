@@ -280,7 +280,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
              eq_blk := (j, i, -. c) :: !eq_blk) l_eq;
         let var_blks = Array.to_list (Array.mapi (fun i b -> i, b) var_blks) in
         (* A_i, a_i *)
-        (var_total + ei, !eq_blk) :: var_blks, -. Poly.Coeff.to_float c_vars in
+        Sdp.Eq ((var_total + ei, !eq_blk) :: var_blks,
+                -. Poly.Coeff.to_float c_vars) in
       (* equate coefficients (linear expressions) of polynomials
          corresponding to the same monomial *)
       let rec match_polys l p1 p2 = match p1, p2 with

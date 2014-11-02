@@ -22,5 +22,29 @@ type matrix = (int * int * float) list
 type block_diag_matrix = (int * matrix) list
 
 external solve : block_diag_matrix -> (block_diag_matrix * float) list ->
-                 SdpRet.t * (float * float) * (float array array list * float array) =
+                 SdpRet.t * (float * float)
+                 * (float array array list * float array) =
   "moseksdp_solve"
+
+(* The C stub above returns a block diagonal matrix with (M-m+1)
+   blocks where m and M are respectively the min and max diagonal
+   block index appearing in the input (obj and constraints). We have
+   to clean that to keep only indices actually appearing in the
+   input. *)
+let solve obj constraints =
+  let ret, res, (res_X, res_y) = solve obj constraints in
+  let min_idx, max_idx =
+    let range_idx_block_diag =
+      List.fold_left (fun (mi, ma) (i, _) -> min mi i, max ma i) in
+    let range = range_idx_block_diag (max_int, min_int) obj in
+    List.fold_left
+      (fun range (m, _) -> range_idx_block_diag range m)
+      range constraints in
+  let appear =
+    let a = Array.make (max_idx - min_idx + 1) false in
+    let mark = List.iter (fun (i, _) -> a.(i - min_idx) <- true) in
+    mark obj; List.iter (fun (m, _) -> mark m) constraints; a in
+  let res_X =
+    List.mapi (fun i m -> i + min_idx, m) res_X
+    |> List.filter (fun (i, _) -> appear.(i - min_idx)) in
+  ret, res, (res_X, res_y)
