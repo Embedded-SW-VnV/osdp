@@ -51,6 +51,13 @@ let osf loc idl el =
 
 let osfl idl el = osf (loc ()) idl el
 
+let opf loc idl el =
+  List.fold_left
+    (fun f e -> Ast.ExApp (loc, f, e))
+    (id_of_list loc (["Osdp"; "Polynomial"; "Float"] @ idl)) el
+
+let opfl idl el = opf (loc ()) idl el
+
 let cons l e1 e2 =
   Ast.ExApp (l, Ast.ExApp (l, Ast.ExId (l, Ast.IdUid (l, "::")), e1), e2)
 
@@ -155,8 +162,10 @@ let monom loc v d =
 
 %type <Camlp4.PreCast.Ast.expr> lmi
 %type <Camlp4.PreCast.Ast.expr> sos
+%type <Camlp4.PreCast.Ast.expr> pol
 %start lmi
 %start sos
+%start pol
 
 %%
 
@@ -274,3 +283,32 @@ sos:
 | exprs EOF { $1 }
 | exprs LEQ exprs EOF { osfl ["Sub"] [$3; $1] }
 | exprs GEQ exprs EOF { osfl ["Sub"] [$1; $3] }
+
+exprp:
+| ID { id_of_list (loc ()) [$1] }
+| monom { let l = loc () in
+          opf l ["of_list"] [slist l (pair l $1 (Ast.ExFlo (l, "1.")))] }
+| f monom { let l = loc () in opf l ["of_list"] [slist l (pair l $2 $1)] }
+| exprp PLUS exprp { opfl ["add"] [$1; $3] }
+| exprp MINUS exprp { opfl ["sub"] [$1; $3] }
+| MINUS exprp %prec UMINUS { let l = loc () in
+                             opf l ["sub"] [opf l ["zero"] []; $2] }
+| exprp TIMES exprp { opfl ["mult"] [$1; $3] }
+| exprp HAT ncid { opfl ["power"] [$1; $3] }
+| exprp LPAR lp RPAR { opfl ["compose"] [$1; $3] }
+| LPAR exprp RPAR { $2 }
+| f { let l = loc () in
+      opf l ["of_list"]
+          [slist l (pair l (Ast.ExApp (l, id_of_list l ["Osdp"; "Monomial"; "of_list"], empty_list l)) $1)] }
+
+lp:
+| lep { $1 }
+| lep COMMA lp { let l = loc () in
+                 Ast.ExApp (l, Ast.ExApp (l, id_of_list l ["@"], $1), $3) }
+
+lep:
+| exprp { slist (loc ()) $1 }
+| AQ { Camlp4.PreCast.Syntax.AntiquotSyntax.parse_expr (loc ()) $1 }
+
+pol:
+| exprp EOF { $1 }

@@ -59,7 +59,8 @@ module type S = sig
       scalars) are also implicitly added for all variables appearing
       in [l]. Returns both the achieved objective value and a map with
       values for each variable appearing in [l]. The returned map will
-      be empty in case of failure.
+      be empty in case of failure (i.e., [SdpRet.t] being not Success
+      or PartialSuccess).
 
       @raise Type_error with an explanatory message in case something
       inconsistent is found.

@@ -19,8 +19,9 @@
  *)
 
 (** Camlp4 quotation for
-    {{:./Lmi.Float.html#TYPEmatrix_expr}Lmi.Float.matrix_expr} and
-    {{:./Sos.Float.html#TYPEpolynomial_expr}Sos.Float.matrix_expr}. *)
+    {{:./Lmi.Float.html#TYPEmatrix_expr}Lmi.Float.matrix_expr},
+    {{:./Sos.Float.html#TYPEpolynomial_expr}Sos.Float.matrix_expr} and
+    {{:./Polynomial.Float.html#TYPEt}Polynomial.Float.t}. *)
 
 (** See file examples/demo.ml for examples of use.
     Syntax:
@@ -71,21 +72,23 @@ l ::= le | le "," l
 le ::= e | "$" OCaml code (type e list) "$"
 
 sos ::= e | e "<=" e | e ">=" e
+
+e ::= id | m | f m
+    | e "+" e | e "-" e | "-" e | e "*" e | e "^" ncid
+    | e "(" lp ")" | "(" e ")" | f
+
+lp ::= lep | lep "," lp
+
+lep ::= e | "$" OCaml code (type e list) "$"
+
+pol ::= e
     ]} *)
 
 (**/**)
 module Error = struct
-  type t = Lexing.lexbuf * string
+  type t = Camlp4.PreCast.Loc.t * string
   exception E of t
-  let print fmt (lexbuf, s) =
-    let loc =
-      let start_p = Lexing.lexeme_start_p lexbuf in
-      let end_p = Lexing.lexeme_end_p lexbuf in
-      Camlp4.PreCast.Loc.of_tuple
-        (start_p.Lexing.pos_fname,
-         start_p.Lexing.pos_lnum, start_p.Lexing.pos_bol, start_p.Lexing.pos_cnum,
-         end_p.Lexing.pos_lnum, end_p.Lexing.pos_bol, end_p.Lexing.pos_cnum,
-         false) in
+  let print fmt (loc, s) =
     Format.fprintf fmt "%a: Error: %s.@." Camlp4.PreCast.Loc.print loc s
   let to_string = Format.asprintf "%a@." print
 end
@@ -105,12 +108,20 @@ let parse rule _loc _ s =
     lexbuf.Lexing.lex_start_p <- start_p;
     lexbuf.Lexing.lex_curr_p <- start_p;
     lexbuf in
+  let loc () =
+    let start_p = Lexing.lexeme_start_p lexbuf in
+    let end_p = Lexing.lexeme_end_p lexbuf in
+    Camlp4.PreCast.Loc.of_tuple
+      (start_p.Lexing.pos_fname,
+       start_p.Lexing.pos_lnum, start_p.Lexing.pos_bol, start_p.Lexing.pos_cnum,
+       end_p.Lexing.pos_lnum, end_p.Lexing.pos_bol, end_p.Lexing.pos_cnum,
+       false) in
   try
     rule Pa_lexer.token lexbuf
   with
   | Failure s
-  | Pa_lexer.Lexing_error s -> raise (Error.E (lexbuf, s))
-  | Parsing.Parse_error -> raise (Error.E (lexbuf, "syntax error"))
+  | Pa_lexer.Lexing_error s -> raise (Error.E (loc (), s))
+  | Parsing.Parse_error -> raise (Error.E (loc (), "syntax error"))
 
 let register s rule =
   Camlp4.PreCast.Quotation.add
@@ -120,5 +131,6 @@ let _ =
   let module M = Camlp4.ErrorHandler.Register(Error) in ();
   register "lmi" Pa_parser.lmi;
   register "sos" Pa_parser.sos;
+  register "pol" Pa_parser.pol;
   Camlp4.PreCast.Quotation.default := "lmi"
 (**/**)

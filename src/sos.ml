@@ -156,7 +156,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       new_ids := ((p.name, (i, j)), new_id) :: !new_ids; new_id in
     let base = base_of_params p in
     let size = Array.length base in
-    let two = Poly.Coeff.add Poly.Coeff.one Poly.Coeff.one in
+    let two = Poly.Coeff.of_float 2. in
     for i = 0 to size - 1 do
       poly := (Monomial.mult base.(i) base.(i),
                LinExprSC.var (new_id i i)) :: !poly;
@@ -240,7 +240,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     let le_zero = LinExprSC.const Poly.Coeff.zero in
 
-    (* build the A_i and a_i (see csdp.mli) *)
+    (* build the A_i and a_i (see sdp.mli) *)
     let build_cstr ei e =
       let eq_params = { name = Ident.create ("eq" ^ string_of_int ei);
                         nb_vars = LEPoly.nb_vars e;
@@ -296,7 +296,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       match_polys [] (LEPoly.to_list e) (LEPoly.to_list eq_poly) in
     let cstrs = List.flatten (List.mapi build_cstr scalarized) in
 
-    (* build the objective C (see csdp.mli) *)
+    (* build the objective C (see sdp.mli) *)
     let obj = match obj with
       | Minimize id ->
          begin
