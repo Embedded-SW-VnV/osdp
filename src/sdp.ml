@@ -70,7 +70,7 @@ let add_slacks m1 mm1 obj constraints =
        | Le (bd, f) -> ((i, m1) :: bd, f) :: cstrs, i + 1
        | Ge (bd, f) -> ((i, mm1) :: bd, f) :: cstrs, i + 1)
       ([], max_idx + 1) constraints in
-  constraints
+  List.rev constraints
 
 let solve ?solver obj constraints =
   let constraints = add_slacks [|[|1.|]|] [|[|-1.|]|] obj constraints in
