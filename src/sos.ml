@@ -135,17 +135,25 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   (* polynomials whose coefficients are linear expressions *)
   module LEPoly = Polynomial.Make (LinExpr.MakeScalar (LinExprSC))
 
-  let base_of_params (p : polynomial_var) : Monomial.t array =
-    Array.of_list
+  (* Returns a vector base (c.f. identspoly_of_params below) trying to
+     keep it as small as possible such that base' * M * base contains
+     all monomials in [lm]. *)
+  let base_of_params (p : polynomial_var) (lm : Monomial.t list option) :
+        Monomial.t array =
+    let l =
       ((if p.homogeneous then Monomial.list_eq else Monomial.list_le)
-         p.nb_vars ((p.degree + 1) / 2))
+         p.nb_vars ((p.degree + 1) / 2)) in
+    let l = match lm with
+      | None -> l
+      | Some lm -> Monomial.filter_newton_polytope l lm in
+    Array.of_list l
 
   (* Returns the polynomial base' * M * base with base the vector of
      monomials obtained from [Monomial.list_le] or [Monomial.list_eq]
      according to parameters in [p] and M a symmetric matrix of newly
      created scalar variables. Also returns (upper triangular part of)
      the newly created variables. *)
-  let identspoly_of_params (p : polynomial_var) :
+  let identspoly_of_params (p : polynomial_var) (lm : Monomial.t list option) :
         LEPoly.t * ((Ident.t * (int * int)) * Ident.t) list =
     let poly = ref [] in
     let new_ids = ref [] in
@@ -154,7 +162,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       let new_id = Ident.create ((*"__SOS__" ^*) s ^ "_"
                                  ^ string_of_int i ^ "_" ^ string_of_int j) in
       new_ids := ((p.name, (i, j)), new_id) :: !new_ids; new_id in
-    let base = base_of_params p in
+    let base = base_of_params p lm in
     let size = Array.length base in
     let two = Poly.Coeff.of_float 2. in
     for i = 0 to size - 1 do
@@ -181,7 +189,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       fun params ->
         try Hashtbl.find htbl params.name
         with Not_found ->
-          let poly, new_ids' = identspoly_of_params params in
+          let poly, new_ids' = identspoly_of_params params None in
           new_ids := new_ids' @ !new_ids;
           Hashtbl.add htbl params.name poly; poly in
 
@@ -235,7 +243,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         (fun id ty ->
            let b = match ty with
              | TYscal -> [|Monomial.of_list []|]
-             | TYpoly p -> base_of_params p in
+             | TYpoly p -> base_of_params p None in
            a.(Ident.Map.find id var_idx) <- b) env; a in
 
     let le_zero = LinExprSC.const Poly.Coeff.zero in
@@ -246,7 +254,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
                         nb_vars = LEPoly.nb_vars e;
                         degree = LEPoly.degree e;
                         homogeneous = LEPoly.is_homogeneous e } in
-      let eq_poly, eq_binding = identspoly_of_params eq_params in
+      let eq_poly, eq_binding =
+        let lm = List.map fst (LEPoly.to_list e) in
+        identspoly_of_params eq_params (Some lm) in
       let eq_binding = List.fold_left
                          (fun m ((_, ij), id) -> Ident.Map.add id ij m)
                          Ident.Map.empty eq_binding in
@@ -287,12 +297,12 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       let rec match_polys l p1 p2 = match p1, p2 with
         | [], [] -> l
         | [], (_, c2) :: t2 -> match_polys (equate le_zero c2 :: l) [] t2
-        | (_, c1) :: t1, [] -> match_polys (equate c1 le_zero :: l) t1 []
+        | _ :: _, [] -> assert false
         | (m1, c1) :: t1, (m2, c2) :: t2 ->
            let cmp =  Monomial.compare m1 m2 in
            if cmp = 0 then match_polys (equate c1 c2 :: l) t1 t2
            else if cmp > 0 then match_polys (equate le_zero c2 :: l) p1 t2
-           else (* cmp < 0 *) match_polys (equate c1 le_zero :: l) t1 p2 in
+           else (* cmp < 0 *) assert false in
       match_polys [] (LEPoly.to_list e) (LEPoly.to_list eq_poly) in
     let cstrs = List.flatten (List.mapi build_cstr scalarized) in
 
