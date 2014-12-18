@@ -1,4 +1,4 @@
-<*>: package(zarith), package(glpk)
+<*>: package(zarith)
 <osdp.cm{x,}a>: use_libosdp
 <osdp.cmxs>: link_libosdp
 <*.cmx> and not "osdp.cmx": for-pack(Osdp)
