@@ -1,0 +1,11 @@
+--- lib/Makefile	2015-02-05 10:05:29.000000000 +0100
++++ lib/Makefile	2014-12-18 14:50:32.000000000 +0100
+@@ -24,7 +24,7 @@
+ #
+ # The default settings for gcc:
+ #
+-CFLAGS=-O3 -ansi -Wall -DNOSHORTS -DUSEGETTIME -I../include
++CFLAGS=-O3 -ansi -Wall -DNOSHORTS -DUSEGETTIME -fPIC -I../include
+ #
+ # Notes on CFLAGS.
+ #

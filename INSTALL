@@ -17,6 +17,9 @@ To install Csdp:
   for i in path_to_osdp/external/csdp_*.patch; do patch -p0 < $i; done
 * type make, sudo make install
 
+If you use MOSEK: Don't forget to set both PATH *and* LD_LIBRARY_PATH
+to the directory containing the mosek binaries and libraries.
+
 Configure:
 % ./configure
 
