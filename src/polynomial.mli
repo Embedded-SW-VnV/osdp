@@ -67,6 +67,12 @@ module type S = sig
 
   (** {2 Various functions.} *)
 
+  (** [eval p \[x_1;...; x_n\]] returns p(x_1,..., x_n).
+
+      @raise Invalid_argument "Polynomial.eval" if [n] is less than
+      [nb_vars p]. *)
+  val eval : t -> Coeff.t list -> Coeff.t
+
   (** Number of variables appearing in the polynomial. *)
   val nb_vars : t -> int
 

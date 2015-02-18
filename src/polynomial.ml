@@ -32,6 +32,7 @@ module type S = sig
   val power : t -> int -> t
   exception Dimension_error
   val compose : t -> t list -> t
+  val eval : t -> Coeff.t list -> Coeff.t
   val nb_vars : t -> int
   val degree : t -> int
   val is_homogeneous : t -> bool
@@ -94,8 +95,8 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
     if n <= 0 then one
     else
       let p' = power p (n / 2) in
-      if n mod 2 = 1 then mult p (mult p' p')
-      else mult p' p'
+      if n mod 2 = 0 then mult p' p'
+      else mult p (mult p' p')
 
   exception Dimension_error
 
@@ -109,6 +110,23 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
       let mq = List.map (fun (q, d) -> power q d) mq in
       mult_scalar s (List.fold_left mult one mq) in
     List.fold_left (fun p m -> add p (compose_monomial m)) zero p
+
+  let eval p l =
+    let rec pow c n =
+      if n <= 0 then Coeff.one
+      else
+        let c' = pow c (n / 2) in
+        if n mod 2 = 0 then Coeff.mult c' c'
+        else Coeff.mult c (Coeff.mult c' c') in
+    let eval_monomial m =
+      let rec aux lc ld = match lc, ld with
+        | _, [] -> Coeff.one
+        | [], _ -> raise (Invalid_argument "Polynomial.eval")
+        | c :: tc, d :: td -> Coeff.mult (pow c d) (aux tc td) in
+      aux l (Monomial.to_list m) in
+    List.fold_left
+      (fun r (m, c) -> Coeff.add r (Coeff.mult c (eval_monomial m)))
+      Coeff.zero p
 
   let nb_vars = List.fold_left (fun n (m, _) -> max n (Monomial.nb_vars m)) 0
 
