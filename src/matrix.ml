@@ -29,6 +29,7 @@ module type S = sig
   val zeros : int -> int -> t
   val eye : int -> t
   val kronecker_sym: int -> int -> int -> t
+  val ij_one: int -> int -> int -> t
   val block : t array array -> t
   val lift_block : t -> int -> int -> int -> int -> t
   val transpose : t -> t
@@ -110,6 +111,11 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
     let c = Array.make_matrix dim dim ET.zero in
     c.(i).(j) <- ET.one;
     c.(j).(i) <- ET.one;
+    { line = dim; col = dim; content = c }
+
+  let ij_one dim i j =
+    let c = Array.make_matrix dim dim ET.zero in
+    c.(i).(j) <- ET.one;
     { line = dim; col = dim; content = c }
 
   let block a =
