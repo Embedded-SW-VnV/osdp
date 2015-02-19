@@ -66,6 +66,12 @@ module type S = sig
       1]). [n], [i] and [j] must satisfy 0 <= i < n and 0 <= j < n. *)
   val kronecker_sym: int -> int -> int -> t
 
+  (** [ij_one n i j] builds the square matrix of size n with all coefficients
+      equal to zero (i.e., [Coeff.of_int 0] except coefficients (i, j) which is
+      one (i.e., [Coeff.of_int 1]). [n], [i] and [j] must satisfy 0 <= i < n and
+      0 <= j < n. *)
+  val ij_one: int -> int -> int -> t
+
   (** [block a] returns the block matrix corresponding to the array
       [a]. For instance [block \[|\[|a; b|\]; \[|c; d|\]|\]] builds
       the block matrix \[a, b; c, d\]. The array [a] must have a
