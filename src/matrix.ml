@@ -93,12 +93,55 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
       
   let to_array_array m = Array.map Array.copy m.content
 
+  (** Function largely inspired from Pietro Abate tutorial on http://mancoosi.org/~abate/ocaml-format-module *)
   let pp fmt m =
-    Format.fprintf fmt "[@[%a@]]"
-                   (Utils.fprintf_array ~sep:";@ "
-                      (fun fmt -> Format.fprintf fmt "@[%a@]"
-                         (Utils.fprintf_array ~sep:",@ " ET.pp))) m.content
-    
+    let pp_row widths fmt i row =
+      if i = 0 then
+	let first_row = Array.map (fun x -> String.make (x + 1) ' ') widths in
+	Array.iteri (fun j strcell ->
+	  Format.pp_set_tab fmt ();
+	  (* The string cell is filled with the string contained in first row *)
+	  Format.fprintf Format.str_formatter "%a" ET.pp row.(j);
+	  let str = Format.flush_str_formatter () in
+	  for z=0 to (String.length str) - 1 do strcell.[z] <- str.[z] done;
+	  Format.fprintf fmt "%s" strcell
+	) first_row
+      else
+	Array.iteri (fun j cell ->
+	  Format.pp_print_tab fmt ();
+	  Format.fprintf fmt "%a" ET.pp cell
+	) row
+    in
+    let compute_widths table =
+  (* we build with the largest length of each column of the
+   * table and header *)
+      let widths = Array.create (Array.length table.(0)) 0 in
+      Array.iter (fun row ->
+	Array.iteri (fun j cell ->
+	  Format.fprintf Format.str_formatter "%a" ET.pp cell;
+	  let str = Format.flush_str_formatter () in
+	  widths.(j) <- max (String.length str) widths.(j)
+	) row
+      ) table;
+      widths
+    in
+    let widths = compute_widths m.content in
+
+  (* open the table box *)
+  Format.pp_open_tbox fmt ();
+
+  (* print the table *)
+  Array.iteri (pp_row widths fmt) m.content;
+
+  (* close the box *)
+  Format.pp_close_tbox fmt ()
+
+  (* Old version *)
+  (* Format.fprintf fmt "[@[%a@]]" *)
+  (*   (Utils.fprintf_array ~sep:";@ " *)
+  (*      (fun fmt -> Format.fprintf fmt "@[%a@]" *)
+  (*        (Utils.fprintf_array ~sep:",@ " ET.pp))) m.content *)
+      
   let zeros l c =
     { line = l; col = c; content = Array.make_matrix l c ET.zero }
 
@@ -355,6 +398,7 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
     let m = of_list_list m_list in
     let base_change = of_list_list base_change_list in
     rank, m, base_change
+
 end
 
 module Q = Make (Scalar.Q) 
