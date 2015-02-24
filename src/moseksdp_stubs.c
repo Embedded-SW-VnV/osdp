@@ -274,7 +274,7 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
 
   falpha = -1.0;
   for (tmp = ml_obj; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
-    j = Int_val(Field(Field(tmp, 0), 0));
+    j = Int_val(Field(Field(tmp, 0), 0)) - idx_offset;
     /* printf("C_%d\n", j); */
     MS(read_sparsesymmat(task, Field(Field(tmp, 0), 1), dimvar[j], &idx));
     MS(putbarcj(task, j, 1, &idx, &falpha));
@@ -284,7 +284,7 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
   for (tmp = ml_cstrs, i = 0; tmp != Val_emptylist; tmp = Field(tmp, 1), ++i) {
     for (tmp2 = Field(Field(tmp, 0), 0);
          tmp2 != Val_emptylist; tmp2 = Field(tmp2, 1)) {
-      j = Int_val(Field(Field(tmp2, 0), 0));
+      j = Int_val(Field(Field(tmp2, 0), 0)) - idx_offset;
       /* printf("A_%d,%d\n", i, j); */
       MS(read_sparsesymmat(task, Field(Field(tmp2, 0), 1), dimvar[j], &idx));
       MS(putbaraij(task, i, j, 1, &idx, &falpha));
