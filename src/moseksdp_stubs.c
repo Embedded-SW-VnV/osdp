@@ -356,8 +356,8 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
   ml_res = caml_alloc(3, 0);
   Store_field(ml_res, 0, Val_int(sdp_ret));
   ml_res_obj = caml_alloc(2, 0);
-  Store_field(ml_res_obj, 0, caml_copy_double(pobj));
-  Store_field(ml_res_obj, 1, caml_copy_double(dobj));
+  Store_field(ml_res_obj, 0, caml_copy_double(-pobj));
+  Store_field(ml_res_obj, 1, caml_copy_double(-dobj));
   Store_field(ml_res, 1, ml_res_obj);
   ml_res_Xy = caml_alloc(2, 0);
   Store_field(ml_res_Xy, 0, ml_res_X);
