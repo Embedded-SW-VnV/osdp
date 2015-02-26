@@ -72,7 +72,28 @@ let add_slacks m1 mm1 obj constraints =
       ([], max_idx + 1) constraints in
   List.rev constraints
 
+(* check symmetry *)
+let sym_err () = raise (Invalid_argument "non symmetric matrix")
+
+let check_sym m =
+  let sz = Array.length m in
+  for i = 1 to sz - 1 do
+    for j = 0 to i - 1 do
+      if m.(i).(j) <> m.(j).(i) then sym_err ()
+    done
+  done
+
+let check_sparse = List.iter (fun (i, j, _) -> if j > i then sym_err ())
+
+let check_prog f obj constraints =
+  let check_block f = List.iter (fun (_, m) -> f m) in
+  check_block f obj;
+  List.iter
+    (function Eq (m, _) | Le (m, _) | Ge (m, _) -> check_block f m)
+    constraints
+
 let solve ?solver obj constraints =
+  check_prog check_sym obj constraints;
   let constraints = add_slacks [|[|1.|]|] [|[|-1.|]|] obj constraints in
   match get_solver solver with
   | Csdp -> Csdp.solve obj constraints
@@ -83,6 +104,7 @@ let solve ?solver obj constraints =
      Moseksdp.solve obj constraints
   
 let solve_sparse ?solver obj constraints =
+  check_prog check_sparse obj constraints;
   let constraints = add_slacks [0, 0, 1.] [0, 0, -1.] obj constraints in
   match get_solver solver with
   | Csdp ->

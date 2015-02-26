@@ -91,14 +91,20 @@ type 'a constr =
     appearing for that block in the objective or one of the
     constraints. In case of success (or partial success), the array
     returned for y has the same size and same order than the input
-    list of constraints. *)
+    list of constraints.
+
+    @raise Invalid_argument "non symmetric matrix" in case the
+    objective or one of the constraint is non symmetric. *)
 val solve : ?solver:solver -> matrix obj -> matrix constr list ->
             SdpRet.t * (float * float) * (matrix block_diag * float array)
 
 (** Same as {!solve} with sparse matrices as input. This can be more
     efficient with solver handling sparse matrices (for instance
     Mosek). Otherwise, this is equivalent to {!solve} after conversion
-    with {!matrix_of_sparse}. *)
+    with {!matrix_of_sparse}.
+
+    @raise Invalid_argument "non symmetric matrix" in case the
+    objective or one of the constraint is not a sparse matrix. *)
 val solve_sparse : ?solver:solver -> sparse_matrix obj ->
                    sparse_matrix constr list ->
                    SdpRet.t * (float * float) * (matrix block_diag * float array)
