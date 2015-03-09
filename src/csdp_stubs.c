@@ -40,6 +40,72 @@ static void *malloc_fail(int nb, int size)
   return p;
 }
 
+static void collect_matrix_indexes(value mx,
+                                   int *min, int *max)
+{
+  value tmp;
+  int i;
+  
+  for (tmp = mx; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
+    i = Int_val(Field(Field(tmp, 0), 0));
+    if (i < *min) *min = i;
+    if (i > *max) *max = i;
+  }
+}
+
+static void collect_matrix_sizes(value mx, int idx_offset, int *dimvar)
+{
+  value tmp, tmp2;
+  int i, j;
+  
+  for (tmp = mx; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
+    i = Int_val(Field(Field(tmp, 0), 0)) - idx_offset;
+    for (tmp2 = Field(Field(tmp, 0), 1);
+         tmp2 != Val_emptylist; tmp2 = Field(tmp2, 1)) {
+      j = Int_val(Field(Field(tmp2, 0), 0));
+      if (j >= dimvar[i]) dimvar[i] = j + 1;
+      j = Int_val(Field(Field(tmp2, 0), 1));
+      if (j >= dimvar[i]) dimvar[i] = j + 1;
+    }
+  }
+}
+
+static void collect_sizes(value ml_obj, value ml_cstrs,
+                          int *idx_offset, int *nb_vars, int *nb_cstrs,
+                          int **dimvar, int *dim_X)
+{
+  value tmp;
+  int i;
+  int min, max;
+  
+  min = 2147483647;
+  max = -2147483647;
+  
+  collect_matrix_indexes(ml_obj, &min, &max);
+
+  *nb_cstrs = 0;
+  for (tmp = ml_cstrs; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
+    collect_matrix_indexes(Field(Field(tmp, 0), 0), &min, &max);
+    ++(*nb_cstrs);
+  }
+
+  *idx_offset = min;
+  *nb_vars = max - min + 1;
+
+  *dimvar = (int*)malloc_fail(*nb_vars, sizeof(int));
+
+  for (i = 0; i < *nb_vars; ++i) (*dimvar)[i] = 0;
+  
+  collect_matrix_sizes(ml_obj, *idx_offset, *dimvar);
+
+  for (tmp = ml_cstrs; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
+    collect_matrix_sizes(Field(Field(tmp, 0), 0), *idx_offset, *dimvar);
+  }
+
+  *dim_X = 0;
+  for (i = 0; i < *nb_vars; ++i) *dim_X += (*dimvar)[i];
+}
+
 static struct blockmatrix *create_blockmatrix(int n)
 {
   struct blockmatrix *b;
@@ -113,85 +179,87 @@ static int list_length(value list)
   return cpt;
 }
 
-static void build_obj(value ml_obj, struct blockmatrix **obj)
+static void build_obj(value ml_obj, int idx_offset, int nb_vars, int *dimvar,
+                      struct blockmatrix **obj)
 {
-  int nb_blocks, sz, i, j, k;
-  value lit, matrix, line;
+  int sz, i, j, k;
+  value lit, matrix, elt;
   struct blockrec *b;
+  double e;
 
-  nb_blocks = list_length(ml_obj);
-
-  *obj = create_blockmatrix(nb_blocks);
-  k = 0;
-  for (lit = ml_obj; lit != Val_emptylist; lit = Field(lit, 1)) {
-    ++k;
-    matrix = Field(lit, 0);
-    sz = Wosize_val(matrix);
+  *obj = create_blockmatrix(nb_vars);
+  for (k = 1; k <= nb_vars; ++k) {
+    sz = dimvar[k - 1];
     b = &((*obj)->blocks[k]);
     b->blocksize = sz;
     b->data.mat = (double*)malloc_fail(sz * sz, sizeof(double));
-    for (i = 0; i < sz; ++i) {
-      line = Field(matrix, i);
+    for (i = 0; i < sz; ++i)
       for (j = 0; j < sz; ++j)
-        b->data.mat[ijtok(i + 1, j + 1, sz)] = Double_field(line, j);
+        b->data.mat[ijtok(i + 1, j + 1, sz)] = 0;
+  }
+
+  for (lit = ml_obj; lit != Val_emptylist; lit = Field(lit, 1)) {
+    k = Int_val(Field(Field(lit, 0), 0)) - idx_offset + 1;
+    b = &((*obj)->blocks[k]);
+    sz = dimvar[k - 1];
+    matrix = Field(Field(lit, 0), 1);
+    for (elt = matrix; elt != Val_emptylist; elt = Field(elt, 1)) {
+      i = Int_val(Field(Field(elt, 0), 0));
+      j = Int_val(Field(Field(elt, 0), 1));
+      e = Double_val(Field(Field(elt, 0), 2));
+      b->data.mat[ijtok(i + 1, j + 1, sz)] = e;
+      b->data.mat[ijtok(j + 1, i + 1, sz)] = e;
     }
   }
 }
 
 static void build_sparseblockmatrix(value ml_bm, int constr_num,
+                                    int idx_offset, int *dimvar,
                                     struct sparseblock **sp)
 {
   int nb_entries, i, j, k, m, sz;
-  value lit, matrix, line;
+  value lit, matrix, elt;
   struct sparseblock **prev = sp;
   struct sparseblock *b;
   double e;
 
-  k = 0;
   for (lit = ml_bm; lit != Val_emptylist; lit = Field(lit, 1)) {
-    ++k;
-    matrix = Field(lit, 0);
-    sz = Wosize_val(matrix);
-    nb_entries = 0;
-    for (i = 0; i < sz; ++i) {
-      line = Field(matrix, i);
-      for (j = i; j < sz; ++j) if (Double_field(line, j) != 0.) ++nb_entries;
-    }
+    k = Int_val(Field(Field(lit, 0), 0)) - idx_offset + 1;
+    sz = dimvar[k - 1];
+    matrix = Field(Field(lit, 0), 1);
+    nb_entries = list_length(matrix);
     b = create_sparseblock(constr_num, k, sz, nb_entries);
     m = 0;
-    for (i = 0; i < sz; ++i) {
-      line = Field(matrix, i);
-      for (j = i; j < sz; ++j) {
-        e = Double_field(line, j);
-        if (e != 0.) {
-          ++m;
-          b->entries[m] = e;
-          b->iindices[m] = i + 1;
-          b->jindices[m] = j + 1;
-        }
-      }
+    for (elt = matrix; elt != Val_emptylist; elt = Field(elt, 1)) {
+      ++m;
+      i = Int_val(Field(Field(elt, 0), 0));
+      j = Int_val(Field(Field(elt, 0), 1));
+      e = Double_val(Field(Field(elt, 0), 2));
+      b->iindices[m] = j + 1;  /* lower triangular (j <= i) given as input */
+      b->jindices[m] = i + 1;  /* but we need upper triangular, so transpose */
+      b->entries[m] = e;
     }
     *prev = b;
     prev = &(b->next);
   }
 }
 
-static void build_cstrs(value ml_cstrs, int *nb_cstrs,
+static void build_cstrs(value ml_cstrs,
+                        int idx_offset, int *dimvar, int nb_cstrs,
                         struct constraintmatrix **cstrs, double **b)
 {
   int k;
   value lit, constraint;
 
-  *nb_cstrs = list_length(ml_cstrs);
-
-  *b = create_vector(*nb_cstrs);
-  *cstrs = create_constraintmatrices(*nb_cstrs);
+  *b = create_vector(nb_cstrs);
+  *cstrs = create_constraintmatrices(nb_cstrs);
   k = 0;
   for (lit = ml_cstrs; lit != Val_emptylist; lit = Field(lit, 1)) {
     ++k;
     constraint = Field(lit, 0);
     (*b)[k] = Double_val(Field(constraint, 1));
-    build_sparseblockmatrix(Field(constraint, 0), k, &((*cstrs)[k].blocks));
+    build_sparseblockmatrix(Field(constraint, 0), k, idx_offset, dimvar,
+                            &((*cstrs)[k].blocks));
   }
 }
 
@@ -309,26 +377,27 @@ value csdp_solve(value ml_obj, value ml_cstrs)
   CAMLlocal5(ml_res, ml_res_obj, ml_res_Xy, ml_res_X, ml_res_y);
   CAMLlocal3(cons, matrix, line);
 
-  value lit;
   struct blockmatrix *obj, res_X;
+  int idx_offset, nb_vars, *dimvar;
   int nb_cstrs, dim_X;
   struct constraintmatrix *cstrs;
   double *b, pobj, dobj, *res_y;
   sdp_ret_t sdp_ret;
+  
+  collect_sizes(ml_obj, ml_cstrs,
+                &idx_offset, &nb_vars, &nb_cstrs, &dimvar, &dim_X);
 
-  dim_X = 0;
-  for (lit = ml_obj; lit != Val_emptylist; lit = Field(lit, 1))
-    dim_X += Wosize_val(Field(lit, 0));
+  build_obj(ml_obj, idx_offset, nb_vars, dimvar, &obj);
 
-  build_obj(ml_obj, &obj);
-
-  build_cstrs(ml_cstrs, &nb_cstrs, &cstrs, &b);
+  build_cstrs(ml_cstrs, idx_offset, dimvar, nb_cstrs, &cstrs, &b);
   solve(dim_X, nb_cstrs, obj, b, cstrs, &sdp_ret, &pobj, &dobj, &res_X, &res_y);
   build_res_X(&res_X, &ml_res_X, &cons, &matrix, &line);
   build_res_y(nb_cstrs, res_y, &ml_res_y);
 
   /* TODO: free res_X and res_y */
 
+  free(dimvar);
+  
   ml_res = caml_alloc(3, 0);
 
   Store_field(ml_res, 0, Val_int(sdp_ret));

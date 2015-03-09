@@ -28,6 +28,8 @@
 #include "config.h"
 #ifdef WITH_MOSEK_yes
 
+#include <math.h>
+
 #include "sdp_ret.h"
 #include "mosek.h"
 
@@ -77,6 +79,7 @@ static void collect_matrix_sizes(value mx, int idx_offset, int *dimvar)
 }
 
 static void collect_sizes(value ml_obj, value ml_cstrs,
+                          int *idx_lin_offset, int *nb_lin_vars,
                           int *idx_offset, int *nb_vars, int *nb_cstrs,
                           int **dimvar)
 {
@@ -87,12 +90,24 @@ static void collect_sizes(value ml_obj, value ml_cstrs,
   min = 2147483647;
   max = -2147483647;
   
-  collect_matrix_indexes(ml_obj, &min, &max);
+  collect_matrix_indexes(Field(ml_obj, 0), &min, &max);
 
   *nb_cstrs = 0;
   for (tmp = ml_cstrs; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
     collect_matrix_indexes(Field(Field(tmp, 0), 0), &min, &max);
     ++(*nb_cstrs);
+  }
+
+  *idx_lin_offset = min;
+  *nb_lin_vars = max - min + 1;
+
+  min = 2147483647;
+  max = -2147483647;
+  
+  collect_matrix_indexes(Field(ml_obj, 1), &min, &max);
+
+  for (tmp = ml_cstrs; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
+    collect_matrix_indexes(Field(Field(tmp, 0), 1), &min, &max);
   }
 
   *idx_offset = min;
@@ -102,10 +117,10 @@ static void collect_sizes(value ml_obj, value ml_cstrs,
 
   for (i = 0; i < *nb_vars; ++i) (*dimvar)[i] = 0;
   
-  collect_matrix_sizes(ml_obj, *idx_offset, *dimvar);
+  collect_matrix_sizes(Field(ml_obj, 1), *idx_offset, *dimvar);
 
   for (tmp = ml_cstrs; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
-    collect_matrix_sizes(Field(Field(tmp, 0), 0), *idx_offset, *dimvar);
+    collect_matrix_sizes(Field(Field(tmp, 0), 1), *idx_offset, *dimvar);
   }
 }
 
@@ -156,6 +171,28 @@ static MSKrescodee MSK_read_sparsesymmat(MSKtask_t task, value mx, int dim,
   free(av);
   free(aj);
   free(ai);
+
+  return r;
+}
+
+static MSKrescodee MSK_read_x(MSKtask_t task, int nb_lin_vars, value *ml_res_x)
+{
+  MSKrescodee r = MSK_RES_OK;
+  double *x;
+  int i;
+
+  x = (double*)MSK_calloctask(task, nb_lin_vars, sizeof(MSKrealt));
+
+  MS(getxx(task, MSK_SOL_ITR, x));
+              
+  *ml_res_x = nb_lin_vars > 0
+    ? caml_alloc(nb_lin_vars * Double_wosize, Double_array_tag)
+    : Atom(Double_array_tag);
+  for (i = 0; i < nb_lin_vars; ++i) {
+    Store_double_field(*ml_res_x, i, x[i]);
+  }
+  
+  MSK_freetask(task, x);
 
   return r;
 }
@@ -231,33 +268,51 @@ static MSKrescodee MSK_read_y(MSKtask_t task, int nb_cstrs, value *ml_res_y)
   return r;
 }
 
+static MSKboundkeye get_bk(double lb, double ub)
+{
+  MSKboundkeye bk;
+
+  if (isfinite(lb) && isfinite(ub)) {
+    return ((lb == ub) ? MSK_BK_FX : MSK_BK_RA);
+  } else if (isfinite(lb)) {
+    return MSK_BK_LO;
+  } else if (isfinite(ub)) {
+    return MSK_BK_UP;
+  } else {
+    return MSK_BK_FR;
+  }
+}
+
 /* static void MSKAPI printstr(void *handle, MSKCONST char str[]) */
 /* { */
 /*   printf("%s", str); */
 /* } */
 
-value moseksdp_solve(value ml_obj, value ml_cstrs)
+value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds)
 {
-  CAMLparam2(ml_obj, ml_cstrs);
+  CAMLparam3(ml_obj, ml_cstrs, ml_bounds);
 
-  CAMLlocal5(ml_res, ml_res_obj, ml_res_Xy, ml_res_X, ml_res_y);
+  CAMLlocal2(ml_res, ml_res_obj);
+  CAMLlocal4(ml_res_xXy, ml_res_x, ml_res_X, ml_res_y);
   CAMLlocal3(cons, matrix, line);
 
   value tmp, tmp2;
   int i, j;
-  int idx_offset, nb_vars, nb_cstrs, *dimvar;
+  int idx_lin_offset, nb_lin_vars, idx_offset, nb_vars, nb_cstrs, *dimvar;
   MSKrescodee r = MSK_RES_OK;
   MSKenv_t env = NULL;
   MSKtask_t task = NULL;
   MSKsolstae solsta;
   MSKint64t idx;
   double falpha;
+  double lb, ub;
   double pobj, dobj;
   char symname[MSK_MAX_STR_LEN];
   char desc[MSK_MAX_STR_LEN];
   sdp_ret_t sdp_ret;
         
-  collect_sizes(ml_obj, ml_cstrs, &idx_offset, &nb_vars, &nb_cstrs, &dimvar);
+  collect_sizes(ml_obj, ml_cstrs, &idx_lin_offset, &nb_lin_vars,
+                &idx_offset, &nb_vars, &nb_cstrs, &dimvar);
 
   /* printf("idx_offset = %d, nb_vars = %d, nb_cstrs = %d\n", */
   /*        idx_offset, nb_vars, nb_cstrs); */
@@ -270,10 +325,16 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
   MS(maketask(env, nb_cstrs, 0, &task));
   /* MS(linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr)); */
   MS(appendcons(task, nb_cstrs));
+  MS(appendvars(task, nb_lin_vars));
   MS(appendbarvars(task, nb_vars, dimvar));
 
   falpha = -1.0;
-  for (tmp = ml_obj; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
+  for (tmp = Field(ml_obj, 0); tmp != Val_emptylist; tmp = Field(tmp, 1)) {
+    j = Int_val(Field(Field(tmp, 0), 0)) - idx_lin_offset;
+    /* printf("c_%d\n", j); */
+    MS(putcj(task, j, -Double_val(Field(Field(tmp, 0), 1))));
+  }
+  for (tmp = Field(ml_obj, 1); tmp != Val_emptylist; tmp = Field(tmp, 1)) {
     j = Int_val(Field(Field(tmp, 0), 0)) - idx_offset;
     /* printf("C_%d\n", j); */
     MS(read_sparsesymmat(task, Field(Field(tmp, 0), 1), dimvar[j], &idx));
@@ -284,16 +345,34 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
   for (tmp = ml_cstrs, i = 0; tmp != Val_emptylist; tmp = Field(tmp, 1), ++i) {
     for (tmp2 = Field(Field(tmp, 0), 0);
          tmp2 != Val_emptylist; tmp2 = Field(tmp2, 1)) {
+      j = Int_val(Field(Field(tmp2, 0), 0)) - idx_lin_offset;
+      /* printf("a_%d,%d\n", i, j); */
+      MS(putaij(task, i, j, Double_val(Field(Field(tmp2, 0), 1))));
+    }
+    for (tmp2 = Field(Field(tmp, 0), 1);
+         tmp2 != Val_emptylist; tmp2 = Field(tmp2, 1)) {
       j = Int_val(Field(Field(tmp2, 0), 0)) - idx_offset;
       /* printf("A_%d,%d\n", i, j); */
       MS(read_sparsesymmat(task, Field(Field(tmp2, 0), 1), dimvar[j], &idx));
       MS(putbaraij(task, i, j, 1, &idx, &falpha));
     }
-    MS(putconbound(task, i, MSK_BK_FX,
-                   Double_val(Field(Field(tmp, 0), 1)),
-                   Double_val(Field(Field(tmp, 0), 1))));
+    lb = Double_val(Field(Field(tmp, 0), 2));
+    ub = Double_val(Field(Field(tmp, 0), 3));
+    MS(putconbound(task, i, get_bk(lb, ub), lb, ub));
   }
 
+  for (i = 0; i < nb_lin_vars; ++i) {
+    MS(putvarbound(task, i, get_bk(-INFINITY, INFINITY), -INFINITY, INFINITY));
+  }
+  for (tmp = ml_bounds; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
+    j = Int_val(Field(Field(tmp, 0), 0)) - idx_lin_offset;
+    if (j >= 0 && j < nb_lin_vars) {
+      lb = Double_val(Field(Field(tmp, 0), 1));
+      ub = Double_val(Field(Field(tmp, 0), 2));
+      MS(putvarbound(task, j, get_bk(lb, ub), lb, ub));
+    }
+  }
+  
   MS(optimizetrm(task, NULL));
 
   /* Print a summary containing information
@@ -304,6 +383,7 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
 
   /* default values */
   pobj = dobj = 0;
+  ml_res_x = Atom(Double_array_tag);
   ml_res_X = Val_emptylist;
   ml_res_y = Atom(Double_array_tag);
 
@@ -312,6 +392,7 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
     MS(getprimalobj(task, MSK_SOL_ITR, &pobj));
     MS(getdualobj(task, MSK_SOL_ITR, &dobj));
     /* printf("pobj, dobj, res: % e, % e, % e\n", pobj, dobj, *res); */
+    MS(read_x(task, nb_lin_vars, &ml_res_x));
     MS(read_barx(task, nb_vars, dimvar, &matrix, &ml_res_X));
     MS(read_y(task, nb_cstrs, &ml_res_y));
   }
@@ -359,19 +440,20 @@ value moseksdp_solve(value ml_obj, value ml_cstrs)
   Store_field(ml_res_obj, 0, caml_copy_double(-pobj));
   Store_field(ml_res_obj, 1, caml_copy_double(-dobj));
   Store_field(ml_res, 1, ml_res_obj);
-  ml_res_Xy = caml_alloc(2, 0);
-  Store_field(ml_res_Xy, 0, ml_res_X);
-  Store_field(ml_res_Xy, 1, ml_res_y);
-  Store_field(ml_res, 2, ml_res_Xy);
+  ml_res_xXy = caml_alloc(3, 0);
+  Store_field(ml_res_xXy, 0, ml_res_x);
+  Store_field(ml_res_xXy, 1, ml_res_X);
+  Store_field(ml_res_xXy, 2, ml_res_y);
+  Store_field(ml_res, 2, ml_res_xXy);
 
   CAMLreturn(ml_res);
 }
 
 #else
 
-value moseksdp_solve(value ml_obj, value ml_cstrs)
+value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds)
 {
-  CAMLparam2(ml_obj, ml_cstrs);
+  CAMLparam3(ml_obj, ml_cstrs, ml_bounds);
 
   CAMLlocal1(ml_res);
 

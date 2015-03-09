@@ -1,3 +1,23 @@
+(*
+ * OSDP (OCaml SDP) is an OCaml frontend library to semi-definite
+ * programming (SDP) solvers.
+ * Copyright (C) 2012, 2014  P. Roux and P.L. Garoche
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *)
+
 (** Interface towards the C library CSDP.
 
     CSDP is a semidefinite programming optimization procedure. You may
@@ -6,14 +26,17 @@
 
 (** See {{:./Sdp.html}Sdp} for definition of SDP with primal and dual. *)
 
-(** Matrices, line by line. Must be symmetric.
-    Type invariant: all lines have the same size. *)
-type matrix = float array array
+(** Matrices. Sparse representation as triplet [(i, j, x)] meaning
+    that the coefficient at line [i] >= 0 and column [j] >= 0 has
+    value [x]. All forgotten coefficients are assumed to be
+    [0.0]. Since matrices are symmetric, only the lower triangular
+    part (j <= i) must be given. No duplicates are allowed. *)
+type matrix = (int * int * float) list
 
 (** Block diagonal matrices (sparse representation, forgetting null
     blocks). For instance, [\[(1, m1), (3, m2)\]] will be transformed
-    into [\[m1; 0; m2\]]. There is no requirement for indices to be
-    sorted. *)
+    into [\[m1; 0; m2\]]. No duplicates are allowed. There is no
+    requirement for indices to be sorted. *)
 type block_diag_matrix = (int * matrix) list
 
 (** [solve obj constraints] solves the SDP problem: max\{ tr(obj X) |
@@ -27,4 +50,5 @@ type block_diag_matrix = (int * matrix) list
     or one of the constraints. The array returned for y has the same
     size and same order than the input list of constraints. *)
 val solve : block_diag_matrix -> (block_diag_matrix * float) list ->
-            SdpRet.t * (float * float) * (block_diag_matrix * float array)
+            SdpRet.t * (float * float)
+            * ((int * float array array) list * float array)

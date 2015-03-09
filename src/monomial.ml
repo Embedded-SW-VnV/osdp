@@ -77,12 +77,12 @@ let pp = pp_names []
 
 let filter_newton_polytope s p = s
 (*
-  Format.printf
-    "@[<2>%d monomials before filtering:@ @[%a@]@]@."
-    (List.length s) (Utils.fprintf_list ~sep:",@ " pp) s;
-  Format.printf
-    "@[<2>filtering by:@ @[%a@]@]@."
-    (Utils.fprintf_list ~sep:",@ " pp) p;
+  (* Format.printf *)
+  (*   "@[<2>%d monomials before filtering:@ @[%a@]@]@." *)
+  (*   (List.length s) (Utils.fprintf_list ~sep:",@ " pp) s; *)
+  (* Format.printf *)
+  (*   "@[<2>filtering by:@ @[%a@]@]@." *)
+  (*   (Utils.fprintf_list ~sep:",@ " pp) p; *)
   (* bounding box of the Newton polytope: min_i p_ji <= 2 s_j <= max_i p_ji *)
   let s =
     let rec pw_le x y = match x, y with
@@ -110,8 +110,12 @@ let filter_newton_polytope s p = s
          let c = compare (List.map (( * ) 2) hx) hy in
          if c = 0 then let k, f = inter tx ty in hx :: k, f
          else if c < 0 then let k, f = inter tx y in k, hx :: f
-         else (* c > 0 *) let k, f = inter x ty in k, hx :: f in
+         else (* c > 0 *) let k, f = inter x ty in k, f in
     inter (List.sort compare s) (List.sort compare p) in
+  (* Format.printf *)
+  (*   "@[<2>keep:@ @[%a@]@]@." (Utils.fprintf_list ~sep:",@ " pp) skeep; *)
+  (* Format.printf *)
+  (*   "@[<2>to filter:@ @[%a@]@]@." (Utils.fprintf_list ~sep:",@ " pp) sfilter; *)
   (* look for separating hyperplane to rule out monomials not in the
      Newton polynomial *)
   let s =
@@ -171,12 +175,8 @@ let filter_newton_polytope s p = s
     (*   sfilter; *)
     (* s *)
   in
-  Format.printf
-    "@[<2>keep:@ @[%a@]@]@." (Utils.fprintf_list ~sep:",@ " pp) skeep;
-  Format.printf
-    "@[<2>to filter:@ @[%a@]@]@." (Utils.fprintf_list ~sep:",@ " pp) sfilter;
-  Format.printf
-    "@[<2>%d monomials after filtering:@ @[%a@]@]@."
-    (List.length s) (Utils.fprintf_list ~sep:",@ " pp) s;
+  (* Format.printf *)
+  (*   "@[<2>%d monomials after filtering:@ @[%a@]@]@." *)
+  (*   (List.length s) (Utils.fprintf_list ~sep:",@ " pp) s; *)
   s
 *)

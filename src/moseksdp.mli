@@ -35,8 +35,8 @@ type matrix = (int * int * float) list
 
 (** Block diagonal matrices (sparse representation, forgetting null
     blocks). For instance, [\[(1, m1), (3, m2)\]] will be transformed
-    into [\[m1; 0; m2\]]. There is no requirement for indices to be
-    sorted. *)
+    into [\[m1; 0; m2\]]. No duplicates are allowed. There is no
+    requirement for indices to be sorted. *)
 type block_diag_matrix = (int * matrix) list
 
 (** [solve obj constraints] solves the SDP problem: max\{ tr(obj X) |
@@ -54,3 +54,10 @@ type block_diag_matrix = (int * matrix) list
 val solve : block_diag_matrix -> (block_diag_matrix * float) list ->
             SdpRet.t * (float * float)
             * ((int * float array array) list * float array)
+
+(** todo *)
+val solve_ext : ((int * float) list * block_diag_matrix) ->
+                ((int * float) list * block_diag_matrix * float * float) list ->
+                (int * float * float) list ->
+                SdpRet.t * (float * float)
+                * ((int * float) list * (int * float array array) list * float array)

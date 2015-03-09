@@ -1,77 +1,52 @@
-type matrix = float array array
+(*
+ * OSDP (OCaml SDP) is an OCaml frontend library to semi-definite
+ * programming (SDP) solvers.
+ * Copyright (C) 2012, 2014  P. Roux and P.L. Garoche
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *)
+
+type matrix = (int * int * float) list
 type block_diag_matrix = (int * matrix) list
 
-(* All block diagonal matrices in obj and constraints should have the
-   same shape, i.e. same number of blocks and corresponding blocks of
-   same size. The resulting block diagonal matrix X will also have
-   this shape. *)
-external solve : matrix list -> (matrix list * float) list ->
-                 SdpRet.t * (float * float) * (matrix list * float array) =
+external solve : block_diag_matrix -> (block_diag_matrix * float) list ->
+                 SdpRet.t
+                 * (float * float) * (float array array list * float array) =
   "csdp_solve"
 
-module IntMap = Map.Make (struct type t = int let compare = compare end)
-
+(* The C stub above returns a block diagonal matrix with (M-m+1)
+   blocks where m and M are respectively the min and max diagonal
+   block index appearing in the input (obj and constraints). We have
+   to clean that to keep only indices actually appearing in the
+   input. *)
 let solve obj constraints =
-
-  let build_block_matrices imll =
-    let zero n = Array.make_matrix n n 0. in
-    let resize n m =
-      if Array.length m = n then m
-      else
-        begin
-          let a = zero n in
-          for i = 0 to Array.length m - 1 do
-            for j = 0 to Array.length m - 1 do
-              a.(i).(j) <- m.(i).(j)
-            done
-          done;
-          a
-        end in
-    let imll = List.map (List.sort (fun (i, _) (j, _) -> compare i j)) imll in
-    let sizes =
-      List.fold_left
-        (List.fold_left
-           (fun sizes (i, m) ->
-            let sz = Array.length m in
-            try
-              if sz <= IntMap.find i sizes then sizes
-              else IntMap.add i sz sizes
-            with Not_found -> IntMap.add i sz sizes))
-        IntMap.empty
-        imll in
-    List.map
-      (fun iml ->
-       let bm, _ =
-         IntMap.fold
-           (fun i sz (bm, iml) ->
-            match iml with
-            | [] -> (zero sz :: bm), []
-            | (i', _)::_ when i' <> i -> (zero sz :: bm), iml
-            | (_, m)::iml -> (resize sz m :: bm), iml)
-           sizes
-           ([], iml) in
-       List.rev bm)
-      imll, sizes in
-
-  let read_block_matrix sizes blockmatrix =
-    let bm, _ =
-      IntMap.fold
-        (fun i _ (obm, ibm) ->
-         match ibm with
-         | [] -> assert false  (* should never happen *)
-         | h :: t -> ((i, h) :: obm), t)
-        sizes
-        ([], blockmatrix) in
-    List.rev bm in
-
-  let obj, constraints, sizes =
-    let cstrs, bounds = List.split constraints in
-    let obj, cstrs, sizes = match build_block_matrices (obj :: cstrs) with
-      | [], _ ->
-        assert false  (* Impossible: build_block_matrices preserves size
-                       * of a list of size at least one (thanks to obj). *)
-      | obj :: cstrs, sizes -> obj, cstrs, sizes in
-    obj, List.combine cstrs bounds, sizes in
   let ret, res, (res_X, res_y) = solve obj constraints in
-  let res_X = read_block_matrix sizes res_X in
+  let res_X =
+    let min_idx, max_idx =
+      let range_idx_block_diag =
+        List.fold_left (fun (mi, ma) (i, _) -> min mi i, max ma i) in
+      let range = range_idx_block_diag (max_int, min_int) obj in
+      List.fold_left
+        (fun range (m, _) -> range_idx_block_diag range m)
+        range constraints in
+    if min_idx > max_idx then []
+    else
+      let appear =
+        let a = Array.make (max_idx - min_idx + 1) false in
+        let mark = List.iter (fun (i, _) -> a.(i - min_idx) <- true) in
+        mark obj; List.iter (fun (m, _) -> mark m) constraints; a in
+      List.mapi (fun i m -> i + min_idx, m) res_X
+      |> List.filter (fun (i, _) -> appear.(i - min_idx)) in
   ret, res, (res_X, res_y)
