@@ -82,12 +82,12 @@ type 'a constr =
     (dual). See above for details. There is no requirement for indices
     in [obj] and [A_i] to be present in every input. In case of
     success (or partial success), the block diagonal matrix returned
-    for X contains exactly the indices that appear in the objective or
-    one of the constraints. Size of each diagonal block in X is the
-    maximum size appearing for that block in the objective or one of
-    the constraints. In case of success (or partial success), the
-    array returned for y has the same size and same order than the
-    input list of constraints.
+    for X contains exactly the indices, sorted by increasing order,
+    that appear in the objective or one of the constraints. Size of
+    each diagonal block in X is the maximum size appearing for that
+    block in the objective or one of the constraints. In case of
+    success (or partial success), the array returned for y has the
+    same size and same order than the input list of constraints.
 
     @raise Invalid_argument "non symmetric matrix" in case the
     objective or one of the constraints is non symmetric. *)

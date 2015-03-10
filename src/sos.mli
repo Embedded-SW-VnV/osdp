@@ -74,7 +74,7 @@ module type S = sig
   (** Printer for polynomial expressions. *)
   val pp : Format.formatter -> polynomial_expr -> unit
 
-  (** See {{:./Monomial.html#VALpp}Monomial.pp} for details about
+  (** See {{:./Monomial.html#VALpp_names}Monomial.pp_names} for details about
       [names]. *)
   val pp_names : string list -> Format.formatter -> polynomial_expr -> unit
 end
