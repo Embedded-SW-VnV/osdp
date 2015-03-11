@@ -55,9 +55,8 @@ module type S = sig
   val var_poly : string -> int -> ?homogen:bool -> int -> polynomial_expr
 
   (** [Minimize e] or [Maximize e] or [Purefeas] (just checking
-      feasibility). [e] must be a linear combination of scalar
-      variables (obtained from [var]). (TODO: currently implemented
-      only for variables) *)
+      feasibility). [e] must be an affine combination of scalar
+      variables (obtained from [var]). *)
   type obj =
       Minimize of polynomial_expr | Maximize of polynomial_expr | Purefeas
 
@@ -79,23 +78,25 @@ module type S = sig
       @raise Dimension_error in case [compose] is used with not enough
       variables.
 
-      @raise Not_linear if one of the input polynomial
-      expressions in [l] is non linear. *)
+      @raise Not_linear if the objective [obj] or one of the input
+      polynomial expressions in [l] is non linear. *)
   val solve : ?solver:Sdp.solver -> obj -> polynomial_expr list ->
               SdpRet.t * (float * float) * values
 
-  (** [value (Var id) m] returns the value contained in [m] for
-      variable [id].
+  (** [value v m] returns the value contained in [m] for
+      variable [v].
 
-      @raise Not_found if the given polynomial_expr is not of the form
-      [Var id] or if no value is found for [id] in [m]. *)
+      @raise Not_found if the given polynomial_expr [v] was not
+      obtained with the function [var] or if no value is found for
+      [v] in [m]. *)
   val value : polynomial_expr -> values -> Poly.Coeff.t
 
-  (** [value (Var_poly pv) m] returns the value contained in [m] for
-      polynomial variable [pv].
+  (** [value v m] returns the value contained in [m] for polynomial
+      variable [v].
 
-      @raise Not_found if the given polynomial_expr is not of the form
-      [Var_poly pv] or if no value is found for [pv] in [m]. *)
+      @raise Not_found if the given polynomial_expr [v] was not
+      obtained with the function [var_poly] or if no value is found
+      for [v] in [m]. *)
   val value_poly : polynomial_expr -> values -> Poly.t
 
   (** Printer for polynomial expressions. *)

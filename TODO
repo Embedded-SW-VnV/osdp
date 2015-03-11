@@ -1,3 +1,4 @@
-* pouvoir rajouter des contraintes de taille
-* linear objectives
+* pouvoir rajouter des contraintes de taille dans LMI
+* linear objectives for LMI
+* GLPK optionnel
 * verif

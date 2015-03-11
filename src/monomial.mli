@@ -26,6 +26,9 @@ type t
     instance, considering the variables x0, x1, x2 and x3,
     [of_list\[3; 4; 0; 1\]] gives the monomial x0^3 x x1^4 x x3. *)
 val of_list : int list -> t
+
+(** The last element of the returned list is non zero (or the list is
+    empty). *)
 val to_list : t -> int list
 
 val compare : t -> t -> int

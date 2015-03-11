@@ -190,9 +190,16 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   type values = value Ident.Map.t
 
   let solve ?solver obj el =
-    let env = collect_vars el in
+    let obj, obj_sign = match obj with
+      | Minimize obj -> Mult_scalar (Poly.Coeff.of_float (-1.), obj), -1.
+      | Maximize obj -> obj, 1.
+      | Purefeas -> Const (Poly.zero), 0. in
 
-    let scalarized, binding = scalarize env el in
+    let env = collect_vars (obj :: el) in
+
+    let obj, scalarized, binding = match scalarize env (obj :: el) with
+      | [], _ -> assert false
+      | obj :: scalarized, binding -> obj, scalarized, binding in
 
     (* associate an index to each (scalar) variable *)
     let var_idx, _ =
@@ -205,6 +212,16 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
               (fun (m, i) (_, id) -> Ident.Map.add id i m, i + 1)
               (m, i) (Ident.Map.find p.name binding))
         env (Ident.Map.empty, 0) in
+
+    (* build the objective (see sdp.mli) *)
+    let obj, obj_cst = match LEPoly.to_list obj with
+      | [] -> ([], []), 0.
+      | [m, c] when Monomial.to_list m = [] ->
+         let le, c = LinExprSC.to_list c in
+         let tf = LinExprSC.Coeff.to_float in
+         let v = List.map (fun (id, c) -> Ident.Map.find id var_idx, tf c) le in
+         (v, []), tf c
+      | _ -> raise Not_linear in
 
     (* build the a_i, A_i and b_i (see sdp.mli) *)
     let build_cstr ei e =
@@ -273,29 +290,15 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     let cstrs = List.flatten (List.mapi build_cstr scalarized) in
 
-    (* build the objective (see sdp.mli) *)
-    let obj' = match obj with
-      | Minimize (Var (Vscalar id)) ->
-         begin
-           try [Ident.Map.find id var_idx, -1.], [] with Not_found -> [], []
-         end
-      | Maximize (Var (Vscalar id)) ->
-         begin
-           try [Ident.Map.find id var_idx, 1.], [] with Not_found -> [], []
-         end
-      | Purefeas -> [], []
-      | _ -> raise Not_linear in
-
     Format.printf "SDP solved <@.";
-    Format.printf "%a@." Sdp.pp_ext_sparse (obj', cstrs, []);
+    Format.printf "%a@." Sdp.pp_ext_sparse (obj, cstrs, []);
     Format.printf ">@.";
 
     (* call SDP solver *)
     let ret, (pobj, dobj), (res_x, _, _) =
-      Sdp.solve_ext_sparse ?solver obj' cstrs [] in
+      Sdp.solve_ext_sparse ?solver obj cstrs [] in
 
-    let pobj, dobj =
-      match obj with Minimize _ -> -. pobj, -. dobj | _ -> pobj, dobj in
+    let pobj, dobj = let f o = obj_sign *. (o +. obj_cst) in f pobj, f dobj in
 
     (* rebuild polynomial variables *)
     if not (SdpRet.is_success ret) then
