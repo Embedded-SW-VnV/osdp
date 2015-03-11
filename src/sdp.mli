@@ -159,3 +159,40 @@ val solve_ext_sparse : ?solver:solver -> sparse_matrix obj_ext ->
 val solve_ext : ?solver:solver -> matrix obj_ext ->
                 matrix constr_ext list -> bounds ->
                 SdpRet.t * (float * float) * (vector * matrix block_diag * float array)
+
+(** {2 Printing functions.} *)
+
+val pp_sparse_matrix : Format.formatter -> sparse_matrix -> unit
+
+val pp_matrix : Format.formatter -> matrix -> unit
+
+val pp_block_diag : (Format.formatter -> 'a -> unit) ->
+                    Format.formatter -> 'a block_diag -> unit
+
+val pp_obj : (Format.formatter -> 'a -> unit) ->
+             Format.formatter -> 'a obj -> unit
+
+val pp_constr : (Format.formatter -> 'a -> unit) ->
+                Format.formatter -> 'a constr -> unit
+
+val pp_sparse : Format.formatter ->
+                (sparse_matrix obj * sparse_matrix constr list) -> unit
+
+val pp : Format.formatter -> (matrix obj * matrix constr list) -> unit
+
+val pp_vector : Format.formatter -> vector -> unit
+
+val pp_obj_ext : (Format.formatter -> 'a -> unit) ->
+                 Format.formatter -> 'a obj_ext -> unit
+
+val pp_constr_ext : (Format.formatter -> 'a -> unit) ->
+                    Format.formatter -> 'a constr_ext -> unit
+
+val pp_bounds :  Format.formatter -> bounds -> unit
+
+val pp_ext_sparse : Format.formatter ->
+                    (sparse_matrix obj_ext *
+                     sparse_matrix constr_ext list * bounds) -> unit
+
+val pp_ext : Format.formatter ->
+             (matrix obj_ext * matrix constr_ext list * bounds) -> unit

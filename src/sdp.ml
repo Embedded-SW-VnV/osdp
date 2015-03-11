@@ -44,6 +44,10 @@ let block_diag_of_sparse = List.map (fun (i, m) -> i, matrix_of_sparse m)
 
 let block_diag_to_sparse = List.map (fun (i, m) -> i, matrix_to_sparse m)
 
+(********)
+(* SDP. *)
+(********)
+
 type solver = Csdp | Mosek
 
 (* define default solver *)
@@ -107,6 +111,10 @@ let solve ?solver obj constraints =
         | Ge (c, b) -> Ge (block_diag_to_sparse c, b))
       constraints in
   solve_sparse ?solver obj constraints
+
+(*************************)
+(* Extended formulation. *)
+(*************************)
   
 type vector = (int * float) list
 
@@ -220,3 +228,93 @@ let solve_ext ?solver obj constraints bounds =
       (fun (v, m, lb, ub) -> v, block_diag_to_sparse m, lb, ub)
       constraints in
   solve_ext_sparse ?solver obj constraints bounds
+
+(***********************)
+(* Printing functions. *)
+(***********************)
+  
+let pp_sparse_matrix fmt m =
+  let pp_e fmt (i, j, f) = Format.fprintf fmt "(%d, %d, %g)" i j f in
+  Format.fprintf fmt "[@[%a@]]" (Utils.fprintf_list ~sep:",@ " pp_e) m
+
+let pp_matrix fmt m = Matrix.Float.pp fmt (Matrix.Float.of_array_array m)
+
+let pp_block_diag f fmt bd =
+  let pp_e fmt (i, m) = Format.fprintf fmt "(%d, %a)" i f m in
+  Format.fprintf fmt "[@[%a@]]" (Utils.fprintf_list ~sep:",@ " pp_e) bd
+
+let pp_obj f fmt bd =
+  let pp_e fmt (i, m) = Format.fprintf fmt "tr(%a X_%d)" f m i in
+  match bd with
+  | [] -> Format.printf "0"
+  | _ -> Format.fprintf fmt "@[%a@]" (Utils.fprintf_list ~sep:"@ + " pp_e) bd
+
+let pp_constr f fmt c =
+  let m, b = match c with Eq (m, b) | Le (m, b) | Ge (m, b) -> m, b in
+  let cmp = match c with Eq _ -> "=" | Le _ -> "<=" | Ge _ -> ">=" in
+  Format.fprintf fmt "%a %s %g" (pp_obj f) m cmp b
+
+let pp f fmt (obj, cstrs) =
+  Format.fprintf
+    fmt "@[<v>maximize   %a@ subject to @[<v>%a@],@            X psd@]"
+    (pp_obj f) obj (Utils.fprintf_list ~sep:",@ " (pp_constr f)) cstrs
+
+let pp_sparse = pp pp_sparse_matrix
+
+let pp = pp pp_matrix
+
+let pp_vector fmt v =
+  let pp_e fmt (i, f) = Format.fprintf fmt "(%d, %g)" i f in
+  Format.fprintf fmt "[@[%a@]]" (Utils.fprintf_list ~sep:",@ " pp_e) v
+
+let pp_obj_ext f fmt (v, m) =
+  let pp_e_v fmt (i, f) = Format.fprintf fmt "%g x_%d" f i in
+  let pp_e_m fmt (i, m) = Format.fprintf fmt "tr(%a X_%d)" f m i in
+  match v, m with
+  | [], [] -> Format.printf "0"
+  | [], _ ->
+     Format.fprintf fmt "@[%a@]" (Utils.fprintf_list ~sep:"@ + " pp_e_m) m
+  | _, [] ->
+     Format.fprintf fmt "@[%a@]" (Utils.fprintf_list ~sep:"@ + " pp_e_v) v
+  | _ ->
+     Format.fprintf
+       fmt "@[%a@ + %a@]"
+       (Utils.fprintf_list ~sep:"@ + " pp_e_v) v
+       (Utils.fprintf_list ~sep:"@ + " pp_e_m) m
+
+let pp_constr_ext f fmt (v, m, lb, ub) =
+  if lb = ub then
+    Format.fprintf fmt "%a = %g" (pp_obj_ext f) (v, m) lb
+  else if lb = neg_infinity then
+    Format.fprintf fmt "%a <= %g" (pp_obj_ext f) (v, m) ub
+  else if ub = infinity then
+    Format.fprintf fmt "%a >= %g" (pp_obj_ext f) (v, m) lb
+  else
+    Format.fprintf fmt "%g <= %a <= %g" lb (pp_obj_ext f) (v, m) ub
+
+let pp_bounds fmt v =
+  let pp_e fmt (i, lb, ub) =
+    if lb = ub then Format.fprintf fmt "x_%d = %g" i lb
+    else if lb = neg_infinity then Format.fprintf fmt "x_%d <= %g" i ub
+    else if ub = infinity then Format.fprintf fmt "x_%d >= %g" i lb
+    else Format.fprintf fmt "%g <= x_%d <= %g" lb i ub in
+  Format.fprintf fmt "@[%a@]" (Utils.fprintf_list ~sep:",@ " pp_e) v
+
+let pp_ext f fmt (obj, cstrs, bounds) =
+  match bounds with
+  | [] ->
+     Format.fprintf
+       fmt "@[<v>maximize   %a@ subject to @[<v>%a@],@            X psd@]"
+       (pp_obj_ext f) obj
+       (Utils.fprintf_list ~sep:",@ " (pp_constr_ext f)) cstrs
+  | _ ->
+     Format.fprintf
+       fmt "@[<v>maximize   %a@ \
+            subject to @[<v>%a@],@            %a,@            X psd@]"
+       (pp_obj_ext f) obj
+       (Utils.fprintf_list ~sep:",@ " (pp_constr_ext f)) cstrs
+       pp_bounds bounds
+
+let pp_ext_sparse = pp_ext pp_sparse_matrix
+
+let pp_ext = pp_ext pp_matrix

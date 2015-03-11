@@ -75,8 +75,7 @@ let pp_names names fmt m =
 
 let pp = pp_names []
 
-let filter_newton_polytope s p = s
-(*
+let filter_newton_polytope s p =
   (* Format.printf *)
   (*   "@[<2>%d monomials before filtering:@ @[%a@]@]@." *)
   (*   (List.length s) (Utils.fprintf_list ~sep:",@ " pp) s; *)
@@ -179,4 +178,3 @@ let filter_newton_polytope s p = s
   (*   "@[<2>%d monomials after filtering:@ @[%a@]@]@." *)
   (*   (List.length s) (Utils.fprintf_list ~sep:",@ " pp) s; *)
   s
-*)

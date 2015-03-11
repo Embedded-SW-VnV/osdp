@@ -260,7 +260,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         match_polys [] (LEPoly.to_list e) square_monoms in
 
       (* encode the constraints for solve_ext (c.f., sdp.mli) *)
-      List.map
+      List.rev_map
         (fun (le, lij) ->
          let le, b = LinExprSC.to_list le in
          let vect =
@@ -287,7 +287,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          end
       | Purefeas -> [], [] in
 
-    Format.printf "ici@.";
+    Format.printf "SDP solved <@.";
+    Format.printf "%a@." Sdp.pp_ext_sparse (obj, cstrs, []);
+    Format.printf ">@.";
 
     (* call SDP solver *)
     let ret, obj, (res_x, _, _) =
