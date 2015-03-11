@@ -27,19 +27,23 @@ module type S = sig
     homogeneous : bool }
   type polynomial_expr =
     | Const of Poly.t
-    | Var of polynomial_var
-    | Mult_scalar of Ident.t * polynomial_expr
+    | Var of Ident.t
+    | Var_poly of polynomial_var
+    | Mult_scalar of Poly.Coeff.t * polynomial_expr
     | Add of polynomial_expr * polynomial_expr
     | Sub of polynomial_expr * polynomial_expr
     | Mult of polynomial_expr * polynomial_expr
     | Power of polynomial_expr * int
     | Compose of polynomial_expr * polynomial_expr list
-  type obj_t = Minimize of Ident.t | Maximize of Ident.t | Purefeas
-  type ('a, 'b) value_t = Scalar of 'a | Poly of 'b
+  val var : string -> polynomial_expr
+  val var_poly : string -> int -> ?homogen:bool -> int -> polynomial_expr
+  type obj = Minimize of Ident.t | Maximize of Ident.t | Purefeas
+  type value = Scalar of Poly.Coeff.t | Poly of Poly.t
   exception Type_error of string
-  val solve : ?solver:Sdp.solver -> obj_t -> polynomial_expr list ->
-              SdpRet.t * (float * float)
-              * (Poly.Coeff.t, Poly.t) value_t Ident.Map.t
+  val solve : ?solver:Sdp.solver -> obj -> polynomial_expr list ->
+              SdpRet.t * (float * float) * value Ident.Map.t
+  val value : polynomial_expr -> value Ident.Map.t -> Poly.Coeff.t
+  val value_poly : polynomial_expr -> value Ident.Map.t -> Poly.t
   val pp : Format.formatter -> polynomial_expr -> unit
   val pp_names : string list -> Format.formatter -> polynomial_expr -> unit
 end
@@ -55,13 +59,22 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
   type polynomial_expr =
     | Const of Poly.t
-    | Var of polynomial_var
-    | Mult_scalar of Ident.t * polynomial_expr
+    | Var of Ident.t
+    | Var_poly of polynomial_var
+    | Mult_scalar of Poly.Coeff.t * polynomial_expr
     | Add of polynomial_expr * polynomial_expr
     | Sub of polynomial_expr * polynomial_expr
     | Mult of polynomial_expr * polynomial_expr
     | Power of polynomial_expr * int
     | Compose of polynomial_expr * polynomial_expr list
+
+  let var s = Var (Ident.create s)
+
+  let var_poly s n ?homogen d =
+    Var_poly { name = Ident.create s;
+               nb_vars = n;
+               degree = d;
+               homogeneous = match homogen with None -> false | Some h -> h }
 
   let pp_names names fmt e =
     let rec pp_prior prior fmt = function
@@ -70,10 +83,11 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            2 < prior || 0 < prior && List.length (Poly.to_list p) >= 2 in
          Format.fprintf fmt (if par then "(%a)" else "%a")
                         (Poly.pp_names names) p
-      | Var v -> Ident.pp fmt v.name
-      | Mult_scalar (i, e) -> Format.fprintf fmt
+      | Var id -> Ident.pp fmt id
+      | Var_poly p -> Ident.pp fmt p.name
+      | Mult_scalar (n, e) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
-         Ident.pp i (pp_prior 1) e
+         Poly.Coeff.pp n (pp_prior 1) e
       | Add (e1, e2) -> Format.fprintf fmt
          (if 0 < prior then "(@[%a@ + %a@])" else "@[%a@ + %a@]")
          (pp_prior 0) e1 (pp_prior 0) e2
@@ -118,8 +132,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       Ident.Map.add i t env in
     let rec type_check env = function
       | Const p -> env
-      | Var v -> constrain v.name (TYpoly v) env
-      | Mult_scalar (i, e) -> type_check (constrain i TYscal env) e
+      | Var id -> constrain id TYscal env
+      | Var_poly p -> constrain p.name (TYpoly p) env
+      | Mult_scalar (_, e) -> type_check env e
       | Power (e, _) -> type_check env e
       | Add (e1, e2) | Sub (e1, e2) | Mult (e1, e2) ->
          type_check (type_check env e1) e2
@@ -164,12 +179,13 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          Poly.to_list p
          |> List.map (fun (m, c) -> m, LinExprSC.const c)
          |> LEPoly.of_list
-      | Var v ->
-         Ident.Map.find (v.name) env
+      | Var id -> LEPoly.mult_scalar (LinExprSC.var id) LEPoly.one
+      | Var_poly p ->
+         Ident.Map.find (p.name) env
          |> List.map (fun (m, id) -> m, LinExprSC.var id)
          |> LEPoly.of_list
-      | Mult_scalar (i, e) ->
-         let le = LinExprSC.var i in
+      | Mult_scalar (n, e) ->
+         let le = LinExprSC.const n in
          LEPoly.mult_scalar le (scalarize e)
       | Power (e, d) -> LEPoly.power (scalarize e) d
       | Add (e1, e2) -> LEPoly.add (scalarize e1) (scalarize e2)
@@ -187,9 +203,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   (* Solve *)
   (*********)
 
-  type obj_t = Minimize of Ident.t | Maximize of Ident.t | Purefeas
+  type obj = Minimize of Ident.t | Maximize of Ident.t | Purefeas
 
-  type ('a, 'b) value_t = Scalar of 'a | Poly of 'b
+  type value = Scalar of Poly.Coeff.t | Poly of Poly.t
 
   let solve ?solver obj el =
     let env = type_check el in
@@ -316,6 +332,18 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
               Poly p)
           env in
       ret, obj, vars
+
+  let value e m =
+    let id = match e with Var id -> id | _ -> raise Not_found in
+    match Ident.Map.find id m with
+    | Scalar s -> s
+    | Poly _ -> raise Not_found
+
+  let value_poly e m =
+    let id = match e with Var_poly p -> p.name | _ -> raise Not_found in
+    match Ident.Map.find id m with
+    | Scalar _ -> raise Not_found
+    | Poly p -> p
 end
 
 module Float = Make (Polynomial.Float)

@@ -36,20 +36,32 @@ module type S = sig
       {{:./Polynomial.S.html}Polynomial.S} for details. *)
   type polynomial_expr =
     | Const of Poly.t
-    | Var of polynomial_var
-    | Mult_scalar of Ident.t * polynomial_expr
+    | Var of Ident.t  (** scalar variable *)
+    | Var_poly of polynomial_var  (** polynomial variable *)
+    | Mult_scalar of Poly.Coeff.t * polynomial_expr
     | Add of polynomial_expr * polynomial_expr
     | Sub of polynomial_expr * polynomial_expr
     | Mult of polynomial_expr * polynomial_expr
     | Power of polynomial_expr * int
     | Compose of polynomial_expr * polynomial_expr list
 
+  (** [var s] is equivalent to [Var (Ident.create s)]. *)
+  val var : string -> polynomial_expr
+
+  (** [var_poly s n h d] is equivalent to [Var { name = Ident.create
+      s; nb_vars = n; degree = d; homogeneous = h}]. [h] is [false] by
+      default.
+
+      todo: invalid argument for non positive values (or negative and
+      0 ~~> scalar) *)
+  val var_poly : string -> int -> ?homogen:bool -> int -> polynomial_expr
+
   (** [Minimize var] or [Maximize var] or [Purefeas] (just checking
       feasibility). Ident [var] must appear as scalar variable
       ([Mult_scalar]) in the constraints. *)
-  type obj_t = Minimize of Ident.t | Maximize of Ident.t | Purefeas
+  type obj = Minimize of Ident.t | Maximize of Ident.t | Purefeas
 
-  type ('a, 'b) value_t = Scalar of 'a | Poly of 'b
+  type value = Scalar of Poly.Coeff.t | Poly of Poly.t
 
   exception Type_error of string
 
@@ -67,9 +79,22 @@ module type S = sig
 
       @raise LinExpr.Not_linear if one of the input polynomial
       expressions in [l] is non linear. *)
-  val solve : ?solver:Sdp.solver -> obj_t -> polynomial_expr list ->
-              SdpRet.t * (float * float)
-              * (Poly.Coeff.t, Poly.t) value_t Ident.Map.t
+  val solve : ?solver:Sdp.solver -> obj -> polynomial_expr list ->
+              SdpRet.t * (float * float) * value Ident.Map.t
+
+  (** [value (Var id) m] returns the value contained in [m] for
+      variable [id].
+
+      @raise Not_found if the given polynomial_expr is not of the form
+      [Var id] or if no value is found for [id] in [m]. *)
+  val value : polynomial_expr -> value Ident.Map.t -> Poly.Coeff.t
+
+  (** [value (Var_poly pv) m] returns the value contained in [m] for
+      polynomial variable [pv].
+
+      @raise Not_found if the given polynomial_expr is not of the form
+      [Var_poly pv] or if no value is found for [pv] in [m]. *)
+  val value_poly : polynomial_expr -> value Ident.Map.t -> Poly.t
 
   (** Printer for polynomial expressions. *)
   val pp : Format.formatter -> polynomial_expr -> unit
