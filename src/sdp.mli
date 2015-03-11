@@ -67,10 +67,11 @@ type solver = Csdp | Mosek
 (** Objective (matrix C). *)
 type 'a obj = 'a block_diag
 
-(** Constraints (tr(A_i X) = b_i), [Le (A_i, b_i)] will automatically
-    be translated internally as tr(A_i X) + s_i = b_i by adding slack
-    variables s_i >= 0. Similarly [Ge (A_i, b_i)] gives tr(A_i X) -
-    s_i = b_i with s_i >= 0. *)
+(** Constraints (tr(A_i X) = b_i), [Le (A_i, b_i)] means tr(A_i X) <=
+    b_i and will automatically be translated internally as tr(A_i X) +
+    s_i = b_i by adding slack variables s_i >= 0. Similarly [Ge (A_i,
+    b_i)] means tr(A_i X) >= b_i and gives tr(A_i X) - s_i = b_i with
+    s_i >= 0. *)
 type 'a constr =
   | Eq of 'a block_diag * float
   | Le of 'a block_diag * float
@@ -132,30 +133,62 @@ val solve : ?solver:solver -> matrix obj -> matrix constr list ->
     variables.
 
     Note that the simple formulation on top is a particular case of
-    this for n = 0 and b^- = b^+.*)
+    this for n = 0 and b^- = b^+.
+
+    The bounds b_i^- and d_j^- (resp. b_i^+ and d_j^+) can be
+    [neg_infinity] (resp. [infinity]), in which case, the
+    corresponding s or t in the dual is 0 (and the corresponding term
+    disappears from the dual objective). *)
 
 (** No duplicates are allowed. *)
 type vector = (int * float) list
 
-(** Objective (matrix C). *)
+(** Objective (vector c and matrix C). *)
 type 'a obj_ext = vector * 'a block_diag
 
-(** Constraints
-
-    todo. *)
+(** Constraints. [(a_i, A_i, b_i_m, b_i_p)] encodes the constraint
+    b_i_m <= a_i^T x + tr(A_i X) <= b_i_p. [b_i_m] can be
+    [neg_infinity] and [b_i_p] can be [infinity]. *)
 type 'a constr_ext = vector * 'a block_diag * float * float
 
-(** No duplicates are allowed.
-
-    todo*)
+(** Bounds on scalar variables. Each [(i, lb, ub)] in the list encodes
+    the constraint lb <= x_i <= ub. [lb] can be [neg_infinity] and
+    [ub] can be [infinity]. No duplicated indices i are allowed. *)
 type bounds = (int * float * float) list
 
-(** todo *)
+(** [solve_ext_sparse obj constraints bounds] solves the SDP problem:
+    max\{ obj | constraints, bounds, X psd \}. It returns both the
+    primal and dual objective values and a witness for (x, X) (primal)
+    and y (dual). See above for details. Variables x_i not bounded in
+    [bounds] are assumed to be unbounded (i.e., bounded by
+    [neg_infinity] and [infinity]). Bounds in [bounds] about variables
+    x_i not appearing in the objective or constraints may be
+    ignored. There is no requirement for indices in [obj] and [a_i,
+    A_i] to be present in every input. In case of success (or partial
+    success), the vector (resp. block diagonal matrix) returned for x
+    (resp. X) contains exactly the indices, sorted by increasing
+    order, that appear in the linear (resp. matrix)part of the
+    objective or one of the constraints. Size of each diagonal block
+    in X is the maximum size appearing for that block in the objective
+    or one of the constraints. In case of success (or partial
+    success), the array returned for y has the same size and same
+    order than the input list of constraints.
+
+    @raise Invalid_argument "non symmetric matrix" in case the
+    objective or one of the constraints is non symmetric. *)
 val solve_ext_sparse : ?solver:solver -> sparse_matrix obj_ext ->
                        sparse_matrix constr_ext list -> bounds ->
                        SdpRet.t * (float * float) * (vector * matrix block_diag * float array)
 
-(** todo *)
+(** Same as {!solve_ext_sparse} with dense matrices as input. This can
+    be more convenient for small problems. Otherwise, this is
+    equivalent to {!solve_ext_sparse} after conversion with
+    {!matrix_to_sparse}. If an indice is present in one input,
+    potential matrices for that indice in other inputs will be padded
+    with 0 on right and bottom to have the same size.
+
+    @raise Invalid_argument "non symmetric matrix" in case the
+    objective or one of the constraints is not a sparse matrix. *)
 val solve_ext : ?solver:solver -> matrix obj_ext ->
                 matrix constr_ext list -> bounds ->
                 SdpRet.t * (float * float) * (vector * matrix block_diag * float array)
