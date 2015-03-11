@@ -26,18 +26,14 @@
 module type S = sig
   module Poly : Polynomial.S
 
-  type polynomial_var = {
-    name : Ident.t;
-    nb_vars : int;
-    degree : int;  (** must be even *)
-    homogeneous : bool }
+  (** Scalar or polynomial variables. *)
+  type var
 
   (** Constructors. See the module
       {{:./Polynomial.S.html}Polynomial.S} for details. *)
   type polynomial_expr =
     | Const of Poly.t
-    | Var of Ident.t  (** scalar variable *)
-    | Var_poly of polynomial_var  (** polynomial variable *)
+    | Var of var
     | Mult_scalar of Poly.Coeff.t * polynomial_expr
     | Add of polynomial_expr * polynomial_expr
     | Sub of polynomial_expr * polynomial_expr
@@ -45,25 +41,31 @@ module type S = sig
     | Power of polynomial_expr * int
     | Compose of polynomial_expr * polynomial_expr list
 
-  (** [var s] is equivalent to [Var (Ident.create s)]. *)
+  (** [var s] creates a new scalar variable ([Var v]). *)
   val var : string -> polynomial_expr
 
-  (** [var_poly s n h d] is equivalent to [Var { name = Ident.create
-      s; nb_vars = n; degree = d; homogeneous = h}]. [h] is [false] by
-      default.
-
-      todo: invalid argument for non positive values (or negative and
-      0 ~~> scalar) *)
+  (** [var_poly s n h d] creates a new polynomial variable ([Var
+      v]). [n] is the number of variables of the new polynomial
+      variable. It must be positive. [h] is [true] if the polynomial
+      is homogeneous (i.e., all monomials of same degree (for instance
+      x_0 x_1^3 + x_0^4 is homogeneous, x_0 x_1^3 + x_0^3 is not)),
+      [false] if the polynomial is fully parameterized. [h] is [false]
+      by default. [d] is the degree of the polynomial. It must be
+      positive. *)
   val var_poly : string -> int -> ?homogen:bool -> int -> polynomial_expr
 
-  (** [Minimize var] or [Maximize var] or [Purefeas] (just checking
-      feasibility). Ident [var] must appear as scalar variable
-      ([Mult_scalar]) in the constraints. *)
-  type obj = Minimize of Ident.t | Maximize of Ident.t | Purefeas
+  (** [Minimize e] or [Maximize e] or [Purefeas] (just checking
+      feasibility). [e] must be a linear combination of scalar
+      variables (obtained from [var]). (TODO: currently implemented
+      only for variables) *)
+  type obj =
+      Minimize of polynomial_expr | Maximize of polynomial_expr | Purefeas
 
-  type value = Scalar of Poly.Coeff.t | Poly of Poly.t
+  type values
 
-  exception Type_error of string
+  exception Dimension_error
+
+  exception Not_linear
 
   (** [solve obj l] tries to optimise the objective [obj] under the
       constraint that each polynomial expressions in [l] is
@@ -74,27 +76,27 @@ module type S = sig
       be empty in case of failure (i.e., [SdpRet.t] being not Success
       or PartialSuccess).
 
-      @raise Type_error with an explanatory message in case something
-      inconsistent is found.
+      @raise Dimension_error in case [compose] is used with not enough
+      variables.
 
-      @raise LinExpr.Not_linear if one of the input polynomial
+      @raise Not_linear if one of the input polynomial
       expressions in [l] is non linear. *)
   val solve : ?solver:Sdp.solver -> obj -> polynomial_expr list ->
-              SdpRet.t * (float * float) * value Ident.Map.t
+              SdpRet.t * (float * float) * values
 
   (** [value (Var id) m] returns the value contained in [m] for
       variable [id].
 
       @raise Not_found if the given polynomial_expr is not of the form
       [Var id] or if no value is found for [id] in [m]. *)
-  val value : polynomial_expr -> value Ident.Map.t -> Poly.Coeff.t
+  val value : polynomial_expr -> values -> Poly.Coeff.t
 
   (** [value (Var_poly pv) m] returns the value contained in [m] for
       polynomial variable [pv].
 
       @raise Not_found if the given polynomial_expr is not of the form
       [Var_poly pv] or if no value is found for [pv] in [m]. *)
-  val value_poly : polynomial_expr -> value Ident.Map.t -> Poly.t
+  val value_poly : polynomial_expr -> values -> Poly.t
 
   (** Printer for polynomial expressions. *)
   val pp : Format.formatter -> polynomial_expr -> unit
