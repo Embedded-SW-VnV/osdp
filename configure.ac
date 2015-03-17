@@ -63,6 +63,11 @@ AC_ARG_WITH([camlp4],
   [],
   [with_camlp4=check])
 
+AC_ARG_WITH([glpk],
+  [AS_HELP_STRING([--without-glpk], [disable support for GLPK])],
+  [],
+  [with_glpk=check])
+
 # Check for programs
 AC_CHECK_TOOL([OCAMLC], [ocamlc], [no])
 AS_IF([test "x$OCAMLC" = xno], [AC_MSG_ERROR([Cannot find ocamlc.])])
@@ -122,10 +127,10 @@ AC_SUBST(with_camlp4)
 AC_SUBST(CAMLP4_PARSERS)
 
 # Check for libraries
-AC_MSG_CHECKING(for zarith)
-ZARITH_PATH=`ocamlfind query zarith`
+AC_MSG_CHECKING(for ocaml-glpk)
+ZARITH_PATH=`ocamlfind query glpk`
 if test $? -ne 0 ; then
-  AC_MSG_ERROR([Unable to find OCaml library Zarith.])
+  AC_MSG_ERROR([Unable to find OCaml library ocaml-glpk.])
 fi
 AC_MSG_RESULT($ZARITH_PATH)
 
@@ -225,6 +230,36 @@ if test "x$with_csdp" = xno -a "x$with_mosek" = xno; then
   AC_MSG_WARN(this is quite useless. You should at least install either CSDP or MOSEK.)
 fi
 
+if test "x$with_glpk" != xno; then
+  AC_MSG_CHECKING(for ocaml-glpk)
+  GLPK_PATH=`ocamlfind query glpk`
+  if test $? -ne 0 ; then
+    AS_IF([test "x$with_glpk" = xcheck],
+      [AC_MSG_WARN([Cannot find Ocaml-Glpk, will compile without it but it is also possible to install Ocaml-Glpk and rerun this configure script.])],
+      [AC_MSG_ERROR([Cannot find Ocaml-Glpk.])])
+    with_glpk=no
+  else
+    AC_MSG_RESULT($GLPK_PATH)
+  fi
+fi
+if test "x$with_glpk" != xno; then
+  with_glpk=yes
+  REQUIRES_GLPK=" glpk"
+  TAGS_GLPK=", package(glpk)"
+  MLPACK_GLPK="Monomial_glpk"
+  INCLUDE_MONOMIAL_GLPK="include Monomial_glpk"
+else
+  REQUIRES_GLPK=""
+  TAGS_GLPK=""
+  MLPACK_GLPK=""
+  INCLUDE_MONOMIAL_GLPK=""
+fi
+AC_SUBST(with_glpk)
+AC_SUBST(REQUIRES_GLPK)
+AC_SUBST(TAGS_GLPK)
+AC_SUBST(MLPACK_GLPK)
+AC_SUBST(INCLUDE_MONOMIAL_GLPK)
+
 AC_CHECK_LIB([m], [fesetround], [],
   [AC_MSG_ERROR([Could not find function fesetround in math library.])])
 
@@ -233,9 +268,9 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([math.h fenv.h])
 
 # Create files
-AC_CONFIG_FILES([Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META src/osdp_top.ml])
+AC_CONFIG_FILES([Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/monomial_glpk_opt.ml])
 AC_OUTPUT
-chmod a-w Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META src/osdp_top.ml
+chmod a-w Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/monomial_glpk_opt.ml
 
 echo ""
 echo "*** Configuration for $PACKAGE_NAME $PACKAGE_VERSION:"
@@ -252,6 +287,7 @@ if test "x$with_mosek" = xyes; then
   echo "    MOSEK_LIB ................ : $MOSEK_LIB"
 fi
 echo "  Compiled with Camlp4 ....... : $with_camlp4"
+echo "  Compiled with GLPK ......... : $with_glpk"
 echo ""
 echo "  Now type 'make' to build $PACKAGE $VERSION"
 echo "  then 'make install' to install."

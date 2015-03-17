@@ -308,7 +308,7 @@ let solve_pi ~(solver : Osdp.Sdp.solver) (eqs : eq list) : float list =
   (* Well, we could do Kleene iterations with a widening with thresholds
    * to get a good postfixpoint to start with but it is easier to just start
    * with +oo for every template except the ellipsoid. *)
-  let init_lambda = 10. in
+  let init_lambda = 2. in
   let postfixpoint =
     let sz = List.length eqs in
     init_lambda :: Array.to_list (Array.make (sz - 1) infinity) in
@@ -374,6 +374,7 @@ let test_quadratic ~solver a b =
   let nb_dicho = 10 in
   let nb_try = 12 in
   let rec dicho n min max =
+    Format.printf "min, max = %g, %g@." min max;
     let mid = (min +. max) /. 2. in
     let min, max = if test_feas_lambda mid then min, mid else mid, max in
     if n > 0 then dicho (n - 1) min max else max in
@@ -494,7 +495,7 @@ let b_3 = [[1.]; [0.]]
 
 let a_4 = [[0.9379; -0.0381; -0.0414];
            [-0.0404; 0.968; -0.0179];
-           [-0.0142; -0.0197; 0.9823]]
+           [0.0142; -0.0197; 0.9823]]
 let b_4 = [[0.0237]; [0.0143]; [0.0077]]
 
 let a_5 = [[0.6227; 0.3871; -0.113; 0.0102];

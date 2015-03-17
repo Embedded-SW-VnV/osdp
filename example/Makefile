@@ -12,4 +12,7 @@ clean:
 	ocamlbuild -clean
 	rm -f demo *.cmi *.cmo *.cmx *.o *~
 
+demo2: demo2.ml
+	ocamlfind ocamlopt -linkpkg -package osdp -package camlp4 -syntax camlp4o -o $@ $<
+
 .PHONY: clean
