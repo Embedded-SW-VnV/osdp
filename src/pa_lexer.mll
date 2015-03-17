@@ -32,11 +32,8 @@ let nl = ['\r']?['\n']
 rule token = parse
   | nl { Lexing.new_line lexbuf; token lexbuf }
   | blank+ { token lexbuf }
-  | '?' { QMARK }
-  | '"' { DQUOTE }
   | '\'' { SQUOTE }
   | '^' { HAT }
-  | "*:" { TIMESSEMI }
   | '+' { PLUS }
   | '-' { MINUS }
   | '*' { TIMES }
@@ -60,7 +57,6 @@ rule token = parse
   | (['1'-'9'] digit*) as n { INT n }
   | 'x' ((digit+) as n) { MID (int_of_string n) }
   | (['a'-'z'] (alpha|digit|['_' '\''])*) as n { ID n }
-  | (alpha (alpha|digit|['_' '\''])*) as n { UID n }
   | '$' { AQ (antiquotation 0 lexbuf) }
   | eof { EOF }
   | _ { raise (Lexing_error "unknown char") }

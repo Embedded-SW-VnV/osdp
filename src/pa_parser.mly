@@ -141,16 +141,14 @@ let monom loc v d =
 %token <string> INT
 %token <int> MID
 %token <string> ID
-%token <string> UID
 %token <string> AQ
-%token INT0 QMARK DQUOTE SQUOTE HAT TIMESSEMI PLUS MINUS TIMES
+%token INT0 SQUOTE HAT PLUS MINUS TIMES
 %token ZEROS EYE KRON KRSYM LIFT
 %token LPAR RPAR LBRA RBRA COMMA SEMICOL LEQ GEQ
 %token UMINUS PVM FINT0 EOF
 
 %left PLUS MINUS
-%left TIMES
-%nonassoc TIMESSEMI
+%right TIMES
 %nonassoc UMINUS LPAR
 %nonassoc SQUOTE
 
@@ -178,17 +176,6 @@ id:
 | MID { "x" ^ string_of_int $1 }
 | ID { $1 }
 
-vid:
-| id { $1 }
-| UID { $1 }
-
-i:
-| QMARK DQUOTE vid DQUOTE { let l = loc () in
-                            Ast.ExApp (l,
-                                       id_of_list l ["Osdp"; "Ident"; "create"],
-                                       Ast.ExStr (l, $3)) }
-| QMARK id { id_of_list (loc ()) [$2] }
-
 ncid:
 | INT0 { Ast.ExInt (loc (), "0") }
 | INT { Ast.ExInt (loc (), $1) }
@@ -197,7 +184,6 @@ ncid:
 
 exprl:
 | id { id_of_list (loc ()) [$1] }
-| i { olfl ["Var"] [$1] }
 | ZEROS LPAR ncid COMMA ncid RPAR { olfl ["Zeros"] [$3; $5] }
 | EYE LPAR ncid RPAR { olfl ["Eye"] [$3] }
 | KRON LPAR ncid COMMA ncid COMMA ncid RPAR { olfl ["Kron"]
@@ -208,10 +194,6 @@ exprl:
 | LIFT LPAR exprl COMMA ncid COMMA ncid COMMA ncid COMMA ncid RPAR { olfl ["Lift_block"] [$3; $5; $7; $9; $11] }
 | exprl SQUOTE { olfl ["Transpose"] [$1] }
 | MINUS exprl %prec UMINUS { olfl ["Minus"] [$2] }
-| f TIMESSEMI exprl { olfl ["Scale_const"] [$1; $3] }
-| id TIMESSEMI exprl { let l = loc () in olf l ["Scale_const"]
-                                             [id_of_list l [$1]; $3] }
-| i TIMESSEMI exprl { olfl ["Scale_var"] [$1; $3] }
 | exprl PLUS exprl { olfl ["Add"] [$1; $3] }
 | exprl MINUS exprl { olfl ["Sub"] [$1; $3] }
 | exprl TIMES exprl { olfl ["Mult"] [$1; $3] }
@@ -249,14 +231,12 @@ monom:
 
 exprs:
 | ID { id_of_list (loc ()) [$1] }
-| QMARK id { let l = loc () in osf l ["Var"] [id_of_list l [$2]] }
 | monom { let l = loc () in
           osf l ["Const"] [osf l ["Poly"; "of_list"]
                                  [slist l (pair l $1 (Ast.ExFlo (l, "1.")))]] }
 | f monom { let l = loc () in
             osf l ["Const"] [osf l ["Poly"; "of_list"]
                                    [slist l (pair l $2 $1)]] }
-| i TIMESSEMI exprs { osfl ["Mult_scalar"] [$1; $3] }
 | exprs PLUS exprs { osfl ["Add"] [$1; $3] }
 | exprs MINUS exprs { osfl ["Sub"] [$1; $3] }
 | MINUS exprs %prec UMINUS { let l = loc () in

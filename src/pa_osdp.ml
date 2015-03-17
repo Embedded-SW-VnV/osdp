@@ -23,7 +23,7 @@
     {{:./Sos.Float.html#TYPEpolynomial_expr}Sos.Float.matrix_expr} and
     {{:./Polynomial.Float.html#TYPEt}Polynomial.Float.t}. *)
 
-(** See file examples/demo.ml for examples of use.
+(** See file {{:../example/demo.ml}example/demo.ml} for examples of use.
     Syntax:
     {[
 n ::= 0 | [1-9][0-9]*
@@ -35,23 +35,15 @@ mid ::= 'x'[0-9]+
 
 id ::= [a-z][a-zA-Z0-9_']*  (OCaml id)
 
-uid ::= [A-Z][a-zA-Z0-9_']*
-
-vid ::= id | uid
-
-i ::= "?" """ vid """ | "?" id
-
 ncid ::= n | id | "$" OCaml code (type int) "$"
 
-e ::= id | i
+e ::= f | id
     | "zeros" "(" ncid "," ncid ")" | "eye" "(" ncid ")"
     | "kron" "(" ncid "," ncid "," ncid ")"
     | "krsym" "(" ncid "," ncid "," ncid ")"
     | "[" b "]" | "lift" "(" e "," ncid "," ncid "," ncid "," ncid ")"
     | e "'" | "-" e
-    | f "*:" e | id "*:" e | i "*:" e
     | e "+" e | e "-" e | e "*" e | "(" e ")"
-    | f
 
 b ::= li | li ";" b
 
@@ -61,12 +53,10 @@ lmi ::= e | e "<=" "0" | e ">=" "0" | e "<=" e | e ">=" e
 
 m ::= mid | mid "^" ncid | m m
 
-e ::= id | "?" id | m | f m
-    | i "*:" e
+e ::= f | id | m | f m
     | e "+" e | e "-" e | "-" e | e "*" e | e "^" ncid
     | e "(" l ")"
     | "(" e ")"
-    | f
 
 l ::= le | le "," l
 
