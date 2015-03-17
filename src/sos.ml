@@ -290,9 +290,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     let cstrs = List.flatten (List.mapi build_cstr scalarized) in
 
-    Format.printf "SDP solved <@.";
-    Format.printf "%a@." Sdp.pp_ext_sparse (obj, cstrs, []);
-    Format.printf ">@.";
+    (* Format.printf "SDP solved <@."; *)
+    (* Format.printf "%a@." Sdp.pp_ext_sparse (obj, cstrs, []); *)
+    (* Format.printf ">@."; *)
 
     (* call SDP solver *)
     let ret, (pobj, dobj), (res_x, _, _) =

@@ -72,6 +72,12 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
                               
   let pp fmt e =
     let rec pp_prior prior fmt = function
+      | Const m when Mat.nb_lines m = 1 && Mat.nb_cols m = 1 ->
+         begin
+           match Mat.to_list_list m with
+           | [[e]] -> Mat.Coeff.pp fmt e
+           | _ -> assert false
+         end
       | Const m -> Mat.pp fmt m
       | Var v -> Ident.pp fmt v.name
       | Zeros (n, m) -> Format.fprintf fmt "zeros(%i, %i)" n m
@@ -451,6 +457,10 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       (fun id blks (lv, lc) ->
        let b_i = try Ident.Map.find id obj with Not_found -> 0. in
        id :: lv, Sdp.Eq (blks, b_i) :: lc) blks_A ([], []) in
+
+    (* Format.printf "SDP solved <@."; *)
+    (* Format.printf "%a@." Sdp.pp (!blks_C, constraints); *)
+    (* Format.printf ">@."; *)
 
     (* call SDP solver *)
     let ret, (pres, dres), (primal_sol, dual_sol) =

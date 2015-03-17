@@ -21,7 +21,9 @@
 (** {b Linear Matrix Inequalities (LMI)} optimization.
 
     This module takes LMI problems, transforms them to SDP problems,
-    calls an SDP solver and rebuilds the result. *)
+    calls an SDP solver and rebuilds the result.
+
+    See file {{:../example/demo.ml}example/demo.ml} for examples of use. *)
 
 module type S = sig
   module Mat : Matrix.S
