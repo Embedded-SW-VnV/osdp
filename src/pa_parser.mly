@@ -144,7 +144,7 @@ let monom loc v d =
 %token <string> UID
 %token <string> AQ
 %token INT0 QMARK DQUOTE SQUOTE HAT TIMESSEMI PLUS MINUS TIMES
-%token ZEROS EYE KRSYM LIFT
+%token ZEROS EYE KRON KRSYM LIFT
 %token LPAR RPAR LBRA RBRA COMMA SEMICOL LEQ GEQ
 %token UMINUS PVM FINT0 EOF
 
@@ -200,7 +200,9 @@ exprl:
 | i { olfl ["Var"] [$1] }
 | ZEROS LPAR ncid COMMA ncid RPAR { olfl ["Zeros"] [$3; $5] }
 | EYE LPAR ncid RPAR { olfl ["Eye"] [$3] }
-| KRSYM LPAR ncid COMMA ncid COMMA ncid RPAR { olfl ["Kronecker_sym"]
+| KRON LPAR ncid COMMA ncid COMMA ncid RPAR { olfl ["Kron"]
+                                                    [$3; $5; $7] }
+| KRSYM LPAR ncid COMMA ncid COMMA ncid RPAR { olfl ["Kron_sym"]
                                                     [$3; $5; $7] }
 | LBRA b RBRA { simplify_mat_float $2 }
 | LIFT LPAR exprl COMMA ncid COMMA ncid COMMA ncid COMMA ncid RPAR { olfl ["Lift_block"] [$3; $5; $7; $9; $11] }

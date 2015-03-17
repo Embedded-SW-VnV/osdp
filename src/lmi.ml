@@ -20,56 +20,64 @@
 
 module type S = sig
   module Mat : Matrix.S
+  type var
   type matrix_expr =
     | Const of Mat.t
-    | Var of Ident.t
+    | Var of var
     | Zeros of int * int
     | Eye of int
-    | Kronecker_sym of int * int * int
+    | Kron of int * int * int
+    | Kron_sym of int * int * int
     | Block of matrix_expr array array
     | Lift_block of matrix_expr * int * int * int * int
     | Transpose of matrix_expr
     | Minus of matrix_expr
-    | Scale_const of Mat.Coeff.t * matrix_expr
-    | Scale_var of Ident.t * matrix_expr
     | Add of matrix_expr * matrix_expr
     | Sub of matrix_expr * matrix_expr
     | Mult of matrix_expr * matrix_expr
-  type obj_t = Minimize of Ident.t | Maximize of Ident.t | Purefeas
-  type ('a, 'b) value_t = Scalar of 'a | Mat of 'b
+  val var : ?dim:int -> string -> matrix_expr
+  type obj = Minimize of matrix_expr | Maximize of matrix_expr | Purefeas
+  type values
   exception Type_error of string
+  exception Not_linear
   exception Not_symmetric
-  val solve : ?solver:Sdp.solver -> obj_t -> matrix_expr list ->
-    SdpRet.t * (float * float) * (Mat.Coeff.t, Mat.t) value_t Ident.Map.t
+  val solve : ?solver:Sdp.solver -> obj -> matrix_expr list ->
+    SdpRet.t * (float * float) * values
+  val value : matrix_expr -> values -> Mat.Coeff.t
+  val value_mat : matrix_expr -> values -> Mat.t
   val pp : Format.formatter -> matrix_expr -> unit
 end
 
 module Make (M : Matrix.S) : S with module Mat = M = struct
   module Mat = M
 
+  type var = { name : Ident.t; dim : int option }
+
   type matrix_expr =
     | Const of Mat.t
-    | Var of Ident.t
+    | Var of var
     | Zeros of int * int
     | Eye of int
-    | Kronecker_sym of int * int * int
+    | Kron of int * int * int
+    | Kron_sym of int * int * int
     | Block of matrix_expr array array
     | Lift_block of matrix_expr * int * int * int * int
     | Transpose of matrix_expr
     | Minus of matrix_expr
-    | Scale_const of Mat.Coeff.t * matrix_expr
-    | Scale_var of Ident.t * matrix_expr
     | Add of matrix_expr * matrix_expr
     | Sub of matrix_expr * matrix_expr
     | Mult of matrix_expr * matrix_expr
 
+  let var ?dim s = Var { name = Ident.create s; dim = dim }
+                              
   let pp fmt e =
     let rec pp_prior prior fmt = function
       | Const m -> Mat.pp fmt m
-      | Var i -> Ident.pp fmt i
+      | Var v -> Ident.pp fmt v.name
       | Zeros (n, m) -> Format.fprintf fmt "zeros(%i, %i)" n m
       | Eye n -> Format.fprintf fmt "eye(%i, %i)" n n
-      | Kronecker_sym (n, i, j) -> Mat.pp fmt (Mat.kronecker_sym n i j)
+      | Kron (n, i, j) -> Mat.pp fmt (Mat.kron n i j)
+      | Kron_sym (n, i, j) -> Mat.pp fmt (Mat.kron_sym n i j)
       | Block a ->
          Format.fprintf fmt "[@[%a@]]"
                         (Utils.fprintf_array ~sep:";@ "
@@ -80,12 +88,6 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
                         (pp_prior 0) m i j k l
       | Transpose m -> Format.fprintf fmt "%a'" (pp_prior 2) m
       | Minus m -> Format.fprintf fmt "-%a" (pp_prior (max 1 prior)) m
-      | Scale_const (e, m) -> Format.fprintf fmt
-         (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
-         Mat.Coeff.pp e (pp_prior 1) m
-      | Scale_var (i, e) -> Format.fprintf fmt
-         (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
-         Ident.pp i (pp_prior 1) e
       | Add (e1, e2) -> Format.fprintf fmt
          (if 0 < prior then "(@[%a@ + %a@])" else "@[%a@ + %a@]")
          (pp_prior 0) e1 (pp_prior 0) e2
@@ -103,8 +105,9 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
 
   (* Type of variables. *)
   type ty =
-    | TYscal  (* scalar variable *)
-    | TYmat of int option  (* matrix variable and size (if known) *)
+    | TYunknown  (* unknown size *)
+    | TY1or of int  (* size 1 or n *)
+    | TY of int  (* size n *)
 
   type uf =
     | UFr of ty  (* variable is of type ty *)
@@ -150,15 +153,21 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
     (* Combines types t1 and t2, raises Type_error if they are inconsistent. *)
     let meet i t1 t2 =
       match t1, t2 with
-      | TYscal, TYscal -> TYscal
-      | TYscal, TYmat _  | TYmat _, TYscal ->
-         type_error i "cannot be a scalar and a matrix at the same time."
-      | TYmat None, _ -> t2
-      | _, TYmat None -> t1
-      | TYmat (Some n1), TYmat (Some n2) ->
-         if n1 = n2 then t1 else
-           type_error i ("cannot be of size " ^ string_of_int n1 ^ " and "
-                         ^ string_of_int n2 ^ " at the same time.") in
+      | TYunknown, _ -> t2
+      | _, TYunknown -> t1
+      | TY1or n1, TY1or n2 ->
+         if n1 = n2 then (if n1 = 1 then TY 1 else t1) else TY 1
+      | TY n2, TY1or n1
+      | TY1or n1, TY n2 ->
+         if n2 = n1 || n2 = 1 then TY n2
+         else
+           type_error i ("cannot be of size (" ^ string_of_int n1 ^ " or 1)" ^
+                         " and " ^ string_of_int n2 ^ " at the same time.")
+      | TY n1, TY n2 ->
+         if n2 = n1 then t1
+         else
+           type_error i ("cannot be of size " ^ string_of_int n1 ^
+                         " and " ^ string_of_int n2 ^ " at the same time.") in
 
     (* constrain i to have type ti *)
     let constrain i ti =
@@ -178,19 +187,18 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
 
     let rec type_check sline scol = function
       | Const m ->
-         meet None sline (TYmat (Some (Mat.nb_lines m))),
-         meet None scol (TYmat (Some (Mat.nb_cols m))),
+         meet None sline (TY (Mat.nb_lines m)),
+         meet None scol (TY (Mat.nb_cols m)),
          None
-      | Var i ->
-         let t = TYmat None in  (* i is a square matrix... *)
-         let t = meet (Some i) t sline in  (* ...of size sline... *)
-         let t = meet (Some i) t scol in  (* ...and scol *)
-         constrain i t;
-         t, t, Some i
-      | Zeros (n, m) ->
-         meet None sline (TYmat (Some n)), meet None scol (TYmat (Some m)), None
-      | Eye n | Kronecker_sym (n, _, _) ->
-         let t = meet None (TYmat (Some n)) sline in
+      | Var v ->
+         let t = match v.dim with None -> TYunknown | Some n -> TY n in
+         let t = meet (Some v.name) t sline in
+         let t = meet (Some v.name) t scol in
+         constrain v.name t;
+         t, t, Some v.name
+      | Zeros (n, m) -> meet None sline (TY n), meet None scol (TY m), None
+      | Eye n | Kron (n, _, _) | Kron_sym (n, _, _) ->
+         let t = meet None (TY n) sline in
          let t = meet None t scol in
          t, t, None
       | Block a ->
@@ -198,8 +206,8 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
            type_error None "Block matrix dimension error.";
          let nl = Array.length a in
          let nc = Array.length a.(0) in
-         let slines = Array.make nl (TYmat None) in
-         let scols = Array.make nc (TYmat None) in
+         let slines = Array.make nl TYunknown in
+         let scols = Array.make nc TYunknown in
          let eqs = Array.make_matrix nl nc None in
          for i = 0 to nl - 1 do
            for j = 0 to nc - 1 do
@@ -223,19 +231,15 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
            Array.fold_left
              (fun t1 t2 ->
                 match t1, t2 with
-                | TYmat (Some n1), TYmat (Some n2) -> TYmat (Some (n1 + n2))
-                | _ -> TYmat None)
-             (TYmat (Some 0)) a in
+                | TY n1, TY n2 -> TY (n1 + n2)
+                | _ -> TYunknown)
+             (TY 0) a in
          sum slines, sum scols, None
       | Lift_block (m, i, j, k, l) ->
-         let sline = meet None sline (TYmat (Some i)) in
-         let scol = meet None scol (TYmat (Some j)) in
-         sline, scol, None
+         meet None sline (TY i), meet None scol (TY j), None
       | Transpose m ->
          let sline, scol, eq = type_check scol sline m in scol, sline, eq
-      | Minus m | Scale_const (_, m) -> type_check sline scol m
-      | Scale_var (i, e) ->
-         constrain i TYscal; type_check sline scol e
+      | Minus m -> type_check sline scol m
       | Add (e1, e2) | Sub (e1, e2) ->
          let sline, scol, eq1 = type_check sline scol e1 in
          let sline, scol, eq2 = type_check sline scol e2 in
@@ -247,18 +251,20 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
               constrain i scol; equate i j; Some i in
          sline, scol, eq
       | Mult (e1, e2) ->
-         let sline, smiddle, eq1 = type_check sline (TYmat None) e1 in
+         let or1 t = match t with TY n -> TY1or n | _ -> t in
+         let sline, smiddle, eq1 = type_check (or1 sline) TYunknown e1 in
+         let smiddle = match smiddle with TY1or n -> TYunknown | t -> t in
          let smiddle, scol, eq2 = type_check smiddle scol e2 in
          let eq = match eq1, eq2 with
            | None, None -> None
-           | Some i, None -> constrain i smiddle; None
+           | Some i, None -> constrain i (or1 smiddle); None
            | None, Some i -> constrain i scol; None
            | Some i, Some j ->
-              constrain i scol; equate i j; Some i in
+              constrain i (or1 scol); constrain j scol; Some j in
          sline, scol, eq in
 
     List.iter
-      (fun e -> let _ = type_check (TYmat None) (TYmat None) e in ()) el;
+      (fun e -> let _ = type_check TYunknown TYunknown e in ()) el;
     Hashtbl.fold
       (fun i _ m -> match find i with None -> m | Some t -> Ident.Map.add i t m)
       htbl Ident.Map.empty
@@ -271,6 +277,8 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
 
   (* matrices whose coefficients are linear expressions *)
   module LEMat = Matrix.Make (LinExpr.MakeScalar (LinExprSC))
+
+  exception Not_linear
 
   (* Decomposes all matrix variables into a matrix of new scalar
      variables and returns a matrix of linear expressions in those
@@ -298,10 +306,10 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       let htbl : (Ident.t, LEMat.t) Hashtbl.t = Hashtbl.create 31 in
       let get_size id =
         let err id =
-          type_error (Some id) ("Unable to infer type of the variable. Can "
+          type_error (Some id) ("Unable to infer size of the variable. Can "
                                 ^ "be fixed by adding zeros(n, n) to it.") in
         let ty = try Ident.Map.find id env with Not_found -> err id in
-        match ty with TYmat (Some n) -> n | _ -> err id in
+        match ty with TY n -> n | TY1or n when n = 1 -> 1 | _ -> err id in
       let new_id id i j =
         let s = Format.asprintf "%a" Ident.pp id in
         let new_id = Ident.create ("__LMI__" ^  s ^ "_"
@@ -324,27 +332,33 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
          let l = Mat.to_list_list m in
          let l = List.map (List.map LinExprSC.const) l in
          LEMat.of_list_list l
-      | Var i -> scalarize_mat_var i
+      | Var v -> scalarize_mat_var v.name
       | Zeros (n, m) -> LEMat.zeros n m
       | Eye n -> LEMat.eye n
-      | Kronecker_sym (n, i, j) -> LEMat.kronecker_sym n i j
+      | Kron (n, i, j) -> LEMat.kron n i j
+      | Kron_sym (n, i, j) -> LEMat.kron_sym n i j
       | Block a -> LEMat.block (Array.map (Array.map scalarize) a)
       | Lift_block (m, i, j, k, l) -> LEMat.lift_block (scalarize m) i j k l
       | Transpose m -> LEMat.transpose (scalarize m)
       | Minus m -> LEMat.minus (scalarize m)
-      | Scale_const (e, m) ->
-         let le = LinExprSC.const e in
-         LEMat.mult_scalar le (scalarize m)
-      | Scale_var (i, e) ->
-         let le = LinExprSC.var i in
-         LEMat.mult_scalar le (scalarize e)
       | Add (e1, e2) -> LEMat.add (scalarize e1) (scalarize e2)
       | Sub (e1, e2) -> LEMat.sub (scalarize e1) (scalarize e2)
-      | Mult (e1, e2) -> LEMat.mult (scalarize e1) (scalarize e2) in
+      | Mult (e1, e2) ->
+         let e1 = scalarize e1 in
+         let e2 = scalarize e2 in
+         if LEMat.nb_lines e1 = 1 && LEMat.nb_cols e1 = 1 then
+           match LEMat.to_list_list e1 with
+           | [[e1]] -> LEMat.mult_scalar e1 e2
+           | _ -> assert false
+         else
+           LEMat.mult e1 e2 in
 
     (* scalarize *)
-    let el = try List.map scalarize el
-             with LEMat.Dimension_error -> type_error None "dimension error" in
+    let el =
+      try List.map scalarize el
+      with
+      | LEMat.Dimension_error -> type_error None "dimension error"
+      | LinExpr.Not_linear -> raise Not_linear in
     let el = List.map LEMat.to_array_array el in
     (* and collect bindings *)
     let b = List.fold_left (fun m (coord, id) -> Ident.Map.add id coord m)
@@ -355,16 +369,34 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
   (* Solve *)
   (*********)
 
-  type obj_t = Minimize of Ident.t | Maximize of Ident.t | Purefeas
+  type obj = Minimize of matrix_expr | Maximize of matrix_expr | Purefeas
 
-  type ('a, 'b) value_t = Scalar of 'a | Mat of 'b
+  type values = Mat.t Ident.Map.t
 
   exception Not_symmetric
 
   let solve ?solver obj el = 
+    let obj, obj_sign = match obj with
+      | Minimize obj -> obj, 1.
+      | Maximize obj -> Minus obj, -1.
+      | Purefeas -> Const (Mat.zeros 1 1), 0. in
+
     let env = type_check el in
 
-    let scalarized, binding = scalarize el env in
+    let obj, scalarized, binding = match scalarize (obj :: el) env with
+      | [], _ -> assert false
+      | obj :: scalarized, binding -> obj, scalarized, binding in
+
+    let obj, obj_cst = match obj with
+      | [|[|obj|]|] ->
+         let le, c = LinExprSC.to_list obj in
+         let tf = LinExprSC.Coeff.to_float in
+         let le =
+           List.fold_left
+             (fun m (id, c) -> Ident.Map.add id (tf c) m)
+             Ident.Map.empty le in
+         le, tf c
+      | _ -> raise Not_linear in
 
     (* check symmetry *)
     List.iter
@@ -381,7 +413,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
            done
          end) scalarized;
 
-    (* building block matrices A_i and C (see csdp.mli) *)
+    (* building block matrices A_i and C (see sdp.mli) *)
     let blks_A : (Ident.t, (int * float array array) list) Hashtbl.t = Hashtbl.create 31 in
     let blks_C = ref [] in
 
@@ -414,27 +446,26 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
     (* build all blocks *)
     List.iteri build_blk scalarized;
 
-    (* add the scalars a_i (see csdp.mli) *)
+    (* add the scalars b_i (see sdp.mli) *)
     let vars, constraints = Hashtbl.fold
       (fun id blks (lv, lc) ->
-       let a_i = match obj with
-         | Minimize id' when Ident.compare id id' = 0 -> 1.
-         | Maximize id' when Ident.compare id id' = 0 -> -1.
-         | _ -> 0. in
-       id :: lv, Sdp.Eq (blks, a_i) :: lc) blks_A ([], []) in
+       let b_i = try Ident.Map.find id obj with Not_found -> 0. in
+       id :: lv, Sdp.Eq (blks, b_i) :: lc) blks_A ([], []) in
 
     (* call SDP solver *)
     let ret, (pres, dres), (primal_sol, dual_sol) =
       Sdp.solve ?solver !blks_C constraints in
 
+    let res = let f o = obj_sign *. (o +. obj_cst) in f pres, f dres in
+
     (* rebuild matrix variables *)
     if not (SdpRet.is_success ret) then
-      ret, (-. dres, -. pres), Ident.Map.empty
+      ret, res, Ident.Map.empty
     else
       let vars = List.mapi (fun i id -> id, dual_sol.(i)) vars in
-      let scalars, matrices =
+      let matrices =
         List.fold_left
-          (fun (scalars, matrices) (id, f) ->
+          (fun matrices (id, f) ->
            try
              let mid, (i, j) = Ident.Map.find id binding in
              (* coefficient of matrix variable *)
@@ -444,22 +475,27 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
                  let sz =
                    try
                      match Ident.Map.find mid env with
-                     | TYmat (Some sz) -> sz
+                     | TY sz -> sz
+                     | TY1or n when n = 1 -> 1
                      | _ -> assert false  (* should never happen *)
                    with Not_found -> assert false in  (* should never happen *)
                  Array.make_matrix sz sz Mat.Coeff.zero in
              mat.(i).(j) <- Mat.Coeff.of_float f; mat.(j).(i) <- mat.(i).(j);
-             scalars, Ident.Map.add mid mat matrices
-           with Not_found ->
-             (* scalar variable *)
-             Ident.Map.add id (Mat.Coeff.of_float f) scalars, matrices)
-          (Ident.Map.empty, Ident.Map.empty) vars in
-      let vars = Ident.Map.map (fun e -> Scalar e) scalars in
-      let vars =
-        Ident.Map.fold
-          (fun id m vars -> Ident.Map.add id (Mat (Mat.of_array_array m)) vars)
-          matrices vars in
-       ret, (-. dres, -. pres), vars
+             Ident.Map.add mid mat matrices
+           with Not_found -> assert false)  (* should never happen *)
+          Ident.Map.empty vars in
+      let vars = Ident.Map.map Mat.of_array_array matrices in
+       ret, res, vars
+
+  let value e m =
+    let id = match e with Var v -> v.name | _ -> raise Not_found in
+    match Mat.to_list_list (Ident.Map.find id m) with
+    | [[s]] -> s
+    | _ -> raise Not_found
+
+  let value_mat e m =
+    let id = match e with Var v -> v.name | _ -> raise Not_found in
+    Ident.Map.find id m
 end
 
 module Float = Make (Matrix.Float)

@@ -298,11 +298,11 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     let ret, (pobj, dobj), (res_x, _, _) =
       Sdp.solve_ext_sparse ?solver obj cstrs [] in
 
-    let pobj, dobj = let f o = obj_sign *. (o +. obj_cst) in f pobj, f dobj in
+    let obj = let f o = obj_sign *. (o +. obj_cst) in f pobj, f dobj in
 
     (* rebuild polynomial variables *)
     if not (SdpRet.is_success ret) then
-      ret, (pobj, dobj), Ident.Map.empty
+      ret, obj, Ident.Map.empty
     else
       let vars =
         let a = Array.of_list res_x in
@@ -320,7 +320,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
                 |> Poly.of_list in
               Poly p)
           env in
-      ret, (pobj, dobj), vars
+      ret, obj, vars
 
   let value e m =
     let id = match e with Var (Vscalar id) -> id | _ -> raise Not_found in

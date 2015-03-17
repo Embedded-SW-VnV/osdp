@@ -26,32 +26,43 @@
 module type S = sig
   module Mat : Matrix.S
 
+  (** Scalar or symmetric matrix variables. *)
+  type var
+
   (** Constructors. See the module {{:./Matrix.S.html}Matrix.S} for
       details. *)
   type matrix_expr =
     | Const of Mat.t
-    | Var of Ident.t  (** All matrix variables are symmetric. *)
+    | Var of var  (** All matrix variables are symmetric. *)
     | Zeros of int * int
     | Eye of int
-    | Kronecker_sym of int * int * int
+    | Kron of int * int * int
+    | Kron_sym of int * int * int
     | Block of matrix_expr array array
     | Lift_block of matrix_expr * int * int * int * int
     | Transpose of matrix_expr
     | Minus of matrix_expr
-    | Scale_const of Mat.Coeff.t * matrix_expr
-    | Scale_var of Ident.t * matrix_expr
     | Add of matrix_expr * matrix_expr
     | Sub of matrix_expr * matrix_expr
-    | Mult of matrix_expr * matrix_expr
+    | Mult of matrix_expr * matrix_expr  (** [mult_scalar] or [mult], according to he size of the first argument. *)
 
-  (** [Minimize var] or [Maximize var] or [Purefeas] (just checking
-      feasibility). Ident [var] must appear as scalar variable
-      ([Scale_var]) in the LMIs. *)
-  type obj_t = Minimize of Ident.t | Maximize of Ident.t | Purefeas
+  (** [var ~dim:n s] creates a new variable ([Var v]). [n] is the size
+      of the variable (scalars and matrix of size 1 are considered the
+      same). It must be positive. By default, [n] will be infered from
+      the context (if possible). *)
+  val var : ?dim:int -> string -> matrix_expr
 
-  type ('a, 'b) value_t = Scalar of 'a | Mat of 'b
+  (** [Minimize e] or [Maximize e] or [Purefeas] (just checking
+      feasibility). [e] must be a scalar (i.e., a matrix of size
+      1). *)
+  type obj = Minimize of matrix_expr | Maximize of matrix_expr | Purefeas
+
+  type values
 
   exception Type_error of string
+
+  exception Not_linear
+
   exception Not_symmetric
 
   (** [solve obj l] tries to optimise the objective [obj] under the
@@ -65,13 +76,30 @@ module type S = sig
       inconsistent is found or the type of a variable cannot be
       determined.
 
-      @raise LinExpr.Not_linear if one of the input matrix expressions
-      in [l] is non linear.
+      @raise Not_linear if the objective [obj] is not a scalar (1x1
+      matrix) or one of the input matrix expressions in [l] is non
+      linear.
 
       @raise Not_symmetric if one of the input matrix expressions in [l]
       is non symmetric. *)
-  val solve : ?solver:Sdp.solver -> obj_t -> matrix_expr list ->
-              SdpRet.t * (float * float) * (Mat.Coeff.t, Mat.t) value_t Ident.Map.t
+  val solve : ?solver:Sdp.solver -> obj -> matrix_expr list ->
+              SdpRet.t * (float * float) * values
+
+  (** [value v m] returns the value contained in [m] for variable [v].
+
+      @raise Not_found if the given matrix_expr [v] was not obtained
+      with the function [var] or if no value is found for [v] in [m]
+      or if the value found is a matrix (of dimension greater than
+      1). *)
+  val value : matrix_expr -> values -> Mat.Coeff.t
+
+  (** [value v m] returns the value contained in [m] for matrix
+      variable [v].
+
+      @raise Not_found if the given matrix_expr [v] was not obtained
+      with the function [var] or if no value is found for [v] in
+      [m]. *)
+  val value_mat : matrix_expr -> values -> Mat.t
 
   (** Printer for LMI. *)
   val pp : Format.formatter -> matrix_expr -> unit

@@ -48,6 +48,7 @@ rule token = parse
   | ';' { SEMICOL }
   | "zeros" { ZEROS }
   | "eye" { EYE }
+  | "kron" { KRON }
   | "krsym" { KRSYM }
   | "lift" { LIFT }
   | "<=" { LEQ }

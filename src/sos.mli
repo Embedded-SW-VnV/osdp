@@ -44,8 +44,8 @@ module type S = sig
   (** [var s] creates a new scalar variable ([Var v]). *)
   val var : string -> polynomial_expr
 
-  (** [var_poly s n h d] creates a new polynomial variable ([Var
-      v]). [n] is the number of variables of the new polynomial
+  (** [var_poly s n ~homogen:h d] creates a new polynomial variable
+      ([Var v]). [n] is the number of variables of the new polynomial
       variable. It must be positive. [h] is [true] if the polynomial
       is homogeneous (i.e., all monomials of same degree (for instance
       x_0 x_1^3 + x_0^4 is homogeneous, x_0 x_1^3 + x_0^3 is not)),
@@ -68,9 +68,7 @@ module type S = sig
 
   (** [solve obj l] tries to optimise the objective [obj] under the
       constraint that each polynomial expressions in [l] is
-      SOS. Constraints "v is SOS" (i.e., "v is non negative" for
-      scalars) are also implicitly added for all variables appearing
-      in [l]. Returns both the achieved objective value and a map with
+      SOS. Returns both the achieved objective value and a map with
       values for each variable appearing in [l]. The returned map will
       be empty in case of failure (i.e., [SdpRet.t] being not Success
       or PartialSuccess).

@@ -45,6 +45,7 @@ ncid ::= n | id | "$" OCaml code (type int) "$"
 
 e ::= id | i
     | "zeros" "(" ncid "," ncid ")" | "eye" "(" ncid ")"
+    | "kron" "(" ncid "," ncid "," ncid ")"
     | "krsym" "(" ncid "," ncid "," ncid ")"
     | "[" b "]" | "lift" "(" e "," ncid "," ncid "," ncid "," ncid ")"
     | e "'" | "-" e
