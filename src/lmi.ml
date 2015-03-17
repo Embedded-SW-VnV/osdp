@@ -36,6 +36,7 @@ module type S = sig
     | Sub of matrix_expr * matrix_expr
     | Mult of matrix_expr * matrix_expr
   val var : ?dim:int -> string -> matrix_expr
+  val scalar : Mat.Coeff.t -> matrix_expr
   type obj = Minimize of matrix_expr | Maximize of matrix_expr | Purefeas
   type values
   exception Type_error of string
@@ -70,6 +71,8 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
 
   let var ?dim s = Var { name = Ident.create s; dim = dim }
                               
+  let scalar s = Const (Mat.of_list_list [[s]])
+
   let pp fmt e =
     let rec pp_prior prior fmt = function
       | Const m when Mat.nb_lines m = 1 && Mat.nb_cols m = 1 ->
@@ -257,10 +260,12 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
               constrain i scol; equate i j; Some i in
          sline, scol, eq
       | Mult (e1, e2) ->
+         let smiddle, scol, eq2 = type_check TYunknown scol e2 in
          let or1 t = match t with TY n -> TY1or n | _ -> t in
-         let sline, smiddle, eq1 = type_check (or1 sline) TYunknown e1 in
-         let smiddle = match smiddle with TY1or n -> TYunknown | t -> t in
-         let smiddle, scol, eq2 = type_check smiddle scol e2 in
+         let sline, smiddle, eq1 = type_check (or1 sline) (or1 smiddle) e1 in
+         let sline = match sline with
+           | TY n when n <> 1 -> sline
+           | _ -> TYunknown in
          let eq = match eq1, eq2 with
            | None, None -> None
            | Some i, None -> constrain i (or1 smiddle); None

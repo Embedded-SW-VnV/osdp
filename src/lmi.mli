@@ -54,6 +54,9 @@ module type S = sig
       the context (if possible). *)
   val var : ?dim:int -> string -> matrix_expr
 
+  (** [scalar s] returns [Const (Mat.of_list_list [[s]])]. *)
+  val scalar : Mat.Coeff.t -> matrix_expr
+
   (** [Minimize e] or [Maximize e] or [Purefeas] (just checking
       feasibility). [e] must be a scalar (i.e., a matrix of size
       1). *)
