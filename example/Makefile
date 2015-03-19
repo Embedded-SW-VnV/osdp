@@ -1,3 +1,8 @@
+all: demo demo_no_camlp4 demo_sdp demo_sos
+
+dem%: dem%.ml
+	ocamlfind ocamlopt -linkpkg -package osdp -package camlp4 -syntax camlp4o -o $@ $<
+
 ocamlbuild:
 	ocamlbuild -use-ocamlfind demo.native
 # Ocamlbuild requires a _tags file with <*>: package(osdp), package(camlp4), syntax(camlp4o)
@@ -10,9 +15,6 @@ ocamlopt:
 
 clean:
 	ocamlbuild -clean
-	rm -f demo *.cmi *.cmo *.cmx *.o *~
-
-demo2: demo2.ml
-	ocamlfind ocamlopt -linkpkg -package osdp -package camlp4 -syntax camlp4o -o $@ $<
+	rm -f demo demo_no_camlp4 demo_sdp demo_sos *.cmi *.cmo *.cmx *.o *~
 
 .PHONY: clean

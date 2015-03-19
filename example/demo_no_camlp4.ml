@@ -10,7 +10,7 @@
 (* or directly *)
 (* % ocamlopt -I $(ocamlfind query zarith) -I $(ocamlfind query osdp) zarith.cmxa osdp.cmxa -o demo_no_camlp4 demo_no_camlp4.ml *)
 
-let solver = Osdp.Sdp.Csdp  (* Sdp.Mosek *)
+let solver = Osdp.Sdp.Csdp  (* Osdp.Sdp.Mosek, Osdp.Sdp.Sdpa,... *)
 
 open Osdp.Lmi.Float
 
