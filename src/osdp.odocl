@@ -11,6 +11,7 @@ Polynomial
 Posdef
 Scalar
 Sdp
+Sdpa
 SdpRet
 Sos
 Utils

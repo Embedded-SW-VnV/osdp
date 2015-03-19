@@ -48,10 +48,28 @@ let block_diag_to_sparse = List.map (fun (i, m) -> i, matrix_to_sparse m)
 (* SDP. *)
 (********)
 
-type solver = Csdp | Mosek
+type solver = Csdp | Mosek | Sdpa | SdpaGmp
+
+type options = {
+  solver : solver;
+  max_iteration : int;
+  stop_criterion : float;
+  initial : float;
+  precision : int
+}
+
+let default = {
+  solver = Csdp;
+  max_iteration = 100;
+  stop_criterion = 1.0E-7;
+  initial = 1.0E2;
+  precision = 200
+}
 
 (* define default solver *)
-let get_solver = function None -> Csdp | Some s -> s
+let get_solver options = function
+  | Some s -> s
+  | None -> match options with Some o -> o.solver | None -> default.solver
 
 type 'a obj = 'a block_diag
 
@@ -80,7 +98,7 @@ let check_prog f obj constraints =
     (function Eq (m, _) | Le (m, _) | Ge (m, _) -> check_block f m)
     constraints
 
-let solve_sparse ?solver obj constraints =
+let solve_sparse ?options ?solver obj constraints =
   check_prog check_sparse obj constraints;
   let max_idx =
     let f = List.fold_left (fun m (i, _) -> max m i) in
@@ -95,12 +113,24 @@ let solve_sparse ?solver obj constraints =
        | Le (bd, f) -> ((i, [0, 0, 1.]) :: bd, f) :: cstrs, i + 1
        | Ge (bd, f) -> ((i, [0, 0, -1.]) :: bd, f) :: cstrs, i + 1)
       ([], max_idx + 1) (List.rev constraints) in
-  let ret, res, (res_X, res_y) = match get_solver solver with
+  let ret, res, (res_X, res_y) = match get_solver options solver with
     | Csdp -> Csdp.solve obj constraints
-    | Mosek -> Moseksdp.solve obj constraints in
+    | Mosek -> Moseksdp.solve obj constraints
+    | (Sdpa | SdpaGmp) as s ->
+       let options = match options with Some o -> o | None -> default in
+       let solver =
+         match s with
+         | Sdpa -> Sdpa.Sdpa | SdpaGmp -> Sdpa.SdpaGmp
+         | _ -> assert false in
+       let options = { Sdpa.solver = solver;
+                       Sdpa.max_iteration = options.max_iteration;
+                       Sdpa.stop_criterion = options.stop_criterion;
+                       Sdpa.initial = options.initial;
+                       Sdpa.precision = options.precision } in
+       Sdpa.solve ~options obj constraints in
   ret, res, (List.filter (fun (i, _) -> i <= max_idx) res_X, res_y)
 
-let solve ?solver obj constraints =
+let solve ?options ?solver obj constraints =
   check_prog check_sym obj constraints;
   let obj = block_diag_to_sparse obj in
   let constraints =
@@ -110,7 +140,7 @@ let solve ?solver obj constraints =
         | Le (c, b) -> Le (block_diag_to_sparse c, b)
         | Ge (c, b) -> Ge (block_diag_to_sparse c, b))
       constraints in
-  solve_sparse ?solver obj constraints
+  solve_sparse ?options ?solver obj constraints
 
 (*************************)
 (* Extended formulation. *)
@@ -210,17 +240,17 @@ let check_prog_ext f obj constraints =
   check_block f (snd obj);
   List.iter (fun (_, m, _, _) -> check_block f m) constraints
 
-let solve_ext_sparse ?solver obj constraints bounds =
+let solve_ext_sparse ?options ?solver obj constraints bounds =
   check_prog_ext check_sparse obj constraints;
-  match get_solver solver with
-  | Csdp ->
+  match get_solver options solver with
+  | Csdp | Sdpa | SdpaGmp ->
      let obj, offset, constraints, trans = to_simple obj constraints bounds in
      let ret, (pobj, dobj), res =
-       solve_sparse ?solver obj constraints in
+       solve_sparse ?options ?solver obj constraints in
      ret, (pobj +. offset, dobj +. offset), of_simple_res trans res
   | Mosek -> Moseksdp.solve_ext obj constraints bounds
 
-let solve_ext ?solver obj constraints bounds =
+let solve_ext ?options ?solver obj constraints bounds =
   check_prog_ext check_sym obj constraints;
   let obj = fst obj, block_diag_to_sparse (snd obj) in
   let constraints =

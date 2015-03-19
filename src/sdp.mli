@@ -19,7 +19,7 @@
  *)
 
 (** {b Common interface for SDP} ({{:./Csdp.html}Csdp} or
-    {{:./Moseksdp.html}Moseksdp}). *)
+    {{:./Moseksdp.html}Moseksdp} or {{:./Sdpa.html}Sdpa}). *)
 
 (** Primal-dual correspondence: the primal problem {[max tr(C X)
     tr(A_1 X) = b_1
@@ -62,7 +62,20 @@ val block_diag_to_sparse : matrix block_diag -> sparse_matrix block_diag
 
 (** {2 SDP.} *)
 
-type solver = Csdp | Mosek
+type solver = Csdp | Mosek | Sdpa | SdpaGmp
+
+(** Options for calling SDP solvers (currently, options other than
+    solver are only handled by Sdpa\{,Gmp\}). *)
+type options = {
+  solver : solver;  (** default: Csdp *)
+  max_iteration : int;  (** maxIteration (default: 100) *)
+  stop_criterion : float;  (** epsilonStar and epsilonDash (default: 1.0E-7) *)
+  initial : float;  (** lambdaStar (default: 1.0E2) *)
+  precision : int  (** precision (only for SDPA-GMP, default: 200) *)
+}
+
+(** Default values above. *)
+val default : options
 
 (** Objective (matrix C). *)
 type 'a obj = 'a block_diag
@@ -78,22 +91,24 @@ type 'a constr =
   | Ge of 'a block_diag * float
 
 (** [solve_sparse obj constraints] solves the SDP problem: max\{
-    tr(obj X) | constraints, X psd \}. It returns both the primal and
-    dual objective values and a witness for X (primal) and y
-    (dual). See above for details. There is no requirement for indices
-    in [obj] and [A_i] to be present in every input. In case of
-    success (or partial success), the block diagonal matrix returned
-    for X contains exactly the indices, sorted by increasing order,
-    that appear in the objective or one of the constraints. Size of
-    each diagonal block in X is the maximum size appearing for that
-    block in the objective or one of the constraints. In case of
-    success (or partial success), the array returned for y has the
-    same size and same order than the input list of constraints.
+    tr(obj X) | constraints, X psd \}. If [solver] is provided, it
+    will supersed the solver given in [options]. It returns both the
+    primal and dual objective values and a witness for X (primal) and
+    y (dual). See above for details. There is no requirement for
+    indices in [obj] and [A_i] to be present in every input. In case
+    of success (or partial success), the block diagonal matrix
+    returned for X contains exactly the indices, sorted by increasing
+    order, that appear in the objective or one of the
+    constraints. Size of each diagonal block in X is the maximum size
+    appearing for that block in the objective or one of the
+    constraints. In case of success (or partial success), the array
+    returned for y has the same size and same order than the input
+    list of constraints.
 
     @raise Invalid_argument "non symmetric matrix" in case the
     objective or one of the constraints is non symmetric. *)
-val solve_sparse : ?solver:solver -> sparse_matrix obj ->
-                   sparse_matrix constr list ->
+val solve_sparse : ?options:options -> ?solver:solver ->
+                   sparse_matrix obj -> sparse_matrix constr list ->
                    SdpRet.t * (float * float) * (matrix block_diag * float array)
 
 (** Same as {!solve_sparse} with dense matrices as input. This can be
@@ -105,7 +120,8 @@ val solve_sparse : ?solver:solver -> sparse_matrix obj ->
 
     @raise Invalid_argument "non symmetric matrix" in case the
     objective or one of the constraints is not a sparse matrix. *)
-val solve : ?solver:solver -> matrix obj -> matrix constr list ->
+val solve : ?options:options -> ?solver:solver ->
+            matrix obj -> matrix constr list ->
             SdpRet.t * (float * float) * (matrix block_diag * float array)
 
 (** {2 Extended formulation.} *)
@@ -157,26 +173,28 @@ type 'a constr_ext = vector * 'a block_diag * float * float
 type bounds = (int * float * float) list
 
 (** [solve_ext_sparse obj constraints bounds] solves the SDP problem:
-    max\{ obj | constraints, bounds, X psd \}. It returns both the
-    primal and dual objective values and a witness for (x, X) (primal)
-    and y (dual). See above for details. Variables x_i not bounded in
-    [bounds] are assumed to be unbounded (i.e., bounded by
-    [neg_infinity] and [infinity]). Bounds in [bounds] about variables
-    x_i not appearing in the objective or constraints may be
-    ignored. There is no requirement for indices in [obj] and [a_i,
-    A_i] to be present in every input. In case of success (or partial
-    success), the vector (resp. block diagonal matrix) returned for x
-    (resp. X) contains exactly the indices, sorted by increasing
-    order, that appear in the linear (resp. matrix)part of the
-    objective or one of the constraints. Size of each diagonal block
-    in X is the maximum size appearing for that block in the objective
-    or one of the constraints. In case of success (or partial
-    success), the array returned for y has the same size and same
-    order than the input list of constraints.
+    max\{ obj | constraints, bounds, X psd \}. If [solver] is
+    provided, it will supersed the solver given in [options]. It
+    returns both the primal and dual objective values and a witness
+    for (x, X) (primal) and y (dual). See above for details. Variables
+    x_i not bounded in [bounds] are assumed to be unbounded (i.e.,
+    bounded by [neg_infinity] and [infinity]). Bounds in [bounds]
+    about variables x_i not appearing in the objective or constraints
+    may be ignored. There is no requirement for indices in [obj] and
+    [a_i, A_i] to be present in every input. In case of success (or
+    partial success), the vector (resp. block diagonal matrix)
+    returned for x (resp. X) contains exactly the indices, sorted by
+    increasing order, that appear in the linear (resp. matrix)part of
+    the objective or one of the constraints. Size of each diagonal
+    block in X is the maximum size appearing for that block in the
+    objective or one of the constraints. In case of success (or
+    partial success), the array returned for y has the same size and
+    same order than the input list of constraints.
 
     @raise Invalid_argument "non symmetric matrix" in case the
     objective or one of the constraints is non symmetric. *)
-val solve_ext_sparse : ?solver:solver -> sparse_matrix obj_ext ->
+val solve_ext_sparse : ?options:options -> ?solver:solver ->
+                       sparse_matrix obj_ext ->
                        sparse_matrix constr_ext list -> bounds ->
                        SdpRet.t * (float * float) * (vector * matrix block_diag * float array)
 
@@ -189,7 +207,7 @@ val solve_ext_sparse : ?solver:solver -> sparse_matrix obj_ext ->
 
     @raise Invalid_argument "non symmetric matrix" in case the
     objective or one of the constraints is not a sparse matrix. *)
-val solve_ext : ?solver:solver -> matrix obj_ext ->
+val solve_ext : ?options:options -> ?solver:solver -> matrix obj_ext ->
                 matrix constr_ext list -> bounds ->
                 SdpRet.t * (float * float) * (vector * matrix block_diag * float array)
 

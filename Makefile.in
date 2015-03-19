@@ -68,4 +68,4 @@ dist: doc distclean
 	tar cvzf @PACKAGE_TARNAME@-@PACKAGE_VERSION@.tgz @PACKAGE_TARNAME@-@PACKAGE_VERSION@
 	rm -rf @PACKAGE_TARNAME@-@PACKAGE_VERSION@
 
-.PHONY: osdp doc install-deps install uninstall clean dist-clean
+.PHONY: osdp doc install-deps install uninstall clean distclean dist

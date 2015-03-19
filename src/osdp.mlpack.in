@@ -10,6 +10,10 @@ Polynomial
 Posdef
 Scalar
 Sdp
+Sdpa
+Sdpa_lexer
+Sdpa_parser
+Sdpa_paths
 SdpRet
 Sos
 Utils

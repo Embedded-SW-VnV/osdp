@@ -58,6 +58,26 @@ AC_ARG_WITH([mosek-lib-path],
   [MOSEK_LIBPATH=no])
 MOSEK_LIB=no
 
+AC_ARG_WITH([sdpa],
+  [AS_HELP_STRING([--without-sdpa], [disable support for SDPA])],
+  [],
+  [with_sdpa=check])
+AC_ARG_WITH([sdpa-path],
+  [AS_HELP_STRING([--with-sdpa-path=<path>],
+    [specify path for SDPA binary])],
+  [SDPA_PATH=$with_sdpa_path],
+  [SDPA_PATH=no])
+
+AC_ARG_WITH([sdpa-gmp],
+  [AS_HELP_STRING([--without-sdpa-gmp], [disable support for SDPA-GMP])],
+  [],
+  [with_sdpa_gmp=check])
+AC_ARG_WITH([sdpa-gmp-path],
+  [AS_HELP_STRING([--with-sdpa-gmp-path=<path>],
+    [specify path for SDPA-GMP binary])],
+  [SDPA_GMP_PATH=$with_sdpa_gmp_path],
+  [SDPA_GMP_PATH=no])
+
 AC_ARG_WITH([camlp4],
   [AS_HELP_STRING([--without-camlp4], [disable support for Camlp4 parsers])],
   [],
@@ -126,13 +146,47 @@ fi
 AC_SUBST(with_camlp4)
 AC_SUBST(CAMLP4_PARSERS)
 
+if test "x$with_sdpa" != xno; then
+  AC_MSG_CHECKING(for SDPA)
+  if test "x$SDPA_PATH" = xno; then
+    SDPA_PATH=`command -v sdpa || echo no`
+  fi
+  if test "x$SDPA_PATH" = xno; then
+    if test "x$with_sdpa" = "xcheck"; then
+      with_sdpa=no
+    else
+      AC_MSG_ERROR([Unable to find SDPA in \$PATH, please provide path with option --with-sdpa-path=<path>.])
+    fi
+  fi
+  AC_MSG_RESULT($SDPA_PATH)
+fi
+if test "x$with_sdpa" != xno; then with_sdpa=yes ; fi
+AC_SUBST(SDPA_PATH)
+
+if test "x$with_sdpa_gmp" != xno; then
+  AC_MSG_CHECKING(for SDPA-GMP)
+  if test "x$SDPA_GMP_PATH" = xno; then
+    SDPA_GMP_PATH=`command -v sdpa_gmp || echo no`
+  fi
+  if test "x$SDPA_GMP_PATH" = xno; then
+    if test "x$with_sdpa_gmp" = "xcheck"; then
+      with_sdpa_gmp=no
+    else
+      AC_MSG_ERROR([Unable to find SDPA-GMP in \$PATH, please provide path with option --with-sdpa-gmp-path=<path>.])
+    fi
+  fi
+  AC_MSG_RESULT($SDPA_GMP_PATH)
+fi
+if test "x$with_sdpa_gmp" != xno; then with_sdpa_gmp=yes ; fi
+AC_SUBST(SDPA_GMP_PATH)
+
 # Check for libraries
 AC_MSG_CHECKING(for ocaml-glpk)
-ZARITH_PATH=`ocamlfind query glpk`
+GLPK_PATH=`ocamlfind query glpk`
 if test $? -ne 0 ; then
   AC_MSG_ERROR([Unable to find OCaml library ocaml-glpk.])
 fi
-AC_MSG_RESULT($ZARITH_PATH)
+AC_MSG_RESULT($GLPK_PATH)
 
 if test "x$with_csdp" != xno; then
   AC_MSG_CHECKING(for CSDP headers)
@@ -225,9 +279,9 @@ AC_SUBST(MOSEK_INCPATH)
 AC_SUBST(MOSEK_LIBPATH)
 AC_SUBST(MOSEK_LIB)
 
-if test "x$with_csdp" = xno -a "x$with_mosek" = xno; then
+if test "x$with_csdp" = xno -a "x$with_mosek" = xno -a "x$with_sdpa" = xno -a "x$with_sdpa_gmp" = xno; then
   AC_MSG_WARN($PACKAGE_NAME will be compiled without any SDP solver)
-  AC_MSG_WARN(this is quite useless. You should at least install either CSDP or MOSEK.)
+  AC_MSG_WARN(this is quite useless. You should at least install either CSDP or MOSEK or SDPA or SDPA-GMP.)
 fi
 
 if test "x$with_glpk" != xno; then
@@ -268,9 +322,9 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([math.h fenv.h])
 
 # Create files
-AC_CONFIG_FILES([Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/monomial_glpk_opt.ml])
+AC_CONFIG_FILES([Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/monomial_glpk_opt.ml src/sdpa_paths.ml])
 AC_OUTPUT
-chmod a-w Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/monomial_glpk_opt.ml
+chmod a-w Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/monomial_glpk_opt.ml src/sdpa_paths.ml
 
 echo ""
 echo "*** Configuration for $PACKAGE_NAME $PACKAGE_VERSION:"
@@ -285,6 +339,14 @@ if test "x$with_mosek" = xyes; then
   echo "    MOSEK_INCPATH ............ : $MOSEK_INCPATH"
   echo "    MOSEK_LIBPATH ............ : $MOSEK_LIBPATH"
   echo "    MOSEK_LIB ................ : $MOSEK_LIB"
+fi
+echo "  Compiled with SDPA ......... : $with_sdpa"
+if test "x$with_sdpa" = xyes; then
+  echo "    SDPA_PATH ................ : $SDPA_PATH"
+fi
+echo "  Compiled with SDPA-GMP ..... : $with_sdpa_gmp"
+if test "x$with_sdpa" = xyes; then
+  echo "    SDPA_GMP_PATH ............ : $SDPA_GMP_PATH"
 fi
 echo "  Compiled with Camlp4 ....... : $with_camlp4"
 echo "  Compiled with GLPK ......... : $with_glpk"

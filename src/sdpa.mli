@@ -18,9 +18,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *)
 
-(** Interface towards the C library CSDP.
+(** Interface towards SDPA\{,-GMP\}.
 
-    CSDP is a semidefinite programming optimization procedure. You may
+    SDPA is a semidefinite programming optimization procedure. You may
     be interested in the slightly higher level interface
     {{:./Sdp.html}Sdp}. *)
 
@@ -39,17 +39,33 @@ type matrix = (int * int * float) list
     requirement for indices to be sorted. *)
 type block_diag_matrix = (int * matrix) list
 
+type solver = Sdpa | SdpaGmp
+
+(** Options for calling SDPA. *)
+type options = {
+  solver : solver;  (** default: Sdpa *)
+  max_iteration : int;  (** maxIteration (default: 100) *)
+  stop_criterion : float;  (** epsilonStar and epsilonDash (default: 1.0E-7) *)
+  initial : float;  (** lambdaStar (default: 1.0E2) *)
+  precision : int  (** precision (only for SDPA-GMP, default: 200) *)
+}
+
+(** Default values above. *)
+val default : options
+
 (** [solve obj constraints] solves the SDP problem: max\{ tr(obj X) |
     tr(A_1 X) = a_1,..., tr(A_n X) = a_n, X psd \} with [\[(A_1,
     a_1);...; (A_n, a_n)\]] the [constraints] list. It returns both
     the primal and dual objective values and a witness for X (primal)
-    and y (dual, see {{:./Sdp.html}Sdp}). The block diagonal matrix
-    returned for X contains exactly the indices, sorted by increasing
-    order, that appear in the objective or one of the
-    constraints. Size of each diagonal block in X is the maximum size
-    appearing for that block in the objective or one of the
-    constraints. The array returned for y has the same size and same
-    order than the input list of constraints. *)
-val solve : block_diag_matrix -> (block_diag_matrix * float) list ->
+    and y (dual, see {{:./Sdp.html}Sdp}). In case of success (or
+    partial success), the block diagonal matrix returned for X
+    contains exactly the indices, sorted by increasing order, that
+    appear in the objective or one of the constraints. Size of each
+    diagonal block in X is the maximum size appearing for that block
+    in the objective or one of the constraints. In case of success (or
+    partial success), the array returned for y has the same size and
+    same order than the input list of constraints. *)
+val solve : ?options:options ->
+            block_diag_matrix -> (block_diag_matrix * float) list ->
             SdpRet.t * (float * float)
             * ((int * float array array) list * float array)
