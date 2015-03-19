@@ -78,6 +78,16 @@ AC_ARG_WITH([sdpa-gmp-path],
   [SDPA_GMP_PATH=$with_sdpa_gmp_path],
   [SDPA_GMP_PATH=no])
 
+AC_ARG_WITH([sdpa-dd],
+  [AS_HELP_STRING([--without-sdpa-dd], [disable support for SDPA-DD])],
+  [],
+  [with_sdpa_dd=check])
+AC_ARG_WITH([sdpa-dd-path],
+  [AS_HELP_STRING([--with-sdpa-dd-path=<path>],
+    [specify path for SDPA-DD binary])],
+  [SDPA_DD_PATH=$with_sdpa_dd_path],
+  [SDPA_DD_PATH=no])
+
 AC_ARG_WITH([camlp4],
   [AS_HELP_STRING([--without-camlp4], [disable support for Camlp4 parsers])],
   [],
@@ -179,6 +189,23 @@ if test "x$with_sdpa_gmp" != xno; then
 fi
 if test "x$with_sdpa_gmp" != xno; then with_sdpa_gmp=yes ; fi
 AC_SUBST(SDPA_GMP_PATH)
+
+if test "x$with_sdpa_dd" != xno; then
+  AC_MSG_CHECKING(for SDPA-DD)
+  if test "x$SDPA_DD_PATH" = xno; then
+    SDPA_DD_PATH=`command -v sdpa_dd || echo no`
+  fi
+  if test "x$SDPA_DD_PATH" = xno; then
+    if test "x$with_sdpa_dd" = "xcheck"; then
+      with_sdpa_dd=no
+    else
+      AC_MSG_ERROR([Unable to find SDPA-DD in \$PATH, please provide path with option --with-sdpa-dd-path=<path>.])
+    fi
+  fi
+  AC_MSG_RESULT($SDPA_DD_PATH)
+fi
+if test "x$with_sdpa_dd" != xno; then with_sdpa_dd=yes ; fi
+AC_SUBST(SDPA_DD_PATH)
 
 # Check for libraries
 AC_MSG_CHECKING(for ocaml-glpk)
@@ -345,8 +372,12 @@ if test "x$with_sdpa" = xyes; then
   echo "    SDPA_PATH ................ : $SDPA_PATH"
 fi
 echo "  Compiled with SDPA-GMP ..... : $with_sdpa_gmp"
-if test "x$with_sdpa" = xyes; then
+if test "x$with_sdpa_gmp" = xyes; then
   echo "    SDPA_GMP_PATH ............ : $SDPA_GMP_PATH"
+fi
+echo "  Compiled with SDPA-DD ...... : $with_sdpa_dd"
+if test "x$with_sdpa_dd" = xyes; then
+  echo "    SDPA_DD_PATH ............. : $SDPA_DD_PATH"
 fi
 echo "  Compiled with Camlp4 ....... : $with_camlp4"
 echo "  Compiled with GLPK ......... : $with_glpk"

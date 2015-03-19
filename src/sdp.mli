@@ -62,7 +62,7 @@ val block_diag_to_sparse : matrix block_diag -> sparse_matrix block_diag
 
 (** {2 SDP.} *)
 
-type solver = Csdp | Mosek | Sdpa | SdpaGmp
+type solver = Csdp | Mosek | Sdpa | SdpaGmp | SdpaDd
 
 (** Options for calling SDP solvers (currently, options other than
     solver are only handled by Sdpa\{,Gmp\}). *)

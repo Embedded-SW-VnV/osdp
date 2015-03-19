@@ -270,8 +270,6 @@ static MSKrescodee MSK_read_y(MSKtask_t task, int nb_cstrs, value *ml_res_y)
 
 static MSKboundkeye get_bk(double lb, double ub)
 {
-  MSKboundkeye bk;
-
   if (isfinite(lb) && isfinite(ub)) {
     return ((lb == ub) ? MSK_BK_FX : MSK_BK_RA);
   } else if (isfinite(lb)) {

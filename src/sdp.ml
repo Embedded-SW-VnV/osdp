@@ -48,7 +48,7 @@ let block_diag_to_sparse = List.map (fun (i, m) -> i, matrix_to_sparse m)
 (* SDP. *)
 (********)
 
-type solver = Csdp | Mosek | Sdpa | SdpaGmp
+type solver = Csdp | Mosek | Sdpa | SdpaGmp | SdpaDd
 
 type options = {
   solver : solver;
@@ -116,11 +116,11 @@ let solve_sparse ?options ?solver obj constraints =
   let ret, res, (res_X, res_y) = match get_solver options solver with
     | Csdp -> Csdp.solve obj constraints
     | Mosek -> Moseksdp.solve obj constraints
-    | (Sdpa | SdpaGmp) as s ->
+    | (Sdpa | SdpaGmp | SdpaDd) as s ->
        let options = match options with Some o -> o | None -> default in
        let solver =
          match s with
-         | Sdpa -> Sdpa.Sdpa | SdpaGmp -> Sdpa.SdpaGmp
+         | Sdpa -> Sdpa.Sdpa | SdpaGmp -> Sdpa.SdpaGmp | SdpaDd -> Sdpa.SdpaDd
          | _ -> assert false in
        let options = { Sdpa.solver = solver;
                        Sdpa.max_iteration = options.max_iteration;
@@ -243,7 +243,7 @@ let check_prog_ext f obj constraints =
 let solve_ext_sparse ?options ?solver obj constraints bounds =
   check_prog_ext check_sparse obj constraints;
   match get_solver options solver with
-  | Csdp | Sdpa | SdpaGmp ->
+  | Csdp | Sdpa | SdpaGmp | SdpaDd ->
      let obj, offset, constraints, trans = to_simple obj constraints bounds in
      let ret, (pobj, dobj), res =
        solve_sparse ?options ?solver obj constraints in

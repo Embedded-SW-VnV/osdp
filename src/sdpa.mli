@@ -39,7 +39,7 @@ type matrix = (int * int * float) list
     requirement for indices to be sorted. *)
 type block_diag_matrix = (int * matrix) list
 
-type solver = Sdpa | SdpaGmp
+type solver = Sdpa | SdpaGmp | SdpaDd
 
 (** Options for calling SDPA. *)
 type options = {

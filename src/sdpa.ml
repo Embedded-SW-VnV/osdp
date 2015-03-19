@@ -21,7 +21,7 @@
 type matrix = (int * int * float) list
 type block_diag_matrix = (int * matrix) list
 
-type solver = Sdpa | SdpaGmp
+type solver = Sdpa | SdpaGmp | SdpaDd
 
 type options = {
   solver : solver;
@@ -99,7 +99,8 @@ let output_param options =
          %a\tchar*  XPrint   (default %+8.3e,   NOPRINT skips printout)\n\
          %a\tchar*  YPrint   (default %+8.3e,   NOPRINT skips printout)\n\
          %a\tchar*  infPrint (default %+10.16e, NOPRINT skips printout)\n"
-     | SdpaGmp -> string_of_int options.precision ^ "\tprecision;\n");
+     | SdpaGmp -> string_of_int options.precision ^ "\tprecision;\n"
+     | SdpaDd -> "");
   close_out oc;
   filename
 
@@ -140,7 +141,8 @@ let solve ?options obj constraints =
   let cmd =
     let sdpa = match options.solver with
       | Sdpa -> Sdpa_paths.sdpa
-      | SdpaGmp -> Sdpa_paths.sdpa_gmp in
+      | SdpaGmp -> Sdpa_paths.sdpa_gmp
+      | SdpaDd -> Sdpa_paths.sdpa_dd in
     if sdpa = "no" then failwith "caml_osdp: compiled without SDPA support!";
     Format.asprintf
       "%s -ds %s -o %s -p %s > /dev/null"

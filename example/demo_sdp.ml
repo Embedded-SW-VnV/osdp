@@ -7,10 +7,11 @@
 
 let options = { Osdp.Sdp.default with Osdp.Sdp.solver = Osdp.Sdp.Sdpa }
 
-(* Uncomment the following to use SDPA-GMP: *)
+(* Uncomment the following to use SDPA-GMP or SDPA-DD: *)
 
 (* let options = { *)
 (*   Osdp.Sdp.solver = Osdp.Sdp.SdpaGmp; *)
+(*   (\* Osdp.Sdp.solver = Osdp.Sdp.SdpaDd; *\) *)
 (*   max_iteration = 200; *)
 (*   stop_criterion = 1.0E-30; *)
 (*   initial = 1.0E4; *)

@@ -2,7 +2,7 @@
    min (1+x y)^2 - x y + (1 - y)^2
    or max t s.t. (1+x y)^2 - x y + (1 - y)^2 - t is SOS. *)
 
-let solver = Osdp.Sdp.Mosek
+let solver = Osdp.Sdp.Sdpa
 
 (* SOS decomposition done manually. *)
 let _ =
