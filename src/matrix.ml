@@ -95,13 +95,15 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
 
   (** Function largely inspired from Pietro Abate tutorial on http://mancoosi.org/~abate/ocaml-format-module *)
   let pp fmt m =
+    let sep i j =
+      if j < m.col - 1 then "," else if i < m.line - 1 then ";" else "" in
     let pp_row widths fmt i row =
       if i = 0 then
 	let first_row = Array.map (fun x -> String.make (x + 1) ' ') widths in
 	Array.iteri (fun j strcell ->
 	  Format.pp_set_tab fmt ();
 	  (* The string cell is filled with the string contained in first row *)
-	  Format.fprintf Format.str_formatter "%a" ET.pp row.(j);
+	  Format.fprintf Format.str_formatter "%a%s" ET.pp row.(j) (sep i j);
 	  let str = Format.flush_str_formatter () in
 	  for z=0 to (String.length str) - 1 do strcell.[z] <- str.[z] done;
 	  Format.fprintf fmt "%s" strcell
@@ -109,16 +111,16 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
       else
 	Array.iteri (fun j cell ->
 	  Format.pp_print_tab fmt ();
-	  Format.fprintf fmt "%a" ET.pp cell
+	  Format.fprintf fmt "%a%s" ET.pp cell (sep i j)
 	) row
     in
     let compute_widths table =
-  (* we build with the largest length of each column of the
-   * table and header *)
-      let widths = Array.create (Array.length table.(0)) 0 in
-      Array.iter (fun row ->
+      (* we build with the largest length of each column of the
+       * table and header *)
+      let widths = Array.create m.col 0 in
+      Array.iteri (fun i row ->
 	Array.iteri (fun j cell ->
-	  Format.fprintf Format.str_formatter "%a" ET.pp cell;
+	  Format.fprintf Format.str_formatter "%a%s" ET.pp cell (sep i j);
 	  let str = Format.flush_str_formatter () in
 	  widths.(j) <- max (String.length str) widths.(j)
 	) row
@@ -126,15 +128,14 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
       widths
     in
     let widths = compute_widths m.content in
-
-  (* open the table box *)
-  Format.pp_open_tbox fmt ();
-
-  (* print the table *)
-  Array.iteri (pp_row widths fmt) m.content;
-
-  (* close the box *)
-  Format.pp_close_tbox fmt ()
+    Format.pp_print_string fmt "[";
+    (* open the table box *)
+    Format.pp_open_tbox fmt ();
+    (* print the table *)
+    Array.iteri (pp_row widths fmt) m.content;
+    (* close the box *)
+    Format.pp_close_tbox fmt ();
+    Format.pp_print_string fmt "]"
 
   (* Old version *)
   (* Format.fprintf fmt "[@[%a@]]" *)

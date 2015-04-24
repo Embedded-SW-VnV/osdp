@@ -383,7 +383,7 @@ value csdp_solve(value ml_obj, value ml_cstrs)
   struct constraintmatrix *cstrs;
   double *b, pobj, dobj, *res_y;
   sdp_ret_t sdp_ret;
-  
+
   collect_sizes(ml_obj, ml_cstrs,
                 &idx_offset, &nb_vars, &nb_cstrs, &dimvar, &dim_X);
 
