@@ -1,5 +1,0 @@
-description = "OCaml interface to CSDP library"
-version = "1.0.1"
-archive(byte) = "osdp.cma"
-archive(native) = "osdp.cmxa"
-

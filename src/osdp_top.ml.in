@@ -1,0 +1,85 @@
+(*
+ * OSDP (OCaml SDP) is an OCaml frontend library to semi-definite
+ * programming (SDP) solvers.
+ * Copyright (C) 2012, 2014  P. Roux and P.L. Garoche
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *)
+
+(** This automatically installs printers and parsers in the
+    toplevel. Magic lines are the following
+    {[
+    #use "topfind";;
+    #require "osdp";;
+    ]}
+    These last two lines can be added to ~/.ocamlinit if needed to
+    avoid typing them again and again. *)
+
+(* This is highly inspired from num_top.ml for the Num library. *)
+
+(**/**)
+let with_camlp4 = "@with_camlp4@"
+let print_outcome = true
+let error_fmt = Format.err_formatter
+
+let printers = [
+  "Osdp.Ident.pp";
+  "Osdp.LinExpr.Q.pp";
+  "Osdp.LinExpr.Float.pp";
+  "Osdp.Lmi.Float.pp";
+  "Osdp.Matrix.Q.pp";
+  "Osdp.Matrix.Float.pp";
+  "Osdp.Monomial.pp";
+  "Osdp.Polynomial.Q.pp";
+  "Osdp.Polynomial.Float.pp";
+  "Osdp.Scalar.Q.pp";
+  "Osdp.Scalar.Float.pp";
+  "Osdp.Sos.Float.pp";
+]
+
+let parsers = [
+  "pa_osdp.cma";
+]
+
+let install_commands =
+  List.map (fun s -> "#install_printer " ^ s ^ ";;") printers
+  @ (if with_camlp4 <> "yes" then []
+     else
+       "#load \"dynlink.cma\";;" :: "#load \"camlp4o.cma\";;"
+       :: List.map (fun s -> "#load \"" ^ s ^ "\";;") parsers)
+
+let eval_phrase s =
+  (* Format.fprintf *)
+  (*   error_fmt *)
+  (*   "evaluating \"%s\"@." s; *)
+  (* Format.pp_print_flush error_fmt (); *)
+  let lexbuf = Lexing.from_string s in
+  let phrase = !Toploop.parse_toplevel_phrase lexbuf in
+  Toploop.execute_phrase print_outcome error_fmt phrase
+
+let install_all () =
+  List.fold_left
+    (fun outcome phrase -> outcome && eval_phrase phrase)
+    true install_commands
+
+let _ =
+  if not (install_all ()) then
+    begin
+      Format.fprintf
+        error_fmt
+        "Something weird happened while installing Osdp library printers/parsers.@.";
+      Format.pp_print_flush error_fmt ()
+    end
+(**/**)

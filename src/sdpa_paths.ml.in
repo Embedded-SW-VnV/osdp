@@ -1,0 +1,3 @@
+let sdpa = "@SDPA_PATH@"
+let sdpa_gmp = "@SDPA_GMP_PATH@"
+let sdpa_dd = "@SDPA_DD_PATH@"

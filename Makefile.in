@@ -1,41 +1,44 @@
-OCAMLC=../revert_cclib.sh ocamlc
-OCAMLOPT=../revert_cclib.sh ocamlopt
-OCAMLBUILD=@OCAMLBUILD@ -classic-display -no-links \
--ocamlc "${OCAMLC}" -ocamlopt "${OCAMLOPT}"
-
-prefix=@prefix@
-exec_prefix=@exec_prefix@
-bindir=@bindir@
-datarootdir=@datarootdir@
-sharedir=@datadir@
-
-LOCAL_BINDIR=.
-LOCAL_LIBDIR=lib
+# OSDP (OCaml SDP) is an OCaml frontend library to semi-definite
+# programming (SDP) solvers.
+# Copyright (C) 2012, 2014  P. Roux and P.L. Garoche
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 LOCAL_DOCDIR=doc
 
+DIST_FILES_DIR= \
+  AUTHORS \
+  CHANGES \
+  configure \
+  configure.ac \
+  COPYING \
+  doc \
+  example \
+  external \
+  INSTALL \
+  Makefile.in \
+  README \
+  src
+
 osdp:
-	$(OCAMLBUILD) osdp.cmxa
-	$(OCAMLBUILD) osdp.cma
+	make -C src osdp
 
 doc:
-	$(OCAMLBUILD) osdp.docdir/index.html
+	make -C src doc
 	rm -rf $(LOCAL_DOCDIR)
-	cp -rf _build/osdp.docdir $(LOCAL_DOCDIR)
-
-test:
-	$(OCAMLBUILD) test/test.native
-
-
-test-sos:
-	$(OCAMLBUILD) sos/test.native
-
-clean:
-	$(OCAMLBUILD) -clean
-	rm -f *~ sdp/*~ 
-
-dist-clean: clean
-	rm -f Makefile myocamlbuild.ml global.ml Makefile config.log config.status configure
+	cp -rf src/_build/osdp.docdir $(LOCAL_DOCDIR)
 
 /usr/local/share/csdp/param.csdp:
 	mkdir -p /usr/local/share/csdp/
@@ -43,22 +46,26 @@ dist-clean: clean
 
 install-deps: /usr/local/share/csdp/param.csdp
 
-install-findlib:
-	ocamlfind install osdp META _build/libosdp.a _build/osdp.a _build/osdp.cmxa _build/osdp.cma _build/sdp/sdp.cmi _build/sdp/LMI.cmi _build/sdp/matrix.cmi _build/cholesky/posdef.cmi _build/sdp/csdp.cmi _build/sdp/csdp_stubs.o 
+install:
+	make -C src install
 
-uninstall-findlib:
-	ocamlfind remove osdp
+uninstall:
+	make -C src uninstall
 
-hack:
-	ocamlopt ./utils/sette.mli
-	ocamlopt -I utils ./utils/mappe.mli
-	ocamlopt -I utils ./utils/report.mli
-	ocamlopt -I utils ./sdp/matrix.mli
-	ocamlopt -I utils -I sdp ./sdp/csdp.mli
-	ocamlopt -I utils -I sdp ./sdp/sdp.mli
-	ocamlopt -I utils -I sdp ./sdp/LMI.mli
-	/usr/bin/ocamlc.opt -ccopt -DNOSHORTS -ccopt -I/usr/local/include/csdp -c sdp/csdp_stubs.c
-	ocamlmklib -o osdp -I utils -I sdp global.ml utils/sette.ml utils/mappe.ml utils/report.ml utils/utils.ml sdp/matrix.ml sdp/csdp.ml csdp_stubs.o sdp/sdp.ml sdp/LMI.ml
-	ocamlfind install osdp META libosdp.a osdp.a osdp.cmxa osdp.cma sdp/sdp.cmi sdp/LMI.cmi sdp/matrix.cmi sdp/csdp.cmi csdp_stubs.o
+clean:
+	make -C src clean
+	make -C example clean
+	rm -f *~
 
-.PHONY: osdp doc test clean install install-deps dist-clean
+distclean: clean
+	make -C src distclean
+	rm -rf Makefile autom4te.cache config.log config.status 
+
+dist: doc distclean
+	rm -rf @PACKAGE_TARNAME@-@PACKAGE_VERSION@
+	mkdir @PACKAGE_TARNAME@-@PACKAGE_VERSION@
+	cp -r $(DIST_FILES_DIR) @PACKAGE_TARNAME@-@PACKAGE_VERSION@
+	tar cvzf @PACKAGE_TARNAME@-@PACKAGE_VERSION@.tgz @PACKAGE_TARNAME@-@PACKAGE_VERSION@
+	rm -rf @PACKAGE_TARNAME@-@PACKAGE_VERSION@
+
+.PHONY: osdp doc install-deps install uninstall clean distclean dist

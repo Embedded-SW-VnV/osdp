@@ -1,0 +1,12 @@
+version 0.3, Mar 17th, 2015
+---------------------------
+ o changes in SOS encoding
+ o some changes in SOS and LMI interfaces (c.f., example/demo.ml)
+
+version 0.2, Nov 12th, 2014
+---------------------------
+ o Camlp4 interface
+
+version 0.1, Oct 25th, 2014
+---------------------------
+ o first release

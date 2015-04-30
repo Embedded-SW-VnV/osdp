@@ -1,0 +1,14 @@
+--- sdpa_io.cpp	2009-10-05 02:51:42.000000000 +0200
++++ sdpa_io.cpp	2015-03-19 14:25:59.000000000 +0100
+@@ -684,8 +684,9 @@
+         SOCP_index[k].push_back(l2);
+       } else if (blockType[l-1] == 3){ // LP part
+         if (i!=j){
+-          printf("invalid data file k:%d, l:%d, i:%d, j:%d, value:%lf\n"
+-                 ,k,l,i,j,value);
++          printf("invalid data file k:%d, l:%d, i:%d, j:%d, "
++                 ,k,l,i,j);
++          gmp_printf("value:%9.1Fe\n", value.get_mpf_t());
+           rError("IO::initializeLinearSpace");
+         }
+         int l2 =blockNumber[l-1];
