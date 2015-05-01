@@ -38,45 +38,68 @@ let fprintf_matrix ~begl ~endl ~sepl ~sepc f =
     Format.fprintf fmt "%(%)%a%(%)" begl (fprintf_array ~sep:sepc f) l endl in
   fprintf_array ~sep:sepl print_line
 
-let epsilon_under_float = float_of_string "0x1p-1074"
+(* smallest positive subnormal *)
+let epsilon_under_float = min_float *. epsilon_float  (* 0x1p-1074 *)
+(* largest subnormal *)
+let max_subnormal = min_float -. epsilon_under_float
+                                         
+(* Assuming f1 <= f2, [consecutive_float f1 F2] returns true iff there
+   is no float f (normal or subnormal) such that f1 < f < f2. *)
+let consecutive_float f1 f2 =
+  (* Same assuming also 0 <= f1 <= f2. *)
+  let consecutive_float_pos f1 f2 =
+    match classify_float f1, classify_float f2 with
+    | FP_nan, _ | _, FP_nan -> assert false  (* f1 <= f2 is false *)
+    | FP_infinite, FP_infinite -> true
+    | FP_infinite, _ -> false
+    | _, FP_infinite -> f1 = max_float
+    | _, FP_zero -> true
+    | FP_zero, _ -> f2 = epsilon_under_float
+    | FP_normal, FP_subnormal -> assert false  (* f1 < f2 is false *)
+    | FP_subnormal, FP_normal -> f1 = max_subnormal && f2 = min_float
+    | FP_subnormal, FP_subnormal -> f2 -. f1 <= epsilon_under_float
+    | FP_normal, FP_normal ->
+       let (f1, e1), (f2, e2) = frexp f1, frexp f2 in
+       (e1 = e2 && f2 -. f1 <= epsilon_float /. 2.)
+       || (e1 = e2 - 1 && f1 = 1.0 -. epsilon_float /. 2. && f2 = 0.5) in
+  if f1 >= 0. then consecutive_float_pos f1 f2
+  else if f2 <= 0. then consecutive_float_pos ( -. f1) ( -. f2)
+  else false  (* f1 < 0 < f2 *)
 
-(* Please report any assert false raised in this function. *)
+let itv_float_of_q q = match Q.classify q with
+  | Q.ZERO -> 0., 0.
+  | Q.INF -> infinity, infinity
+  | Q.MINF -> neg_infinity, neg_infinity
+  | Q.UNDEF -> nan, nan
+  | Q.NZERO ->
+     if Q.lt q (Q.of_float ( -. max_float)) then neg_infinity, -. max_float
+     else if Q.gt q (Q.of_float max_float) then max_float, infinity
+     else
+       let l, u =
+         let a = Z.to_float q.Q.num /. Z.to_float q.Q.den in
+         if a >= 0. then
+           (1. -. 2. *. epsilon_float) *. a -. 2. *. epsilon_under_float,
+           (1. +. 2. *. epsilon_float) *. a +. 2. *. epsilon_under_float
+         else
+           (1. +. 2. *. epsilon_float) *. a -. 2. *. epsilon_under_float,
+           (1. -. 2. *. epsilon_float) *. a +. 2. *. epsilon_under_float in
+       (* Check that we have l <= q <= u. *)
+       let l = if Q.geq q (Q.of_float l) then l else -. max_float in
+       let u = if Q.leq q (Q.of_float u) then u else max_float in
+       (* Refine the bounds q \in [l, u] by dichotomy. *)
+       let rec dicho l u =
+         let m =
+           if l > 1. && u < 1. then (l +. u) /. 2. else l /. 2. +. u /. 2. in
+         let l, u = if Q.leq (Q.of_float m) q then m, u else l, m in
+         if consecutive_float l u then l, u else dicho l u in
+       dicho l u
+     
 let float_of_q q =
   let n = Z.to_float q.Q.num in
   let d = Z.to_float q.Q.den in
   if Z.equal q.Q.num (Z.of_float n) && Z.equal q.Q.den (Z.of_float d) then
     n /. d  (* if division is good, we get a closest float *)
   else
-    let a = n /. d in
-    let l, u =
-      if a >= 0. then
-        (1. -. 8. *. epsilon_float) *. a -. 8. *. epsilon_under_float,
-        (1. +. 8. *. epsilon_float) *. a +. 8. *. epsilon_under_float
-      else
-        (1. +. 8. *. epsilon_float) *. a -. 8. *. epsilon_under_float,
-        (1. -. 8. *. epsilon_float) *. a +. 8. *. epsilon_under_float in
-    (* Check that we have l <= q <= u. *)
-    let () = if Q.lt q (Q.of_float l) then assert false in
-    let () = if Q.lt (Q.of_float u) q then assert false in
-    (* Refine the bounds q \in [l, u] by dichotomy. *)
-    let rec dicho n l u =
-      if n > 0 then
-        let m = (l +. u) /. 2. in
-        if Q.leq (Q.of_float m) q then dicho (n - 1) m u
-        else dicho (n - 1) l m
-      else
-        l, u in
-    let l, u = dicho 10 l u in
-    (* Check that we have two consecutive floats. *)
-    let l, u = match classify_float l, classify_float u with
-      | FP_normal, FP_normal ->
-         let lf, le = frexp l in
-         let uf, ue = frexp u in
-         if uf -. lf > epsilon_float then assert false else l, u
-      | FP_subnormal, _
-      | _, FP_subnormal ->
-         if u -. l > epsilon_under_float then assert false else l, u
-      | FP_zero, FP_zero -> l, u
-      | _ -> assert false in
+    let l, u = itv_float_of_q q in
     (* Keep a closest one. *)
     if Q.leq (Q.sub (Q.of_float u) q) (Q.sub q (Q.of_float l)) then u else l

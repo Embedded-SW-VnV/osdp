@@ -18,7 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *)
 
-(** *)
+(** Various utility functions. *)
 
 val fprintf_list :
   sep:('a, 'b, 'c, 'd, 'd, 'a) format6 ->
@@ -35,6 +35,11 @@ val fprintf_matrix :
   sepc:('m, 'n, 'o, 'p, 'p, 'm) format6 ->
   (Format.formatter -> 'q -> unit) -> Format.formatter -> 'q array array -> unit
 
-(** [float_of_q q] tries its best to return a float closest to [q] or
-    raises [assert false] (please report, this is a bug). *)
+(** [itv_float_of_q q] returns two floats [l, u] such that, when q is
+    [Q.undef], [l] and [u] are both [nan], otherwise l <= q <= u and
+    there is no float (either normal or subnormal) such that l < f <
+    u. *)
+val itv_float_of_q : Q.t -> float * float
+
+(** [float_of_q q] returns a float closest to [q]. *)
 val float_of_q : Q.t -> float

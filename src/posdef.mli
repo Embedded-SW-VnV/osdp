@@ -1,7 +1,7 @@
 (*
  * OSDP (OCaml SDP) is an OCaml frontend library to semi-definite
  * programming (SDP) solvers.
- * Copyright (C) 2012, 2014  P. Roux and P.L. Garoche
+ * Copyright (C) 2012, 2014, 2015  P. Roux and P.L. Garoche
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -20,6 +20,14 @@
 
 (** Interface towards a C code proving positive definiteness of
     matrices. *)
+
+(** Takes as input a square interval matrix [m] of size nxn. If it
+    returns [true], then all symmetric matrices in this interval are
+    positive definite (otherwise, one of these matrices is either not
+    symmetric positive definite or its smallest eigenvalue is too
+    small for the proof to succeed). If [m] is not symmetric or one of
+    its elements is not finite, [false] is returned. *)
+val check_itv : (float * float) array array -> bool
 
 (** Takes as input a square matrix of Q.t of size nxn and returns 1 if it
     manages to prove that the matrix is symmetric positive definite and 0

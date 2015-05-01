@@ -117,7 +117,7 @@ let fprintf_min_policy_expr fmt (c, a) =
         else if a.(i) = -1. then Format.fprintf fmt "-"
         else Format.fprintf fmt "%g*" a.(i)
       end;
-      Format.fprintf fmt "x%d" (i + 1);
+      Format.fprintf fmt "a%d" (i + 1);
       need_plus := true
     end
   done;
@@ -189,7 +189,7 @@ let improve_strat_eqs ~(solver : Osdp.Sdp.solver) (eqs : eq list) (rho : float l
         1.0000001 *. res, [||]
       else
         let ret, (_, res), (_, y) = relax_sdp_solve ~solver obj (add_cstrs @ cstrs) in
-        Format.printf "ret = %a@." Osdp.SdpRet.pp ret;
+        (* Format.printf "ret = %a@." Osdp.SdpRet.pp ret; *)
         if not (Osdp.SdpRet.is_success ret) then
           infinity, Array.make (List.length add_cstrs) 0.
         else
@@ -293,10 +293,10 @@ let min_policy_from_postfixpoint ~(solver : Osdp.Sdp.solver) (eqs : eq list) (rh
   let max_iter = 12 in
   let rec iter n rho =
     let pi = improve_strat_eqs ~solver eqs rho in
-    Format.printf "### pi%d: %a@." n fprintf_min_policy_system pi;
+    Format.printf "pi%d: %a@." n fprintf_min_policy_system pi;
     let rho' = min_policy_lfp pi in
     Format.printf
-      "### x%d: @[(%a)@]@." n
+      "x%d: @[(%a)@]@." n
       (Osdp.Utils.fprintf_list ~sep:",@ " Format.pp_print_float)
       rho';
     if n < max_iter && List.exists (( <> ) infinity) rho'
@@ -313,7 +313,7 @@ let solve_pi ~(solver : Osdp.Sdp.solver) (eqs : eq list) : float list =
     let sz = List.length eqs in
     init_lambda :: Array.to_list (Array.make (sz - 1) infinity) in
   Format.printf
-    "### Starting min policy iterations from postfixpoint: @[%a@]@."
+    "Starting min policy iterations from postfixpoint: @[%a@]@."
     (Osdp.Utils.fprintf_list ~sep:",@ " Format.pp_print_float)
     postfixpoint;
   min_policy_from_postfixpoint ~solver eqs postfixpoint
@@ -379,13 +379,13 @@ let test_quadratic ~solver a b =
     let min, max = if test_feas_lambda mid then min, mid else mid, max in
     if n > 0 then dicho (n - 1) min max else max in
   let tau_min = dicho nb_dicho 0. 1. in
-  Format.printf "tau_min = %g@." tau_min;
+  (* Format.printf "tau_min = %g@." tau_min; *)
   let best_tau = ref tau_min in
   let best_radius = ref neg_infinity in
   let best_vars = ref Osdp.Ident.Map.empty in
   let tau = ref tau_min in
   for i = 0 to nb_try - 1 do
-    Format.printf "trying %g@." !tau;
+    (* Format.printf "trying %g@." !tau; *)
     let _, _, vars = test_radius_lambda !tau in
     let radius =
       try
@@ -393,7 +393,7 @@ let test_quadratic ~solver a b =
         | Scalar r -> r
         | _ -> neg_infinity
       with Not_found -> neg_infinity in
-    Format.printf "gives %g@." radius;
+    (* Format.printf "gives %g@." radius; *)
     if radius > !best_radius then
       begin
         best_tau := !tau;
@@ -402,8 +402,8 @@ let test_quadratic ~solver a b =
       end;
     tau := !tau +. (1. -. tau_min) /. float_of_int nb_try
   done;
-  Format.printf "best_tau = %g@." !best_tau;
-  Format.printf "best_radius = %g@." !best_radius;
+  (* Format.printf "best_tau = %g@." !best_tau; *)
+  (* Format.printf "best_radius = %g@." !best_radius; *)
   !best_tau
 
 open Osdp.Sos.Float
@@ -463,7 +463,7 @@ let test_SOS ~solver a b deg =
         match Osdp.Ident.Map.find p.name vars with Poly p -> p | _ -> Poly.zero
       end
     with Not_found -> Poly.zero in
-  Format.printf "p = %a@." Poly.pp p;
+  (* Format.printf "p = %a@." Poly.pp p; *)
   p
   (* let normalize p = *)
   (*   let p = Poly.to_list p in *)
@@ -525,7 +525,7 @@ let solver = Osdp.Sdp.Csdp
 
 let test_pi a b deg =
   let p = test_SOS ~solver a b deg in
-  Format.printf "p = %a@." Poly.pp p;
+  (* Format.printf "p = %a@." Poly.pp p; *)
   let pol_of_list l =
     Poly.of_list (List.map (fun (s, m) -> Osdp.Monomial.of_list m, s) l) in
   let vp f n =  (* f x_n ^ deg *)
@@ -533,7 +533,7 @@ let test_pi a b deg =
   let nb_vars = List.length a in
   let templates = p :: List.mapi (fun i _ -> vp 1. i) a in
   Format.printf
-    "templates = @[%a@]@."
+    "templates = @[<v>%a@]@."
     (Osdp.Utils.fprintf_list ~sep:",@ " Poly.pp) templates;
   let l =
     List.combine a b
@@ -549,10 +549,10 @@ let test_pi a b deg =
     cstrs_templates @ cstrs_inputs in
   let eqs = List.map (fun p -> [Poly.compose p l, cstrs]) templates in
   let res = solve_pi ~solver eqs in
-  Format.printf
-    "res = @[%a@]@."
-    (Osdp.Utils.fprintf_list ~sep:",@ " (fun fmt -> Format.fprintf fmt "%.2f"))
-    res;
+  (* Format.printf *)
+  (*   "res = @[%a@]@." *)
+  (*   (Osdp.Utils.fprintf_list ~sep:",@ " (fun fmt -> Format.fprintf fmt "%.2f")) *)
+  (*   res; *)
   let bounds = List.map (fun f -> exp (log f /. float_of_int deg)) res in
   Format.printf
     "bounds = @[%a@]@."
@@ -566,6 +566,27 @@ let _ =
   if Array.length Sys.argv <> 3 then usage ();
   let n = int_of_string Sys.argv.(1) in
   let a, b = List.nth examples (n - 1) in
+  Format.printf "Analyzed system x_k+1 = A x_k + B u, ||u||_oo <= 1,@.";
+  Format.printf
+    "A = @[<v>[%a]@]@."
+    (Osdp.Utils.fprintf_list
+       ~sep:"]@,["
+       (fun fmt l ->
+        Format.fprintf
+          fmt "@[%a@]"
+          (Osdp.Utils.fprintf_list ~sep:",@ " Format.pp_print_float)
+          l))
+    a;
+  Format.printf
+    "B = @[<v>[%a]@]@."
+    (Osdp.Utils.fprintf_list
+       ~sep:"]@,["
+       (fun fmt l ->
+        Format.fprintf
+          fmt "@[%a@]"
+          (Osdp.Utils.fprintf_list ~sep:",@ " Format.pp_print_float)
+          l))
+    b;
   let deg = int_of_string Sys.argv.(2) in
-  Format.printf "deg = %i@." deg;
+  (* Format.printf "deg = %i@." deg; *)
   test_pi a b deg

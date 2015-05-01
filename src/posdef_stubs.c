@@ -1,7 +1,7 @@
 /*
  * OSDP (OCaml SDP) is an OCaml frontend library to semi-definite
  * programming (SDP) solvers.
- * Copyright (C) 2012, 2014  P. Roux and P.L. Garoche
+ * Copyright (C) 2012, 2014, 2015  P. Roux and P.L. Garoche
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -69,23 +69,22 @@ static void matrix_free(matrix_t *p)
 
 #define SEL(m, i, j) ((m)->t[(i)*((m)->s)+(j)])
 
-static double eps = 0x1p-53, eta = 0x1p-1074;
-
 static void rnd(int mode)
 {
   if (fesetround(mode))
     caml_failwith("caml_osdp: unable to change rounding mode!");
 }
 
-/* parse matrix, returning two matrices of doubles
- * mp and radp such that actual input matrix is in the set
- * { M | |M - mp| <= radp } (|.| and . <= . taken pointwise) */
+/* parse matrix, returning two matrices of doubles mp and radp such
+ * that for all i, j if (a, b) = mll_i,j then [a, b] \subseteq { x |
+ * |x - mp_i,j| <= radp_i,j }. Sets rounding mode to FE_UPWARD. */
 static void parse_matrix(value mll, matrix_t **mp, matrix_t **radp)
 {
   matrix_t *m, *rad;
   int i, j, sz;
   value line;
-
+  double d1, d2;
+  
   sz = Wosize_val(mll);
   *mp = m = matrix_new(sz);
   *radp = rad = matrix_new(sz);
@@ -93,24 +92,30 @@ static void parse_matrix(value mll, matrix_t **mp, matrix_t **radp)
   for (i = 0; i < sz; ++i) {
     line = Field(mll, i);
     for (j = 0; j < sz; ++j)
-      SEL(m, i, j) = Double_field(line, j);
+      SEL(m, i, j) = (Double_val(Field(Field(line, j), 0))
+                      + Double_val(Field(Field(line, j), 1))) / 2.;
   }
 
   rnd(FE_UPWARD);
-  for (i = 0; i < m->s; ++i)
-    for (j = 0; j < m->s; ++j)
-      SEL(rad, i, j) = fabs(SEL(m, i, j)) * eps + eta;
+  for (i = 0; i < m->s; ++i) {
+    line = Field(mll, i);
+    for (j = 0; j < m->s; ++j) {
+      d1 = Double_val(Field(Field(line, j), 1)) - SEL(m, i, j);
+      d2 = SEL(m, i, j) - Double_val(Field(Field(line, j), 1));
+      SEL(rad, i, j) = d2 > d1 ? d2 : d1;
+    }
+  }
 }
 
-/* Returns 1 if m is symmetric, 0 otherwise. */
-static int is_symmetric(matrix_t *m)
+/* Returns 1 if m is symmetric and finite, 0 otherwise. */
+static int is_symmetric_finite(matrix_t *m)
 {
   int i, j;
 
   for (i = 0; i < m->s; ++i)
     for (j = 0; j < i; ++j)
-      if (SEL(m, i, j) != SEL(m, j, i)) return 0;
-
+      if (SEL(m, i, j) != SEL(m, j, i) || !isfinite(SEL(m, i, j))) return 0;
+      
   return 1;
 }
 
@@ -145,18 +150,23 @@ static int chol(matrix_t *m)
 
 static int check(value mll)
 {
+  double eps = 0x1p-53, eta = 0x1p-1074;
+  int old_rnd;
   double gamma_np1, c;
   double tr, maxdiag, maxrad;
   int i, j;
   matrix_t *m, *rad;
 
+  old_rnd = fegetround();
+  
   parse_matrix(mll, &m, &rad);
-
+  /* round mode is now FE_UPWARD */
+  
   /* the test only works for matrices of size < 2^51 - 2 */
   if (m->s > 1000000000) goto out_no;
 
   /* symmmetry check */
-  if (!is_symmetric(m)) goto out_no;
+  if (!is_symmetric_finite(m) || !is_symmetric_finite(rad)) goto out_no;
 
   /* diagonal check */
   for (i = 0; i < m->s; ++i)
@@ -164,7 +174,6 @@ static int check(value mll)
 
   if (m->s == 1) goto out_yes;
 
-  rnd(FE_UPWARD);
   gamma_np1 = m->s * eps - 1;
   gamma_np1 = -gamma_np1;  /* 1-n*eps rounded downward */
   gamma_np1 = m->s * eps / gamma_np1;  /* \gamma_{n+1} = n*eps/(1-n*eps) */
@@ -181,7 +190,8 @@ static int check(value mll)
       maxdiag = SEL(m, i, i);
   }  /* tr = tr(m) */
 
-  c = c * tr + 4 * eta * (m->s + 1) * (2 * (m->s + 2) + maxdiag);
+  /* 2 * eta is actually 4 * 0x1p-1075 (but 0x1p-1075 would underflow to 0) */
+  c = c * tr + 2 * eta * (m->s + 1) * (2 * (m->s + 2) + maxdiag);
 
   maxrad = 0;
   for (i = 0; i < m->s; ++i) {
@@ -193,18 +203,22 @@ static int check(value mll)
   c += maxrad * (m->s + 1);
 
   rnd(FE_DOWNWARD);
-  for (i = 0; i < m->s; ++i)
+  for (i = 0; i < m->s; ++i) {
     SEL(m, i, i) -= c;
-
+    if (!isfinite(SEL(m, i, i))) goto out_no;
+  }
+    
   rnd(FE_TONEAREST);
   if (chol(m)) goto out_yes;
   else goto out_no;
 
  out_no:
+  fesetround(old_rnd);
   matrix_free(m);
   matrix_free(rad);
   return 0;
  out_yes:
+  fesetround(old_rnd);
   matrix_free(m);
   matrix_free(rad);
   return 1;

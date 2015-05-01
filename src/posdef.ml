@@ -1,7 +1,7 @@
 (*
  * OSDP (OCaml SDP) is an OCaml frontend library to semi-definite
  * programming (SDP) solvers.
- * Copyright (C) 2012, 2014  P. Roux and P.L. Garoche
+ * Copyright (C) 2012, 2014, 2015  P. Roux and P.L. Garoche
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -18,10 +18,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *)
 
-external check_c : float array array -> bool = "posdef_check"
+external check_itv : (float * float) array array -> bool = "posdef_check"
 
-let check m =
-  (* This relies on the assumption that Scalar.Q.to_float returns a
-     closest floating point value. *)
-  let m = Array.map (Array.map Scalar.Q.to_float) m in
-  check_c m
+let check m = check_itv (Array.map (Array.map Utils.itv_float_of_q) m)
