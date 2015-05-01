@@ -106,11 +106,11 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
       Format.fprintf fmt "%a" Coeff.pp a.const
     else if Coeff.is_zero a.const then
       Format.fprintf fmt "@[%a@]"
-                     (Utils.fprintf_list ~sep:"@ + " pp_coeff)
+                     (Utils.pp_list ~sep:"@ + " pp_coeff)
                      a.lin
     else
       Format.fprintf fmt "@[%a@ + %a@]"
-                     (Utils.fprintf_list ~sep:"@ + " pp_coeff)
+                     (Utils.pp_list ~sep:"@ + " pp_coeff)
                      a.lin
                      Coeff.pp a.const
 end

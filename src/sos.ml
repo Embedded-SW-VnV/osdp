@@ -100,7 +100,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | Power (e, d) -> Format.fprintf fmt "%a^%i" (pp_prior 3) e d
       | Compose (e, el) ->
          Format.fprintf fmt "%a(@[%a@])" (pp_prior 2) e
-                        (Utils.fprintf_list ~sep:",@ " (pp_prior 0)) el in
+                        (Utils.pp_list ~sep:",@ " (pp_prior 0)) el in
     pp_prior 0 fmt e
 
   let pp = pp_names []

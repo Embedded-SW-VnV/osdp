@@ -89,9 +89,9 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       | Kron_sym (n, i, j) -> Mat.pp fmt (Mat.kron_sym n i j)
       | Block a ->
          Format.fprintf fmt "[@[%a@]]"
-                        (Utils.fprintf_array ~sep:";@ "
+                        (Utils.pp_array ~sep:";@ "
                            (fun fmt -> Format.fprintf fmt "@[%a@]"
-                              (Utils.fprintf_array ~sep:",@ " (pp_prior 0)))) a
+                              (Utils.pp_array ~sep:",@ " (pp_prior 0)))) a
       | Lift_block (m, i, j, k, l) ->
          Format.fprintf fmt "lift_block(@[%a,@ %i, %i, %i, %i@])"
                         (pp_prior 0) m i j k l

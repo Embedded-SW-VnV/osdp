@@ -20,20 +20,20 @@
 
 (** Various utility functions. *)
 
-val fprintf_list :
-  sep:('a, 'b, 'c, 'd, 'd, 'a) format6 ->
-  (Format.formatter -> 'e -> unit) -> Format.formatter -> 'e list -> unit
+val pp_list :
+  sep:(unit, Format.formatter, unit) format ->
+  (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a list -> unit
 
-val fprintf_array :
-  sep:('a, 'b, 'c, 'd, 'd, 'a) format6 ->
-  (Format.formatter -> 'e -> unit) -> Format.formatter -> 'e array -> unit
+val pp_array :
+  sep:(unit, Format.formatter, unit) format ->
+  (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a array -> unit
 
-val fprintf_matrix :
-  begl:('a, 'b, 'c, 'd, 'd, 'a) format6 ->
-  endl:('e, 'f, 'g, 'h, 'h, 'e) format6 ->
-  sepl:('i, 'j, 'k, 'l, 'l, 'i) format6 ->
-  sepc:('m, 'n, 'o, 'p, 'p, 'm) format6 ->
-  (Format.formatter -> 'q -> unit) -> Format.formatter -> 'q array array -> unit
+val pp_matrix :
+  begl:(unit, Format.formatter, unit) format ->
+  endl:(unit, Format.formatter, unit) format ->
+  sepl:(unit, Format.formatter, unit) format ->
+  sepc:(unit, Format.formatter, unit) format ->
+  (Format.formatter -> 'a -> unit) -> Format.formatter -> 'a array array -> unit
 
 (** [itv_float_of_q q] returns two floats [l, u] such that, when q is
     [Q.undef], [l] and [u] are both [nan], otherwise l <= q <= u and

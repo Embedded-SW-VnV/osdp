@@ -18,8 +18,7 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *)
 
-(** Interface towards a C code proving positive definiteness of
-    matrices. *)
+(** Proving positive definiteness of matrices. *)
 
 (** Takes as input a square interval matrix [m] of size nxn. If it
     returns [true], then all symmetric matrices in this interval are

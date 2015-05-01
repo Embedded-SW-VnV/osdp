@@ -265,19 +265,19 @@ let solve_ext ?options ?solver obj constraints bounds =
   
 let pp_sparse_matrix fmt m =
   let pp_e fmt (i, j, f) = Format.fprintf fmt "(%d, %d, %g)" i j f in
-  Format.fprintf fmt "[@[%a@]]" (Utils.fprintf_list ~sep:",@ " pp_e) m
+  Format.fprintf fmt "[@[%a@]]" (Utils.pp_list ~sep:",@ " pp_e) m
 
 let pp_matrix fmt m = Matrix.Float.pp fmt (Matrix.Float.of_array_array m)
 
 let pp_block_diag f fmt bd =
   let pp_e fmt (i, m) = Format.fprintf fmt "(%d, %a)" i f m in
-  Format.fprintf fmt "[@[%a@]]" (Utils.fprintf_list ~sep:",@ " pp_e) bd
+  Format.fprintf fmt "[@[%a@]]" (Utils.pp_list ~sep:",@ " pp_e) bd
 
 let pp_obj f fmt bd =
   let pp_e fmt (i, m) = Format.fprintf fmt "tr(%a X_%d)" f m i in
   match bd with
-  | [] -> Format.printf "0"
-  | _ -> Format.fprintf fmt "@[%a@]" (Utils.fprintf_list ~sep:"@ + " pp_e) bd
+  | [] -> Format.fprintf fmt "0"
+  | _ -> Format.fprintf fmt "@[%a@]" (Utils.pp_list ~sep:"@ + " pp_e) bd
 
 let pp_constr f fmt c =
   let m, b = match c with Eq (m, b) | Le (m, b) | Ge (m, b) -> m, b in
@@ -287,7 +287,7 @@ let pp_constr f fmt c =
 let pp f fmt (obj, cstrs) =
   Format.fprintf
     fmt "@[<v>maximize   %a@ subject to @[<v>%a@],@            X psd@]"
-    (pp_obj f) obj (Utils.fprintf_list ~sep:",@ " (pp_constr f)) cstrs
+    (pp_obj f) obj (Utils.pp_list ~sep:",@ " (pp_constr f)) cstrs
 
 let pp_sparse = pp pp_sparse_matrix
 
@@ -295,7 +295,7 @@ let pp = pp pp_matrix
 
 let pp_vector fmt v =
   let pp_e fmt (i, f) = Format.fprintf fmt "(%d, %g)" i f in
-  Format.fprintf fmt "[@[%a@]]" (Utils.fprintf_list ~sep:",@ " pp_e) v
+  Format.fprintf fmt "[@[%a@]]" (Utils.pp_list ~sep:",@ " pp_e) v
 
 let pp_obj_ext f fmt (v, m) =
   let pp_e_v fmt (i, f) = Format.fprintf fmt "%g x_%d" f i in
@@ -303,14 +303,14 @@ let pp_obj_ext f fmt (v, m) =
   match v, m with
   | [], [] -> Format.printf "0"
   | [], _ ->
-     Format.fprintf fmt "@[%a@]" (Utils.fprintf_list ~sep:"@ + " pp_e_m) m
+     Format.fprintf fmt "@[%a@]" (Utils.pp_list ~sep:"@ + " pp_e_m) m
   | _, [] ->
-     Format.fprintf fmt "@[%a@]" (Utils.fprintf_list ~sep:"@ + " pp_e_v) v
+     Format.fprintf fmt "@[%a@]" (Utils.pp_list ~sep:"@ + " pp_e_v) v
   | _ ->
      Format.fprintf
        fmt "@[%a@ + %a@]"
-       (Utils.fprintf_list ~sep:"@ + " pp_e_v) v
-       (Utils.fprintf_list ~sep:"@ + " pp_e_m) m
+       (Utils.pp_list ~sep:"@ + " pp_e_v) v
+       (Utils.pp_list ~sep:"@ + " pp_e_m) m
 
 let pp_constr_ext f fmt (v, m, lb, ub) =
   if lb = ub then
@@ -328,7 +328,7 @@ let pp_bounds fmt v =
     else if lb = neg_infinity then Format.fprintf fmt "x_%d <= %g" i ub
     else if ub = infinity then Format.fprintf fmt "x_%d >= %g" i lb
     else Format.fprintf fmt "%g <= x_%d <= %g" lb i ub in
-  Format.fprintf fmt "@[%a@]" (Utils.fprintf_list ~sep:",@ " pp_e) v
+  Format.fprintf fmt "@[%a@]" (Utils.pp_list ~sep:",@ " pp_e) v
 
 let pp_ext f fmt (obj, cstrs, bounds) =
   match bounds with
@@ -336,13 +336,13 @@ let pp_ext f fmt (obj, cstrs, bounds) =
      Format.fprintf
        fmt "@[<v>maximize   %a@ subject to @[<v>%a@],@            X psd@]"
        (pp_obj_ext f) obj
-       (Utils.fprintf_list ~sep:",@ " (pp_constr_ext f)) cstrs
+       (Utils.pp_list ~sep:",@ " (pp_constr_ext f)) cstrs
   | _ ->
      Format.fprintf
        fmt "@[<v>maximize   %a@ \
             subject to @[<v>%a@],@            %a,@            X psd@]"
        (pp_obj_ext f) obj
-       (Utils.fprintf_list ~sep:",@ " (pp_constr_ext f)) cstrs
+       (Utils.pp_list ~sep:",@ " (pp_constr_ext f)) cstrs
        pp_bounds bounds
 
 let pp_ext_sparse = pp_ext pp_sparse_matrix
