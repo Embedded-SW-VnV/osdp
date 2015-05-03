@@ -47,7 +47,7 @@ let e1 = Sub (p, Compose (p, List.map (fun p -> Const p) a))
 let e2 = Sub (p, Const (pol_of_list [1., [deg]; 1., [0; deg]]))
 let () = Format.printf "e1 = %a@." pp e1
 let () = Format.printf "e2 = %a@." pp e2
-let _, _, vars = solve ~solver Purefeas [e1; e2]
+let _, _, vars, _ = solve ~solver Purefeas [e1; e2]
 let () =
   try
     let p' = value_poly p vars in

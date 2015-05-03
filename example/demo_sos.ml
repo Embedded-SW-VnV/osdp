@@ -38,7 +38,7 @@ let _ =
   let p = <:sos< (1 + x0 x1)^2 - x0 x1 + (1 - x1)^2 >> in
   let e = <:sos< p - lower >> in
   let () = Format.printf "e = %a@." Osdp.Sos.Float.pp e in
-  let ret, (pobj, dobj), vars =
+  let ret, (pobj, dobj), vars, _ =
     Osdp.Sos.Float.solve ~solver (Osdp.Sos.Float.Maximize lower) [e] in
   let () = Format.printf "ret = %a@." Osdp.SdpRet.pp ret in
   let () = Format.printf "pobj, dobj = %g, %g@." pobj dobj in

@@ -107,3 +107,7 @@ let filter_newton_polytope s p =
        let m = List.map (( * ) 2) m in
        pw_le mi m && pw_le m ma) s in
   filter_newton_polytope s p
+
+type monomial = t
+                         
+module Set = Set.Make (struct type t = monomial let compare = compare end)

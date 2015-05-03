@@ -36,7 +36,8 @@ module type S = sig
 
   val of_float : float -> t
   val to_float : t -> float
-
+  val to_q : t -> Q.t
+                        
   (** {2 Arithmetic operations.} *)
 
   val add : t -> t -> t

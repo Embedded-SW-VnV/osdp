@@ -31,6 +31,6 @@ let e1 = <:sos< p - p(a0, x0) >>
 let e2 = <:sos< p - (x0^4 + x1^4) >>
 let () = Format.printf "e1 = %a@." pp e1
 let () = Format.printf "e2 = %a@." pp e2
-let ret, _, vars = solve ~solver Purefeas [e1; e2]
+let ret, _, vars, _ = solve ~solver Purefeas [e1; e2]
 let () = Format.printf "%a@." Osdp.SdpRet.pp ret
 let () = Format.printf "%a@." Poly.pp (value_poly p vars)

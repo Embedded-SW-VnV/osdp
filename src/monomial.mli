@@ -70,3 +70,5 @@ val pp : Format.formatter -> t -> unit
     however, as the generated names may collide with the provided
     ones. *)
 val pp_names : string list -> Format.formatter -> t -> unit
+
+module Set : Set.S with type elt = t

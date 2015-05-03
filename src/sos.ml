@@ -35,12 +35,14 @@ module type S = sig
   type obj =
       Minimize of polynomial_expr | Maximize of polynomial_expr | Purefeas
   type values
+  type witness = Monomial.t array * float array array
   exception Dimension_error
   exception Not_linear
   val solve : ?solver:Sdp.solver -> obj -> polynomial_expr list ->
-              SdpRet.t * (float * float) * values
+              SdpRet.t * (float * float) * values * witness list
   val value : polynomial_expr -> values -> Poly.Coeff.t
   val value_poly : polynomial_expr -> values -> Poly.t
+  val check : polynomial_expr -> witness -> bool
   val pp : Format.formatter -> polynomial_expr -> unit
   val pp_names : string list -> Format.formatter -> polynomial_expr -> unit
 end
@@ -165,10 +167,10 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | Mult_scalar (n, e) ->
          let le = LinExprSC.const n in
          LEPoly.mult_scalar le (scalarize e)
-      | Power (e, d) -> LEPoly.power (scalarize e) d
       | Add (e1, e2) -> LEPoly.add (scalarize e1) (scalarize e2)
       | Sub (e1, e2) -> LEPoly.sub (scalarize e1) (scalarize e2)
       | Mult (e1, e2) -> LEPoly.mult (scalarize e1) (scalarize e2)
+      | Power (e, d) -> LEPoly.power (scalarize e) d
       | Compose (e, el) ->
          LEPoly.compose (scalarize e) (List.map scalarize el) in
 
@@ -188,6 +190,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
   type value = Scalar of Poly.Coeff.t | Poly of Poly.t
   type values = value Ident.Map.t
+
+  type witness = Monomial.t array * float array array
 
   let solve ?solver obj el =
     let obj, obj_sign = match obj with
@@ -223,10 +227,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          (v, []), tf c
       | _ -> raise Not_linear in
 
-    (* build the a_i, A_i and b_i (see sdp.mli) *)
-    let build_cstr ei e =
-      (* monomial base for this polynomial_expr *)
-      let monoms =
+    (* associate a monomial basis to each SOS constraint *)
+    let monoms_scalarized =
+      let build_monoms e =
         let monoms_e = List.map fst (LEPoly.to_list e) in
         let l =
           let h = LEPoly.is_homogeneous e in
@@ -234,17 +237,19 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           let d = (LEPoly.degree e + 1) / 2 in
           (if h then Monomial.list_eq else Monomial.list_le) n d in
         Monomial.filter_newton_polytope l monoms_e in
-
+      List.map (fun e -> Array.of_list (build_monoms e), e) scalarized in
+      
+    (* build the a_i, A_i and b_i (see sdp.mli) *)
+    let build_cstr ei (monoms, e) =
       (* for monoms = [m_0;...; m_n], square_monoms associates to each
          monom m the list of all i >= j such that m = m_i *
          m_j. square_monoms is sorted by Monomial.compare. *)
       let square_monoms =
-        let m = Array.of_list monoms in
-        let sz = Array.length m in
+        let sz = Array.length monoms in
         let l = ref [] in
         for i = 0 to sz - 1 do
           for j = 0 to i do
-            l := (Monomial.mult m.(i) m.(j), (i, j)) :: !l
+            l := (Monomial.mult monoms.(i) monoms.(j), (i, j)) :: !l
           done
         done;
         let l = List.sort (fun (m, _) (m', _) -> Monomial.compare m m') !l in
@@ -288,21 +293,21 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          vect, mat, b, b)
         constraints in
 
-    let cstrs = List.flatten (List.mapi build_cstr scalarized) in
+    let cstrs = List.flatten (List.mapi build_cstr monoms_scalarized) in
 
     (* Format.printf "SDP solved <@."; *)
     (* Format.printf "%a@." Sdp.pp_ext_sparse (obj, cstrs, []); *)
     (* Format.printf ">@."; *)
 
     (* call SDP solver *)
-    let ret, (pobj, dobj), (res_x, _, _) =
+    let ret, (pobj, dobj), (res_x, res_X, _) =
       Sdp.solve_ext_sparse ?solver obj cstrs [] in
 
     let obj = let f o = obj_sign *. (o +. obj_cst) in f pobj, f dobj in
 
     (* rebuild polynomial variables *)
     if not (SdpRet.is_success ret) then
-      ret, obj, Ident.Map.empty
+      ret, obj, Ident.Map.empty, []
     else
       let vars =
         let a = Array.of_list res_x in
@@ -320,7 +325,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
                 |> Poly.of_list in
               Poly p)
           env in
-      ret, obj, vars
+      let witnesses =
+        List.combine (List.map fst monoms_scalarized) (List.map snd res_X) in
+      ret, obj, vars, witnesses
 
   let value e m =
     let id = match e with Var (Vscalar id) -> id | _ -> raise Not_found in
@@ -333,6 +340,96 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     match Ident.Map.find id m with
     | Scalar _ -> raise Not_found
     | Poly p -> p
+
+  let check e (v, q) =
+    let module PQ = Polynomial.Q in let module M = Monomial in
+    (* first compute (exactly, using Q) a polynomial p from
+       polynomial_expr e *)
+    let rec scalarize = function
+      | Const p ->
+         Poly.to_list p
+         |> List.map (fun (m, c) -> m, Poly.Coeff.to_q c)
+         |> PQ.of_list
+      | Var _ -> raise (Invalid_argument "Sos.check")
+      | Mult_scalar (c, e) ->
+         PQ.mult_scalar (Poly.Coeff.to_q c) (scalarize e)
+      | Add (e1, e2) -> PQ.add (scalarize e1) (scalarize e2)
+      | Sub (e1, e2) -> PQ.sub (scalarize e1) (scalarize e2)
+      | Mult (e1, e2) -> PQ.mult (scalarize e1) (scalarize e2)
+      | Power (e, d) -> PQ.power (scalarize e) d
+      | Compose (e, el) ->
+         PQ.compose (scalarize e) (List.map scalarize el) in
+    let p = scalarize e in
+    (* then check that p can be expressed in monomial base v *)
+    let check_base =
+      let s = ref M.Set.empty in
+      let sz = Array.length v in
+      for i = 0 to sz - 1 do
+        for j = 0 to i do
+          s := M.Set.add (M.mult v.(i) v.(j)) !s
+        done
+      done;
+      List.for_all (fun (m, _) -> M.Set.mem m !s) (PQ.to_list p) in
+    if not check_base then false else
+      (* compute polynomial v^T q v *)
+      let p' =
+        let p' = ref [] in
+        let sz = Array.length v in
+        for i = 0 to sz - 1 do
+          for j = 0 to sz - 1 do
+            p' := (M.mult v.(i) v.(j), Scalar.Q.of_float q.(i).(j)) :: !p'
+          done
+        done;
+        PQ.of_list !p' in
+      (* compute the maximum difference between corresponding
+         coefficients *)
+      let rec cpt_diff p p' = match p, p' with
+        | [], [] -> Scalar.Q.zero
+        | [], (_, c) :: l | (_, c) :: l, [] -> Q.max (Q.abs c) (cpt_diff [] l)
+        | (m, c) :: l, (m', c') :: l' ->
+           let cmp = M.compare m m' in
+           if cmp = 0 then Q.max (Q.abs (Q.sub c' c)) (cpt_diff l l')
+           else if cmp < 0 then Q.max (Q.abs c) (cpt_diff l p')
+           else (* cmp > 0 *) Q.max (Q.abs c') (cpt_diff p l') in
+      let r = cpt_diff (PQ.to_list p) (PQ.to_list p') in
+      Format.printf "r = %g@." (Utils.float_of_q r);
+      Format.printf "Q = %a@." Matrix.Float.pp (Matrix.Float.of_array_array q);
+      (* form the interval matrix q +/- r *)
+      let qpmr =
+        let itv f =
+          let q = Q.of_float f in
+          let l, _ = Utils.itv_float_of_q (Q.sub q r) in
+          let _, u = Utils.itv_float_of_q (Q.add q r) in
+          l, u in
+        Array.map (Array.map itv) q in
+      (* and check its positive definiteness *)
+      let res =
+        Posdef.check_itv qpmr in
+      Format.printf "res = %B@." res;
+      res
+
+  (* function solve including a posteriori checking with check just
+     above *)
+  let solve ?solver obj el =
+    let ret, obj, vals, wits = solve ?solver obj el in
+    if not (SdpRet.is_success ret) then ret, obj, vals, wits else
+      let check_repl e wit =
+        (* replace variables by their values and run check *)
+        let rec repl e = match e with
+          | Const _ -> e
+          | Var (Vscalar _) ->
+             let s = value e vals in
+             Const (Poly.of_list [Monomial.of_list [], s])
+          | Var (Vpoly _) -> Const (value_poly e vals)
+          | Mult_scalar (s, e) -> Mult_scalar (s, repl e)
+          | Add (e1, e2) -> Add (repl e1, repl e2)
+          | Sub (e1, e2) -> Sub (repl e1, repl e2)
+          | Mult (e1, e2) -> Mult (repl e1, repl e2)
+          | Power (e, d) -> Power (repl e, d)
+          | Compose (e, el) -> Compose (repl e, List.map repl el) in
+        check (repl e) wit in
+      if List.for_all2 check_repl el wits then SdpRet.Success, obj, vals, wits
+      else SdpRet.PartialSuccess, obj, vals, wits
 end
 
 module Float = Make (Polynomial.Float)

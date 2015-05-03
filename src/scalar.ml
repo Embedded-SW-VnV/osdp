@@ -25,6 +25,7 @@ module type S = sig
   val is_zero : t -> bool
   val of_float : float -> t
   val to_float : t -> float
+  val to_q : t -> Q.t
   val add : t -> t -> t
   val sub : t -> t -> t
   val mult : t -> t -> t
@@ -39,6 +40,7 @@ module Q : S with type t = Q.t = struct
   let is_zero n = Q.equal n zero
   let of_float = Q.of_float
   let to_float = Utils.float_of_q
+  let to_q x = x
   let add = Q.add
   let sub = Q.sub
   let mult = Q.mul
@@ -53,6 +55,7 @@ module Float : S with type t = float = struct
   let is_zero f = f = 0.
   let of_float x = x
   let to_float x = x
+  let to_q x = Q.of_float x
   let add = ( +. )
   let sub = ( -. )
   let mult = ( *. )

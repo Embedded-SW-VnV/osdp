@@ -64,41 +64,73 @@ module type S = sig
 
   type values
 
+  type witness = Monomial.t array * float array array
+         
   exception Dimension_error
 
   exception Not_linear
 
   (** [solve obj l] tries to optimise the objective [obj] under the
       constraint that each polynomial expressions in [l] is
-      SOS. Returns both the achieved objective value and a map with
-      values for each variable appearing in [l]. The returned map will
-      be empty in case of failure (i.e., [SdpRet.t] being not Success
-      or PartialSuccess).
+      SOS. Returns a tuple [ret, (pobj, dobj), values, witnesses]. If
+      [SdpRet.is_success ret], then the following holds. [pobj]
+      (resp. [dobj]) is the achieved primal (resp. dual) objective
+      value. [values] contains values for each variable appearing in
+      [l] (to be retrieved through following functions [value] and
+      [value_poly]). [witnesses] is a list with the same length than
+      [l] containing pairs [v, Q] such that [Q] is a square matrix and
+      [v] a vector of monomials of the same size and the polynomial
+      [v^T Q v] should be close from the corresponding polynomial in
+      [l].
+
+      If [ret] is [SdpRet.Success], then all SOS constraints in [l]
+      are indeed satisfied by the values returned in [values] (this is
+      checked through the function [check] below with [witnesses]).
 
       @raise Dimension_error in case [compose] is used with not enough
-      variables.
+      variables in [obj] or one of the element of [l].
 
       @raise Not_linear if the objective [obj] or one of the input
       polynomial expressions in [l] is non linear. *)
   val solve : ?solver:Sdp.solver -> obj -> polynomial_expr list ->
-              SdpRet.t * (float * float) * values
+              SdpRet.t * (float * float) * values * witness list
 
-  (** [value v m] returns the value contained in [m] for
-      variable [v].
+  (** [value var values] returns the value contained in [values] for
+      variable [var].
 
-      @raise Not_found if the given polynomial_expr [v] was not
+      @raise Not_found if the given polynomial_expr [var] was not
       obtained with the function [var] or if no value is found for
-      [v] in [m]. *)
+      [var] in [values]. *)
   val value : polynomial_expr -> values -> Poly.Coeff.t
 
-  (** [value v m] returns the value contained in [m] for polynomial
-      variable [v].
+  (** [value var values] returns the value contained in [values] for
+      polynomial variable [var].
 
-      @raise Not_found if the given polynomial_expr [v] was not
+      @raise Not_found if the given polynomial_expr [var] was not
       obtained with the function [var_poly] or if no value is found
-      for [v] in [m]. *)
+      for [var] in [values]. *)
   val value_poly : polynomial_expr -> values -> Poly.t
 
+  (** If [check e (v, Q)] returns [true], then [e] is SOS. Otherwise,
+      either [e] is not SOS or the difference between [e] and v^T Q v
+      is too large or Q is not positive definite enough for the proof
+      to succeed. The witness [(v, Q)] is typically obtained from the
+      above function [solve].
+
+      Here is how it works. [e] is expected to be the polynomial v^T Q
+      v modulo numerical errors. To prove that [e] is SOS despite
+      these numerical errors, we first check that the polynomial [e]
+      can be expressed as v^T Q' v for some Q' (i.e. that the monomial
+      base [v] contains enough monomials). Then [e] can be expressed
+      as v^T (Q + R) v where R is a matrix with all coefficients
+      bounded by the maximum difference between the coefficients of
+      the polynomials [e] and v^T Q v. If all such matrices Q + R are
+      positive definite, then [e] is SOS.
+
+      @raise Invalid_argument "Sos.check" if [e] contains variables
+      [Var]. *)
+  val check : polynomial_expr -> witness -> bool
+                                                  
   (** Printer for polynomial expressions. *)
   val pp : Format.formatter -> polynomial_expr -> unit
 

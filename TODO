@@ -1,1 +1,2 @@
-* verif
+* padding des equation dans SOS pour que check renvoie true même quant on fait de l'optim
+* verif pour les LMI
