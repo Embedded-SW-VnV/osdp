@@ -280,20 +280,42 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         match_polys [] (LEPoly.to_list e) square_monoms in
 
       (* encode the constraints for solve_ext (c.f., sdp.mli) *)
-      List.rev_map
-        (fun (le, lij) ->
-         let le, b = LinExprSC.to_list le in
-         let vect =
-           List.map
-             (fun (id, c) ->
-              Ident.Map.find id var_idx, -. LinExprSC.Coeff.to_float c)
-             le in
-         let mat = [ei, List.map (fun (i, j) -> i, j, 1.) lij] in
-         let b = LinExprSC.Coeff.to_float b in
-         vect, mat, b, b)
-        constraints in
+      let constraints =
+        List.rev_map
+          (fun (le, lij) ->
+           let le, b = LinExprSC.to_list le in
+           let vect =
+             List.map
+               (fun (id, c) ->
+                Ident.Map.find id var_idx, -. LinExprSC.Coeff.to_float c)
+               le in
+           let mat = [ei, List.map (fun (i, j) -> i, j, 1.) lij] in
+           let b = LinExprSC.Coeff.to_float b in
+           (vect, mat), b)
+          constraints in
+      monoms, constraints in
 
-    let cstrs = List.flatten (List.mapi build_cstr monoms_scalarized) in
+    let monoms_cstrs = List.mapi build_cstr monoms_scalarized in
+
+    (* pad constraints *)
+    let paddings, cstrs =
+      let pfeas_err =
+        let bl = List.map (fun (_, c) -> List.map snd c) monoms_cstrs in
+        Sdp.pfeas_stop_crit ?solver (List.flatten bl) in
+      Format.printf "pfeas_err = %g@." pfeas_err;
+      let pad_cstrs (monoms, constraints) =
+        let pad = 1.1 *. float_of_int (Array.length monoms) *. pfeas_err in
+        let has_diag mat =
+          let diag (i, j, _) = i = j in
+          List.exists (fun (_, m) -> List.exists diag m) mat in
+        pad,
+        List.map
+          (fun ((vect, mat), b) ->
+           (* there is at most one diagonal coefficient in mat *)
+           if has_diag mat then vect, mat, b -. pad, b -. pad
+           else vect, mat, b, b)
+          constraints in
+      List.split (List.map pad_cstrs monoms_cstrs) in
 
     (* Format.printf "SDP solved <@."; *)
     (* Format.printf "%a@." Sdp.pp_ext_sparse (obj, cstrs, []); *)
@@ -301,7 +323,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     (* call SDP solver *)
     let ret, (pobj, dobj), (res_x, res_X, _) =
-      Sdp.solve_ext_sparse ?solver obj cstrs [] in
+      Sdp.solve_ext_sparse ?solver obj (List.flatten cstrs) [] in
 
     let obj = let f o = obj_sign *. (o +. obj_cst) in f pobj, f dobj in
 
@@ -326,7 +348,13 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
               Poly p)
           env in
       let witnesses =
-        List.combine (List.map fst monoms_scalarized) (List.map snd res_X) in
+        List.combine (List.map fst monoms_cstrs) (List.map snd res_X) in
+      (* unpad Q *)
+      List.iter2
+        (fun pad (_, q) ->
+         let sz = Array.length q in
+         for i = 0 to sz - 1 do q.(i).(i) <- q.(i).(i) +. pad done)
+        paddings witnesses;
       ret, obj, vars, witnesses
 
   let value e m =
@@ -403,8 +431,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           l, u in
         Array.map (Array.map itv) q in
       (* and check its positive definiteness *)
-      let res =
-        Posdef.check_itv qpmr in
+      let res = Posdef.check_itv qpmr in
       Format.printf "res = %B@." res;
       res
 

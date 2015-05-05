@@ -247,3 +247,12 @@ val pp_ext_sparse : Format.formatter ->
 
 val pp_ext : Format.formatter ->
              (matrix obj_ext * matrix constr_ext list * bounds) -> unit
+
+(** {2 Miscellaneous functions.} *)
+
+(** [pfeas_stop_crit (b_1,..., b_m)] returns [eps] used as primal
+    feasibility error stopping criteria by solver [solver] on a
+    problem with given [b_i] (i.e., if the solver successfully
+    terminates, |tr(A_i X) - b_i| <= eps should hold for each
+    constraint i). *)
+val pfeas_stop_crit : ?options:options -> ?solver:solver -> float list -> float

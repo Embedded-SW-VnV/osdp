@@ -348,3 +348,16 @@ let pp_ext f fmt (obj, cstrs, bounds) =
 let pp_ext_sparse = pp_ext pp_sparse_matrix
 
 let pp_ext = pp_ext pp_matrix
+
+let pfeas_stop_crit ?options ?solver bl =
+  match get_solver options solver with
+  | Csdp ->
+     0.00000001 *. (1. +. sqrt (List.fold_left (fun x y -> x +. y *. y) 0. bl))
+  | Mosek ->
+     0.00000001 *. (1. +. List.fold_left (fun x y -> max x (abs_float y)) 0. bl)
+  | Sdpa
+  | SdpaGmp
+  | SdpaDd ->
+     match options with
+     | None -> default.stop_criterion
+     | Some opt -> opt.stop_criterion
