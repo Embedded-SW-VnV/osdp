@@ -109,5 +109,7 @@ let filter_newton_polytope s p =
   filter_newton_polytope s p
 
 type monomial = t
-                         
+
 module Set = Set.Make (struct type t = monomial let compare = compare end)
+
+module Map = Map.Make (struct type t = monomial let compare = compare end)

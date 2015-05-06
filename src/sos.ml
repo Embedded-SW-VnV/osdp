@@ -246,22 +246,15 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          m_j. square_monoms is sorted by Monomial.compare. *)
       let square_monoms =
         let sz = Array.length monoms in
-        let l = ref [] in
+        let m = ref Monomial.Map.empty in
         for i = 0 to sz - 1 do
           for j = 0 to i do
-            l := (Monomial.mult monoms.(i) monoms.(j), (i, j)) :: !l
+            let mij = Monomial.mult monoms.(i) monoms.(j) in
+            let lm = try Monomial.Map.find mij !m with Not_found -> [] in
+            m := Monomial.Map.add mij ((i, j) :: lm) !m
           done
         done;
-        let l = List.sort (fun (m, _) (m', _) -> Monomial.compare m m') !l in
-        let rec merge = function
-          | [] -> []
-          | (m, ij) :: l ->
-             match merge l with
-             | [] -> [m, [ij]]
-             | ((m', lij) :: l') as l ->
-                if Monomial.compare m m' = 0 then (m, ij :: lij) :: l'
-                else (m, [ij]) :: l in
-        merge l in
+        Monomial.Map.bindings !m in
 
       (* collect the constraints by equating coefficients (linear
          expressions) of polynomials corresponding to the same
