@@ -298,13 +298,18 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     let monoms_cstrs = List.mapi build_cstr monoms_scalarized in
 
     (* pad constraints *)
+    (* The solver will return X >= 0 such that tr(A_i X) = b_i + perr
+       where perr is bounded by the primal feasibility error stop
+       criteria of the solver. In the check function below (c.f. its
+       spec in the mli), we will need \lambda_min(X) >= n perr. That's
+       why we perform the change of variable X' := X - n perr I. *)
     let paddings, cstrs =
-      let pfeas_err =
+      let perr =
         let bl = List.map (fun (_, c) -> List.map snd c) monoms_cstrs in
         Sdp.pfeas_stop_crit ?solver (List.flatten bl) in
-      Format.printf "pfeas_err = %g@." pfeas_err;
+      Format.printf "perr = %g@." perr;
       let pad_cstrs (monoms, constraints) =
-        let pad = 1.1 *. float_of_int (Array.length monoms) *. pfeas_err in
+        let pad = 1.1 *. float_of_int (Array.length monoms) *. perr in
         let has_diag mat =
           let diag (i, j, _) = i = j in
           List.exists (fun (_, m) -> List.exists diag m) mat in
@@ -312,8 +317,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         List.map
           (fun ((vect, mat), b) ->
            (* there is at most one diagonal coefficient in mat *)
-           if has_diag mat then vect, mat, b -. pad, b -. pad
-           else vect, mat, b, b)
+           let b = if has_diag mat then b -. pad else b in vect, mat, b, b)
           constraints in
       List.split (List.map pad_cstrs monoms_cstrs) in
 
@@ -349,7 +353,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           env in
       let witnesses =
         List.combine (List.map fst monoms_cstrs) (List.map snd res_X) in
-      (* unpad Q *)
+      (* unpad result *)
       List.iter2
         (fun pad (_, q) ->
          let sz = Array.length q in
