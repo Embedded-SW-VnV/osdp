@@ -26,6 +26,8 @@
     See file {{:../example/demo.ml}example/demo.ml} for examples of use. *)
 
 module type S = sig
+  (** {2 Polynomial expressions.} *)
+
   module Poly : Polynomial.S
 
   (** Scalar or polynomial variables. *)
@@ -56,6 +58,15 @@ module type S = sig
       positive. *)
   val var_poly : string -> int -> ?homogen:bool -> int -> polynomial_expr
 
+  (** {2 SOS.} *)
+
+  type options = {
+    sdp : Sdp.options  (** default: {{:./Sdp.html#VALdefault}Sdp.default} *)
+  }
+
+  (** Default values above. *)
+  val default : options
+
   (** [Minimize e] or [Maximize e] or [Purefeas] (just checking
       feasibility). [e] must be an affine combination of scalar
       variables (obtained from [var]). *)
@@ -71,51 +82,56 @@ module type S = sig
   exception Not_linear
 
   (** [solve obj l] tries to optimise the objective [obj] under the
-      constraint that each polynomial expressions in [l] is
-      SOS. Returns a tuple [ret, (pobj, dobj), values, witnesses]. If
-      [SdpRet.is_success ret], then the following holds. [pobj]
-      (resp. [dobj]) is the achieved primal (resp. dual) objective
-      value. [values] contains values for each variable appearing in
-      [l] (to be retrieved through following functions [value] and
-      [value_poly]). [witnesses] is a list with the same length than
-      [l] containing pairs [v, Q] such that [Q] is a square matrix and
-      [v] a vector of monomials of the same size and the polynomial
-      [v^T Q v] should be close from the corresponding polynomial in
-      [l].
+      constraint that each polynomial expressions in [l] is SOS. If
+      [solver] is provided, it will supersed the solver given in
+      [options]. Returns a tuple [ret, (pobj, dobj), values,
+      witnesses]. If {{:./SdpRet.html#VALis_success}SdpRet.is_success}
+      [ret], then the following holds. [pobj] (resp. [dobj]) is the
+      achieved primal (resp. dual) objective value. [values] contains
+      values for each variable appearing in [l] (to be retrieved
+      through following functions {{:#VALvalue}value} and
+      {{:#VALvalue_poly}value_poly}). [witnesses] is a list with the
+      same length than [l] containing pairs [v, Q] such that [Q] is a
+      square matrix and [v] a vector of monomials of the same size and
+      the polynomial [v^T Q v] should be close from the corresponding
+      polynomial in [l].
 
-      If [ret] is [SdpRet.Success], then all SOS constraints in [l]
-      are indeed satisfied by the values returned in [values] (this is
-      checked through the function [check] below with [witnesses]).
+      If [ret] is {{:./SdpRet.html#TYPEELTt.Success}SdpRet.Success},
+      then all SOS constraints in [l] are indeed satisfied by the
+      values returned in [values] (this is checked through the
+      function {{:#VALcheck}check} below with [witnesses]).
 
-      @raise Dimension_error in case [compose] is used with not enough
-      variables in [obj] or one of the element of [l].
+      @raise Dimension_error in case
+      {{:#TYPEELTpolynomial_expr.Compose}Compose} is used with not
+      enough variables in [obj] or one of the element of [l].
 
       @raise Not_linear if the objective [obj] or one of the input
       polynomial expressions in [l] is non linear. *)
-  val solve : ?solver:Sdp.solver -> obj -> polynomial_expr list ->
+  val solve : ?options:options -> ?solver:Sdp.solver ->
+              obj -> polynomial_expr list ->
               SdpRet.t * (float * float) * values * witness list
 
   (** [value var values] returns the value contained in [values] for
       variable [var].
 
       @raise Not_found if the given polynomial_expr [var] was not
-      obtained with the function [var] or if no value is found for
-      [var] in [values]. *)
+      obtained with the function {{:#VALvar}var} or if no value is
+      found for [var] in [values]. *)
   val value : polynomial_expr -> values -> Poly.Coeff.t
 
-  (** [value var values] returns the value contained in [values] for
-      polynomial variable [var].
+  (** [value_poly var values] returns the value contained in [values]
+      for polynomial variable [var].
 
       @raise Not_found if the given polynomial_expr [var] was not
-      obtained with the function [var_poly] or if no value is found
-      for [var] in [values]. *)
+      obtained with the function {{:#VALvar_poly}var_poly} or if no
+      value is found for [var] in [values]. *)
   val value_poly : polynomial_expr -> values -> Poly.t
 
   (** If [check e (v, Q)] returns [true], then [e] is SOS. Otherwise,
       either [e] is not SOS or the difference between [e] and v^T Q v
       is too large or Q is not positive definite enough for the proof
       to succeed. The witness [(v, Q)] is typically obtained from the
-      above function [solve].
+      above function {{:#VALsolve}solve}.
 
       Here is how it works. [e] is expected to be the polynomial v^T Q
       v modulo numerical errors. To prove that [e] is SOS despite
@@ -131,6 +147,8 @@ module type S = sig
       [Var]. *)
   val check : polynomial_expr -> witness -> bool
                                                   
+  (** {2 Printing functions.} *)
+
   (** Printer for polynomial expressions. *)
   val pp : Format.formatter -> polynomial_expr -> unit
 

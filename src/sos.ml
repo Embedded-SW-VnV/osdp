@@ -32,13 +32,18 @@ module type S = sig
     | Compose of polynomial_expr * polynomial_expr list
   val var : string -> polynomial_expr
   val var_poly : string -> int -> ?homogen:bool -> int -> polynomial_expr
+  type options = {
+    sdp : Sdp.options
+  }
+  val default : options
   type obj =
       Minimize of polynomial_expr | Maximize of polynomial_expr | Purefeas
   type values
   type witness = Monomial.t array * float array array
   exception Dimension_error
   exception Not_linear
-  val solve : ?solver:Sdp.solver -> obj -> polynomial_expr list ->
+  val solve : ?options:options -> ?solver:Sdp.solver ->
+              obj -> polynomial_expr list ->
               SdpRet.t * (float * float) * values * witness list
   val value : polynomial_expr -> values -> Poly.Coeff.t
   val value_poly : polynomial_expr -> values -> Poly.t
@@ -185,6 +190,12 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   (* Solve *)
   (*********)
 
+  type options = {
+    sdp : Sdp.options
+  }
+
+  let default = { sdp = Sdp.default }
+
   type obj =
       Minimize of polynomial_expr | Maximize of polynomial_expr | Purefeas
 
@@ -193,7 +204,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
   type witness = Monomial.t array * float array array
 
-  let solve ?solver obj el =
+  let solve ?options ?solver obj el =
+    let sdp_options = match options with None -> None | Some o -> Some o.sdp in
+
     let obj, obj_sign = match obj with
       | Minimize obj -> Mult_scalar (Poly.Coeff.of_float (-1.), obj), -1.
       | Maximize obj -> obj, 1.
@@ -299,7 +312,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     let paddings, cstrs =
       let perr =
         let bl = List.map (fun (_, c) -> List.map snd c) monoms_cstrs in
-        Sdp.pfeas_stop_crit ?solver (List.flatten bl) in
+        Sdp.pfeas_stop_crit ?options:sdp_options ?solver (List.flatten bl) in
       Format.printf "perr = %g@." perr;
       let pad_cstrs (monoms, constraints) =
         let pad = 1.1 *. float_of_int (Array.length monoms) *. perr in
@@ -313,6 +326,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            let b = if has_diag mat then b -. pad else b in vect, mat, b, b)
           constraints in
       List.split (List.map pad_cstrs monoms_cstrs) in
+    let cstrs = List.flatten cstrs in
 
     (* Format.printf "SDP solved <@."; *)
     (* Format.printf "%a@." Sdp.pp_ext_sparse (obj, cstrs, []); *)
@@ -320,7 +334,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     (* call SDP solver *)
     let ret, (pobj, dobj), (res_x, res_X, _) =
-      Sdp.solve_ext_sparse ?solver obj (List.flatten cstrs) [] in
+      Sdp.solve_ext_sparse ?options:sdp_options ?solver obj cstrs [] in
 
     let obj = let f o = obj_sign *. (o +. obj_cst) in f pobj, f dobj in
 
@@ -434,8 +448,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
   (* function solve including a posteriori checking with check just
      above *)
-  let solve ?solver obj el =
-    let ret, obj, vals, wits = solve ?solver obj el in
+  let solve ?options ?solver obj el =
+    let ret, obj, vals, wits = solve ?options ?solver obj el in
     if not (SdpRet.is_success ret) then ret, obj, vals, wits else
       let check_repl e wit =
         (* replace variables by their values and run check *)
