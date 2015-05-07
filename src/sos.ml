@@ -282,7 +282,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
              let cmp =  Monomial.compare m1 m2 in
              if cmp = 0 then match_polys ((c1, c2) :: l) t1 t2
              else if cmp > 0 then match_polys ((le_zero, c2) :: l) p1 t2
-             else (* cmp < 0 *) assert false in
+             else (* cmp < 0 *) match_polys ((c1, []) :: l) t1 p2 in
         match_polys [] (LEPoly.to_list e) square_monoms in
 
       (* encode the constraints for solve_ext (c.f., sdp.mli) *)
