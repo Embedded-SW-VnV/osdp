@@ -277,7 +277,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         let rec match_polys l p1 p2 = match p1, p2 with
           | [], [] -> l
           | [], (_, c2) :: t2 -> match_polys ((le_zero, c2) :: l) [] t2
-          | _ :: _, [] -> assert false
+          | (_, c1) :: t1, [] -> match_polys ((c1, []) :: l) t1 []
           | (m1, c1) :: t1, (m2, c2) :: t2 ->
              let cmp =  Monomial.compare m1 m2 in
              if cmp = 0 then match_polys ((c1, c2) :: l) t1 t2
