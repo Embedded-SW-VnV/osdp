@@ -315,7 +315,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         Sdp.pfeas_stop_crit ?options:sdp_options ?solver (List.flatten bl) in
       Format.printf "perr = %g@." perr;
       let pad_cstrs (monoms, constraints) =
-        let pad = 1.1 *. float_of_int (Array.length monoms) *. perr in
+        let pad = 2. *. float_of_int (Array.length monoms) *. perr in
         let has_diag mat =
           let diag (i, j, _) = i = j in
           List.exists (fun (_, m) -> List.exists diag m) mat in

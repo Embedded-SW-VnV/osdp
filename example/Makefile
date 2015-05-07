@@ -1,4 +1,6 @@
-all: demo demo_no_camlp4 demo_sdp demo_sos
+BINS=demo demo_no_camlp4 demo_sdp demo_sos demo_sos2
+
+all: $(BINS)
 
 dem%: dem%.ml
 	ocamlfind ocamlopt -linkpkg -package osdp -package camlp4 -syntax camlp4o -o $@ $<
@@ -15,6 +17,6 @@ ocamlopt:
 
 clean:
 	ocamlbuild -clean
-	rm -f demo demo_no_camlp4 demo_sdp demo_sos *.cmi *.cmo *.cmx *.o *~
+	rm -f $(BINS) *.cmi *.cmo *.cmx *.o *~
 
 .PHONY: clean
