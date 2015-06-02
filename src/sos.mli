@@ -44,6 +44,7 @@ module type S = sig
     | Mult of polynomial_expr * polynomial_expr
     | Power of polynomial_expr * int
     | Compose of polynomial_expr * polynomial_expr list
+    | Derive of polynomial_expr * int
 
   (** [var s] creates a new scalar variable ([Var v]). *)
   val var : string -> polynomial_expr

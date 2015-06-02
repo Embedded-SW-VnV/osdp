@@ -30,6 +30,7 @@ module type S = sig
     | Mult of polynomial_expr * polynomial_expr
     | Power of polynomial_expr * int
     | Compose of polynomial_expr * polynomial_expr list
+    | Derive of polynomial_expr * int
   val var : string -> polynomial_expr
   val var_poly : string -> int -> ?homogen:bool -> int -> polynomial_expr
   type options = {
@@ -73,6 +74,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     | Mult of polynomial_expr * polynomial_expr
     | Power of polynomial_expr * int
     | Compose of polynomial_expr * polynomial_expr list
+    | Derive of polynomial_expr * int
 
   let var s = Var (Vscalar (Ident.create s))
 
@@ -108,7 +110,12 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | Power (e, d) -> Format.fprintf fmt "%a^%i" (pp_prior 3) e d
       | Compose (e, el) ->
          Format.fprintf fmt "%a(@[%a@])" (pp_prior 2) e
-                        (Utils.pp_list ~sep:",@ " (pp_prior 0)) el in
+                        (Utils.pp_list ~sep:",@ " (pp_prior 0)) el
+      | Derive (e, i) ->
+         let m = Array.to_list (Array.make (i - 1) 0) @ [1] in
+         Format.fprintf fmt "d/d%a(%a)"
+                        (Monomial.pp_names names) (Monomial.of_list m)
+                        (pp_prior 0) e in
     pp_prior 0 fmt e
 
   let pp = pp_names []
@@ -125,7 +132,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | Mult_scalar (_, e) | Power (e, _) -> collect env e
       | Add (e1, e2) | Sub (e1, e2) | Mult (e1, e2) ->
          collect (collect env e1) e2
-      | Compose (e, el) -> List.fold_left collect (collect env e) el in
+      | Compose (e, el) -> List.fold_left collect (collect env e) el
+      | Derive (e, _) -> collect env e in
     List.fold_left collect Ident.Map.empty el
 
   module LinExprSC = LinExpr.Make (Poly.Coeff)
@@ -178,7 +186,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | Mult (e1, e2) -> LEPoly.mult (scalarize e1) (scalarize e2)
       | Power (e, d) -> LEPoly.power (scalarize e) d
       | Compose (e, el) ->
-         LEPoly.compose (scalarize e) (List.map scalarize el) in
+         LEPoly.compose (scalarize e) (List.map scalarize el)
+      | Derive (e, i) -> LEPoly.derive (scalarize e) i in
 
     let el =
       try List.map scalarize el
@@ -399,7 +408,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | Mult (e1, e2) -> PQ.mult (scalarize e1) (scalarize e2)
       | Power (e, d) -> PQ.power (scalarize e) d
       | Compose (e, el) ->
-         PQ.compose (scalarize e) (List.map scalarize el) in
+         PQ.compose (scalarize e) (List.map scalarize el)
+      | Derive (e, i) -> PQ.derive (scalarize e) i in
     let p = scalarize e in
     (* then check that p can be expressed in monomial base v *)
     let check_base =
@@ -466,7 +476,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           | Sub (e1, e2) -> Sub (repl e1, repl e2)
           | Mult (e1, e2) -> Mult (repl e1, repl e2)
           | Power (e, d) -> Power (repl e, d)
-          | Compose (e, el) -> Compose (repl e, List.map repl el) in
+          | Compose (e, el) -> Compose (repl e, List.map repl el)
+          | Derive (e, i) -> Derive (repl e, i) in
         check (repl e) wit in
       if List.for_all2 check_repl el wits then SdpRet.Success, obj, vals, wits
       else SdpRet.PartialSuccess, obj, vals, wits

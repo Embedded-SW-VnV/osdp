@@ -1,3 +1,6 @@
+ o verification capabilities for SOS
+ o add derive function to polynomials
+
 version 0.3, Mar 17th, 2015
 ---------------------------
  o changes in SOS encoding

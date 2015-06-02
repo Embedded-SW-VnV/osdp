@@ -65,6 +65,11 @@ module type S = sig
       variables. *)
   val compose : t -> t list -> t
 
+  (** [derive p i] returns the derivative of the polynomial p with
+      respect to variable [i] (indices starting from 0). [i] must be
+      non negative. *)
+  val derive : t -> int -> t
+
   (** {2 Various functions.} *)
 
   (** [eval p \[x_1;...; x_n\]] returns p(x_1,..., x_n).

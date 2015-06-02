@@ -32,6 +32,7 @@ module type S = sig
   val power : t -> int -> t
   exception Dimension_error
   val compose : t -> t list -> t
+  val derive : t -> int -> t
   val eval : t -> Coeff.t list -> Coeff.t
   val nb_vars : t -> int
   val degree : t -> int
@@ -110,6 +111,15 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
       let mq = List.map (fun (q, d) -> power q d) mq in
       mult_scalar s (List.fold_left mult one mq) in
     List.fold_left (fun p m -> add p (compose_monomial m)) zero p
+
+  let derive p i =
+    let p =
+      List.map
+        (fun (m, c) ->
+         let j, m = Monomial.derive m i in
+         m, Coeff.mult c (Coeff.of_float (float_of_int j)))
+        p in
+    of_list p
 
   let eval p l =
     let rec pow c n =

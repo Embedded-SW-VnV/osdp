@@ -144,6 +144,7 @@ let monom loc v d =
 %token <string> AQ
 %token INT0 SQUOTE HAT PLUS MINUS TIMES
 %token ZEROS EYE KRON KRSYM LIFT
+%token DERIV
 %token LPAR RPAR LBRA RBRA COMMA SEMICOL LEQ GEQ
 %token UMINUS PVM FINT0 EOF
 
@@ -246,6 +247,7 @@ exprs:
 | exprs TIMES exprs { osfl ["Mult"] [$1; $3] }
 | exprs HAT ncid { osfl ["Power"] [$1; $3] }
 | exprs LPAR l RPAR { osfl ["Compose"] [$1; $3] }
+| DERIV MID LPAR exprs RPAR { osfl ["Derive"] [$4; Ast.ExInt (loc (), string_of_int $2)] }
 | LPAR exprs RPAR { $2 }
 | f { let l = loc () in
       osf l ["Const"]
@@ -278,6 +280,7 @@ exprp:
 | exprp TIMES exprp { opfl ["mult"] [$1; $3] }
 | exprp HAT ncid { opfl ["power"] [$1; $3] }
 | exprp LPAR lp RPAR { opfl ["compose"] [$1; $3] }
+| DERIV MID LPAR exprs RPAR { osfl ["Derive"] [$4; Ast.ExInt (loc (), string_of_int $2)] }
 | LPAR exprp RPAR { $2 }
 | f { let l = loc () in
       opf l ["of_list"]

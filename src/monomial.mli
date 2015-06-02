@@ -43,6 +43,12 @@ val degree : t -> int
     \[3; 4; 5\])] returns [m] such that [to_list m = \[4; 6; 5\]]). *)
 val mult : t -> t -> t
 
+(** [derive m i] returns [i, x_0^{j_0} ... x_i^{j_i - 1}
+    ... x_n^{j_n})] if the degree [j_i] of variable [i] is positive in
+    the monomial [m] and [0, of_list []] otherwise. [i] must be non
+    negative. *)
+val derive : t -> int -> int * t
+
 (** [list_eq n d] provides the list of all monomials with [n]
     variables of degree equal [d] (for instance, [list_eq 3 2] can
     return [\[x0^2; x0 x1; x0 x2; x1^2; x1 x2; x2^2\]]). [n] must be

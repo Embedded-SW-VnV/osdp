@@ -18,7 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *)
 
-(* type invariant: empty list or the last element of the list is non zero *)
+(* type invariant: all elements of the list are non negative and (the
+   list is empty or the last element of the list is non zero) *)
 type t = int list
 
 let rec of_list = function
@@ -45,7 +46,18 @@ let rec mult m1 m2 = match m1, m2 with
   | [], _ -> m2
   | _, [] -> m1
   | h1 :: t1, h2 :: t2 -> (h1 + h2) :: mult t1 t2
-  
+
+let rec derive m i = match m with
+  | [] -> 0, []
+  | h :: t ->
+     if i = 0 then
+       if h > 0 then h, (if h > 1 || t <> [] then h - 1 :: t else [])
+       else 0, []
+     else
+       match derive t (i - 1) with
+       | 0, _ -> 0, []
+       | j, t -> j, (h :: t)
+                      
 let rec list_eq n d =
   List.map (fun m -> (List.fold_left ( - ) d m) :: m) (list_le (n - 1) d)
 

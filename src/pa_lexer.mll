@@ -48,6 +48,7 @@ rule token = parse
   | "kron" { KRON }
   | "krsym" { KRSYM }
   | "lift" { LIFT }
+  | "d/d" { DERIV }
   | "<=" { LEQ }
   | ">=" { GEQ }
   | ("0x" digit+ 'p' '-'? digit+) as n { FLOAT n }

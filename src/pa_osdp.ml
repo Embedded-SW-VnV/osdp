@@ -55,7 +55,7 @@ m ::= mid | mid "^" ncid | m m
 
 e ::= f | id | m | f m
     | e "+" e | e "-" e | "-" e | e "*" e | e "^" ncid
-    | e "(" l ")"
+    | e "(" l ")" | "d/d" mid "(" e ")"
     | "(" e ")"
 
 l ::= le | le "," l
@@ -66,7 +66,7 @@ sos ::= e | e "<=" e | e ">=" e
 
 e ::= id | m | f m
     | e "+" e | e "-" e | "-" e | e "*" e | e "^" ncid
-    | e "(" lp ")" | "(" e ")" | f
+    | e "(" lp ")" | "d/d" mid "(" e ")" | "(" e ")" | f
 
 lp ::= lep | lep "," lp
 
