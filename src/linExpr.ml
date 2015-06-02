@@ -126,7 +126,7 @@ module MakeScalar (L : S) : Scalar.S with type t = L.t = struct
   let zero = L.const L.Coeff.zero
   let one = L.const L.Coeff.one
   let is_zero e = L.is_const e && let _, c = L.to_list e in L.Coeff.is_zero c
-  let of_float _ = assert false  (* should never happen *)
+  let of_float f = L.const (L.Coeff.of_float f)
   let to_float _ = assert false  (* should never happen *)
   let to_q _ = assert false  (* should never happen *)
   let add = L.add

@@ -73,8 +73,7 @@ module Float : S with module Coeff = Scalar.Float
 exception Not_linear
 
 (** Gives an interface {{:./Scalar.S.html}Scalar.S} to linear
-    expressions. Since {{:./Scalar.S.html#VALof_float}of_float},
-    {{:./Scalar.S.html#VALto_float}to_float} and
+    expressions. Since {{:./Scalar.S.html#VALto_float}to_float} and
     {{:./Scalar.S.html#VALdiv}div} have no meaning for linear
     expressions, they are implemented as [assert false]. You should
     never use them. Moreover, the product of two linear expressions is
