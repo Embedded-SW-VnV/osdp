@@ -112,7 +112,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          Format.fprintf fmt "%a(@[%a@])" (pp_prior 2) e
                         (Utils.pp_list ~sep:",@ " (pp_prior 0)) el
       | Derive (e, i) ->
-         let m = Array.to_list (Array.make (i - 1) 0) @ [1] in
+         let m = Array.to_list (Array.make i 0) @ [1] in
          Format.fprintf fmt "d/d%a(%a)"
                         (Monomial.pp_names names) (Monomial.of_list m)
                         (pp_prior 0) e in
@@ -260,7 +260,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           (if h then Monomial.list_eq else Monomial.list_le) n d in
         Monomial.filter_newton_polytope l monoms_e in
       List.map (fun e -> Array.of_list (build_monoms e), e) scalarized in
-      
+
     (* build the a_i, A_i and b_i (see sdp.mli) *)
     let build_cstr ei (monoms, e) =
       (* for monoms = [m_0;...; m_n], square_monoms associates to each
