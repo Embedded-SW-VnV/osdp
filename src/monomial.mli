@@ -51,8 +51,8 @@ val derive : t -> int -> int * t
 
 (** [list_eq n d] provides the list of all monomials with [n]
     variables of degree equal [d] (for instance, [list_eq 3 2] can
-    return [\[x0^2; x0 x1; x0 x2; x1^2; x1 x2; x2^2\]]). [n] must be
-    positive and [d] must be non negative. *)
+    return [\[x0^2; x0 x1; x0 x2; x1^2; x1 x2; x2^2\]]). [n] and [d]
+    must be non negative. *)
 val list_eq : int -> int -> t list
 
 (** [list_le n d] provides the list of all monomials with [n]

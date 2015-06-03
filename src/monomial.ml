@@ -59,7 +59,8 @@ let rec derive m i = match m with
        | j, t -> j, (h :: t)
                       
 let rec list_eq n d =
-  List.map (fun m -> (List.fold_left ( - ) d m) :: m) (list_le (n - 1) d)
+  if n <= 0 then [[]] else
+    List.map (fun m -> (List.fold_left ( - ) d m) :: m) (list_le (n - 1) d)
 
 and list_le n d =
   if n <= 0 || d <= 0 then [[]] else list_le n (d - 1) @ list_eq n d

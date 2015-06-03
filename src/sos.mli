@@ -55,8 +55,8 @@ module type S = sig
       is homogeneous (i.e., all monomials of same degree (for instance
       x_0 x_1^3 + x_0^4 is homogeneous, x_0 x_1^3 + x_0^3 is not)),
       [false] if the polynomial is fully parameterized. [h] is [false]
-      by default. [d] is the degree of the polynomial. It must be
-      positive. *)
+      by default. [d] is the degree of the polynomial. It must be non
+      negative. *)
   val var_poly : string -> int -> ?homogen:bool -> int -> polynomial_expr
 
   (** {2 SOS.} *)
