@@ -96,10 +96,10 @@ include Monomial_glpk_opt
 let filter_newton_polytope s p =
   (* Format.printf *)
   (*   "@[<2>%d monomials before filtering:@ @[%a@]@]@." *)
-  (*   (List.length s) (Utils.fprintf_list ~sep:",@ " pp) s; *)
+  (*   (List.length s) (Utils.pp_list ~sep:",@ " pp) s; *)
   (* Format.printf *)
   (*   "@[<2>filtering by:@ @[%a@]@]@." *)
-  (*   (Utils.fprintf_list ~sep:",@ " pp) p; *)
+  (*   (Utils.pp_list ~sep:",@ " pp) p; *)
   (* bounding box of the Newton polytope: min_i p_ji <= 2 s_j <= max_i p_ji *)
   let s =
     let rec pw_le x y = match x, y with

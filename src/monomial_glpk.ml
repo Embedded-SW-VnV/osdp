@@ -1,3 +1,26 @@
+let pp_names names fmt m =
+  let rec name_vars i names = function
+    | [] -> []
+    | h :: t ->
+       let n, names =
+         match names with [] -> "x" ^ string_of_int i, [] | n :: t -> n, t in
+       (n, h) :: name_vars (i + 1) names t in
+  let l = name_vars 0 names m in
+  let l = List.filter (fun (_, e) -> e <> 0) l in
+  match l with
+  | [] -> Format.fprintf fmt "1"
+  | _ :: _ ->
+     Format.printf
+       "@[%a@]"
+       (Utils.pp_list ~sep:"@ " (fun fmt (n, e) ->
+                                 if e = 1 then
+                                   Format.fprintf fmt "%s" n
+                                 else
+                                   Format.fprintf fmt "%s^%i" n e))
+       l
+
+let pp = pp_names []
+
 let filter_newton_polytope s p =
   (* keep monomials s_i of s such that 2 s_i is in p *)
   let skeep, sfilter =
@@ -10,13 +33,13 @@ let filter_newton_polytope s p =
          else (* c > 0 *) let k, f = inter x ty in k, f in
     inter (List.sort compare s) (List.sort compare p) in
   (* Format.printf *)
-  (*   "@[<2>keep:@ @[%a@]@]@." (Utils.fprintf_list ~sep:",@ " pp) skeep; *)
+  (*   "@[<2>keep:@ @[%a@]@]@." (Utils.pp_list ~sep:",@ " pp) skeep; *)
   (* Format.printf *)
-  (*   "@[<2>to filter:@ @[%a@]@]@." (Utils.fprintf_list ~sep:",@ " pp) sfilter; *)
+  (*   "@[<2>to filter:@ @[%a@]@]@." (Utils.pp_list ~sep:",@ " pp) sfilter; *)
   (* look for separating hyperplane to rule out monomials not in the
      Newton polynomial *)
   let s =
-    (* let prfa = Utils.fprintf_array ~sep:",@ " Format.pp_print_float in *)
+    (* let prfa = Utils.pp_array ~sep:",@ " Format.pp_print_float in *)
     let n =
       let f n l = max n (List.length l) in
       List.fold_left f (List.fold_left f 0 s) p in
@@ -30,7 +53,7 @@ let filter_newton_polytope s p =
       let a = Array.of_list (sub x o) in
       Array.append a (Array.make (n - Array.length a) 0.) in
     let find_separating_plane si =
-      let zcoeffs = center si in
+      let zcoeffs = center (List.map (( * ) 2) si) in
       let cstrs = Array.of_list (List.map center p) in
       let pbounds = Array.make (Array.length cstrs) (neg_infinity, 1.) in
       let xbounds = Array.make n (-1000000., 1000000.) in
@@ -38,7 +61,7 @@ let filter_newton_polytope s p =
       (* Format.printf "obj = @[%a@]@," prfa zcoeffs; *)
       (* Format.printf *)
       (*   "cstrs = @[<v>%a@]@." *)
-      (*   (Utils.fprintf_array *)
+      (*   (Utils.pp_array *)
       (*      ~sep:"@," *)
       (*      (fun fmt a -> *)
       (*       Format.fprintf *)
@@ -47,7 +70,7 @@ let filter_newton_polytope s p =
       Glpk.set_message_level lp 1;
       Glpk.use_presolver lp true;
       Glpk.simplex lp;
-      if Glpk.get_obj_val lp < 0.50001 then None
+      if Glpk.get_obj_val lp < 1.0001 then None
       else Some (Glpk.get_col_primals lp) in
     let rec filter s = function
       | [] -> s
@@ -61,7 +84,7 @@ let filter_newton_polytope s p =
               for i = 0 to n - 1 do
                 obj := !obj +. a.(i) *. sj.(i)
               done;
-              !obj < 0.50001 in
+              !obj < 1.0001 in
             filter s (List.filter test sfilter) in
     filter skeep sfilter
     (* List.iter *)
