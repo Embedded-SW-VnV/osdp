@@ -27,8 +27,6 @@ type t =
   | DualInfeasible
   | NearPrimalInfeasible
   | NearDualInfeasible
-  | MaxIterReached
-  | LackOfProgress
   | Unknown
 
 let is_success = function
@@ -38,8 +36,6 @@ let is_success = function
   | DualInfeasible
   | NearPrimalInfeasible
   | NearDualInfeasible
-  | MaxIterReached
-  | LackOfProgress
   | Unknown -> false
 
 let pp fmt t =
@@ -52,6 +48,4 @@ let pp fmt t =
      | DualInfeasible -> "DualInfeasible"
      | NearPrimalInfeasible -> "NearPrimalInfeasible"
      | NearDualInfeasible -> "NearDualInfeasible"
-     | MaxIterReached -> "MaxIterReached"
-     | LackOfProgress -> "LackOfProgress"
      | Unknown -> "Unknown")

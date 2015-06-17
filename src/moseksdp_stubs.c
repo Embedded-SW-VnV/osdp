@@ -297,7 +297,7 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds)
   value tmp, tmp2;
   int i, j;
   int idx_lin_offset, nb_lin_vars, idx_offset, nb_vars, nb_cstrs, *dimvar;
-  MSKrescodee r = MSK_RES_OK;
+  MSKrescodee r = MSK_RES_OK, trmcode = MSK_RES_OK;
   MSKenv_t env = NULL;
   MSKtask_t task = NULL;
   MSKsolstae solsta;
@@ -307,7 +307,7 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds)
   double pobj, dobj;
   char symname[MSK_MAX_STR_LEN];
   char desc[MSK_MAX_STR_LEN];
-  sdp_ret_t sdp_ret;
+  sdp_ret_t sdp_ret = SDP_RET_UNKNOWN;
         
   collect_sizes(ml_obj, ml_cstrs, &idx_lin_offset, &nb_lin_vars,
                 &idx_offset, &nb_vars, &nb_cstrs, &dimvar);
@@ -371,29 +371,13 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds)
     }
   }
   
-  MS(optimizetrm(task, NULL));
+  MS(optimizetrm(task, &trmcode));
 
   /* Print a summary containing information
      about the solution for debugging purposes*/
   MS(solutionsummary(task, MSK_STREAM_MSG));
         
   MS(getsolsta(task, MSK_SOL_ITR, &solsta));
-
-  /* default values */
-  pobj = dobj = 0;
-  ml_res_x = Atom(Double_array_tag);
-  ml_res_X = Val_emptylist;
-  ml_res_y = Atom(Double_array_tag);
-
-  if (solsta == MSK_SOL_STA_OPTIMAL || solsta == MSK_SOL_STA_NEAR_OPTIMAL) {
-    /* printf("Optimal primal solution\n"); */
-    MS(getprimalobj(task, MSK_SOL_ITR, &pobj));
-    MS(getdualobj(task, MSK_SOL_ITR, &dobj));
-    /* printf("pobj, dobj, res: % e, % e, % e\n", pobj, dobj, *res); */
-    MS(read_x(task, nb_lin_vars, &ml_res_x));
-    MS(read_barx(task, nb_vars, dimvar, &matrix, &ml_res_X));
-    MS(read_y(task, nb_cstrs, &ml_res_y));
-  }
 
   switch(solsta) {
   case MSK_SOL_STA_OPTIMAL:
@@ -415,9 +399,30 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds)
     sdp_ret = SDP_RET_NEAR_DUAL_INFEASIBLE;
     break;
   case MSK_SOL_STA_UNKNOWN:
+    if (trmcode == MSK_RES_TRM_MAX_ITERATIONS || trmcode == MSK_RES_TRM_STALL)
+      sdp_ret = SDP_RET_PARTIAL_SUCCESS;
+    else
+      sdp_ret = SDP_RET_UNKNOWN;
+    break;
   default:
     sdp_ret = SDP_RET_UNKNOWN;
     break;
+  }
+
+  /* default values */
+  pobj = dobj = 0;
+  ml_res_x = Atom(Double_array_tag);
+  ml_res_X = Val_emptylist;
+  ml_res_y = Atom(Double_array_tag);
+
+  if (sdp_ret == SDP_RET_SUCCESS || sdp_ret == SDP_RET_PARTIAL_SUCCESS) {
+    /* printf("Optimal primal solution\n"); */
+    MS(getprimalobj(task, MSK_SOL_ITR, &pobj));
+    MS(getdualobj(task, MSK_SOL_ITR, &dobj));
+    /* printf("pobj, dobj, res: % e, % e, % e\n", pobj, dobj, *res); */
+    MS(read_x(task, nb_lin_vars, &ml_res_x));
+    MS(read_barx(task, nb_vars, dimvar, &matrix, &ml_res_X));
+    MS(read_y(task, nb_cstrs, &ml_res_y));
   }
 
   if (r != MSK_RES_OK) {

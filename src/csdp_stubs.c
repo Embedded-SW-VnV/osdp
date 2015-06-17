@@ -290,8 +290,8 @@ static void solve(int dim_X, int nb_cstrs, struct blockmatrix *obj,
   case 2:
     *sdp_ret = SDP_RET_DUAL_INFEASIBLE;
     break;
-  case 4:
-    *sdp_ret = SDP_RET_MAX_ITER_REACHED;
+  case 4:  /* max iter reached */
+    *sdp_ret = SDP_RET_PARTIAL_SUCCESS;
     break;
   case 5:  /* stuck at edge of primal infeasibility */
     *sdp_ret = SDP_RET_NEAR_PRIMAL_INFEASIBLE;
@@ -300,7 +300,7 @@ static void solve(int dim_X, int nb_cstrs, struct blockmatrix *obj,
     *sdp_ret = SDP_RET_NEAR_DUAL_INFEASIBLE;
     break;
   case 7:  /* lack of progress */
-    *sdp_ret = SDP_RET_LACK_OF_PROGRESS;
+    *sdp_ret = SDP_RET_PARTIAL_SUCCESS;
     break;
   case 8:  /* X, Z or O was singular */
   case 9:  /* detected NaN or Inf values */

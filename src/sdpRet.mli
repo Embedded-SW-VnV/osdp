@@ -27,8 +27,6 @@ type t =
   | DualInfeasible
   | NearPrimalInfeasible
   | NearDualInfeasible
-  | MaxIterReached
-  | LackOfProgress
   | Unknown
 
 (** [is_success t] returns [true] if and only if [t] is [Success] or

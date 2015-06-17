@@ -322,7 +322,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         let bl = List.map (fun (_, c) -> List.map snd c) monoms_cstrs
                  |> List.flatten |> List.map S.to_float in
         Sdp.pfeas_stop_crit ?options:sdp_options ?solver bl in
-      Format.printf "perr = %g@." perr;
+      (* Format.printf "perr = %g@." perr; *)
       let pad_cstrs (monoms, constraints) =
         let pad = 2. *. float_of_int (Array.length monoms) *. perr in
         let has_diag mat =
@@ -443,8 +443,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            else if cmp < 0 then Q.max (Q.abs c) (cpt_diff l p')
            else (* cmp > 0 *) Q.max (Q.abs c') (cpt_diff p l') in
       let r = cpt_diff (PQ.to_list p) (PQ.to_list p') in
-      Format.printf "r = %g@." (Utils.float_of_q r);
-      Format.printf "Q = %a@." Matrix.Float.pp (Matrix.Float.of_array_array q);
+      (* Format.printf "r = %g@." (Utils.float_of_q r); *)
+      (* Format.printf "Q = %a@." Matrix.Float.pp (Matrix.Float.of_array_array q); *)
       (* form the interval matrix q +/- r *)
       let qpmr =
         let itv f =
@@ -455,7 +455,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         Array.map (Array.map itv) q in
       (* and check its positive definiteness *)
       let res = Posdef.check_itv qpmr in
-      Format.printf "res = %B@." res;
+      (* Format.printf "res = %B@." res; *)
       res
 
   (* function solve including a posteriori checking with check just

@@ -99,14 +99,14 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
     (*   constraints; *)
 
     let to_replace, constraints = find_all_repl IntMap.empty constraints in
-    IntMap.iter
-      (fun i (b, v) ->
-       Format.printf
-         "to_replace %d = %a, @[%a@]@."
-         i S.pp b
-         (Utils.pp_list ~sep:",@ " (fun fmt (i, c) -> Format.fprintf fmt "(%d, %a)" i S.pp c))
-         v)
-      to_replace;
+    (* IntMap.iter *)
+    (*   (fun i (b, v) -> *)
+    (*    Format.printf *)
+    (*      "to_replace %d = %a, @[%a@]@." *)
+    (*      i S.pp b *)
+    (*      (Utils.pp_list ~sep:",@ " (fun fmt (i, c) -> Format.fprintf fmt "(%d, %a)" i S.pp c)) *)
+    (*      v) *)
+    (*   to_replace; *)
 
     let constraints =
       List.map
