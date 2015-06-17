@@ -1,25 +1,26 @@
-let pp_names names fmt m =
-  let rec name_vars i names = function
-    | [] -> []
-    | h :: t ->
-       let n, names =
-         match names with [] -> "x" ^ string_of_int i, [] | n :: t -> n, t in
-       (n, h) :: name_vars (i + 1) names t in
-  let l = name_vars 0 names m in
-  let l = List.filter (fun (_, e) -> e <> 0) l in
-  match l with
-  | [] -> Format.fprintf fmt "1"
-  | _ :: _ ->
-     Format.printf
-       "@[%a@]"
-       (Utils.pp_list ~sep:"@ " (fun fmt (n, e) ->
-                                 if e = 1 then
-                                   Format.fprintf fmt "%s" n
-                                 else
-                                   Format.fprintf fmt "%s^%i" n e))
-       l
+(* let pp_names names fmt m = *)
+(*   let rec name_vars i names = function *)
+(*     | [] -> [] *)
+(*     | h :: t -> *)
+(*        let n, names = *)
+(*          match names with [] -> "x" ^ string_of_int i, [] | n :: t -> n, t in *)
+(*        (n, h) :: name_vars (i + 1) names t in *)
+(*   let l = name_vars 0 names m in *)
+(*   let l = List.filter (fun (_, e) -> e <> 0) l in *)
+(*   match l with *)
+(*   | [] -> Format.fprintf fmt "1" *)
+(*   | _ :: _ -> *)
+(*      Format.fprintf *)
+(*        fmt *)
+(*        "@[%a@]" *)
+(*        (Utils.pp_list ~sep:"@ " (fun fmt (n, e) -> *)
+(*                                  if e = 1 then *)
+(*                                    Format.fprintf fmt "%s" n *)
+(*                                  else *)
+(*                                    Format.fprintf fmt "%s^%i" n e)) *)
+(*        l *)
 
-let pp = pp_names []
+(* let pp = pp_names [] *)
 
 let filter_newton_polytope s p =
   (* keep monomials s_i of s such that 2 s_i is in p *)

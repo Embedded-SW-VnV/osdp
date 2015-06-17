@@ -77,7 +77,8 @@ let pp_names names fmt m =
   match l with
   | [] -> Format.fprintf fmt "1"
   | _ :: _ ->
-     Format.printf
+     Format.fprintf
+       fmt
        "@[%a@]"
        (Utils.pp_list ~sep:"@ " (fun fmt (n, e) ->
                                  if e = 1 then
