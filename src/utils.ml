@@ -63,7 +63,7 @@ let consecutive_float f1 f2 =
        (e1 = e2 && f2 -. f1 <= epsilon_float /. 2.)
        || (e1 = e2 - 1 && f1 = 1.0 -. epsilon_float /. 2. && f2 = 0.5) in
   if f1 >= 0. then consecutive_float_pos f1 f2
-  else if f2 <= 0. then consecutive_float_pos ( -. f1) ( -. f2)
+  else if f2 <= 0. then consecutive_float_pos ( -. f2) ( -. f1)
   else false  (* f1 < 0 < f2 *)
 
 let itv_float_of_q q = match Q.classify q with
