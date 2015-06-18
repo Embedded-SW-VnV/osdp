@@ -31,6 +31,14 @@ let rec of_list = function
 
 let to_list m = m
 
+let one = []
+
+let var_deg i d =
+  let rec aux i = if i <= 0 then [d] else 0 :: aux (i - 1) in
+  if d <= 0 || i < 0 then one else aux i
+
+let var i = var_deg i 1
+
 let rec compare m1 m2 = match m1, m2 with
   | [], [] -> 0
   | [], _ -> compare [0] m2

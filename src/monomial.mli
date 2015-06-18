@@ -24,12 +24,24 @@ type t
 
 (** [of_list l] produces the monomial corresponding to list [l]. For
     instance, considering the variables x0, x1, x2 and x3,
-    [of_list\[3; 4; 0; 1\]] gives the monomial x0^3 x x1^4 x x3. *)
+    [of_list\[3; 4; 0; 1\]] gives the monomial x0^3 x x1^4 x x3. All
+    elements of the list must be non negative. *)
 val of_list : int list -> t
 
-(** The last element of the returned list is non zero (or the list is
-    empty). *)
+(** The returned list contains only non negative values and its last
+    element is non zero (or the list is empty). *)
 val to_list : t -> int list
+
+(** Equivalent to [to_list []]. *)
+val one : t
+
+(** [var i] returns xi, this is equivalent to [of_list [0;...; O; 1]]
+    with [i] zeros. [i] must be non negative. *)
+val var : int -> t
+
+(** [var_deg i d] returns xi^d, this is equivalent to [of_list [0;...;
+    O; d]] with [i] zeros. [i] and [d] must be non negative. *)
+val var_deg : int -> int -> t
 
 val compare : t -> t -> int
 
@@ -43,9 +55,9 @@ val degree : t -> int
     \[3; 4; 5\])] returns [m] such that [to_list m = \[4; 6; 5\]]). *)
 val mult : t -> t -> t
 
-(** [derive m i] returns [i, x_0^{j_0} ... x_i^{j_i - 1}
+(** [derive m i] returns [j_i, x_0^{j_0} ... x_i^{j_i - 1}
     ... x_n^{j_n})] if the degree [j_i] of variable [i] is positive in
-    the monomial [m] and [0, of_list []] otherwise. [i] must be non
+    the monomial [m] and [0, one] otherwise. [i] must be non
     negative. *)
 val derive : t -> int -> int * t
 
