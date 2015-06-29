@@ -68,6 +68,8 @@ type solver = Csdp | Mosek | Sdpa | SdpaGmp | SdpaDd
     solver are only handled by Sdpa\{,Gmp\}). *)
 type options = {
   solver : solver;  (** default: Csdp *)
+  verbose : int;  (** verbosity level, non negative integer, 0 (default)
+                      means no output (only for SDPA* and Mosek) *)
   max_iteration : int;  (** maxIteration (default: 100) *)
   stop_criterion : float;  (** epsilonStar and epsilonDash (default: 1.0E-7) *)
   initial : float;  (** lambdaStar (default: 1.0E2) *)

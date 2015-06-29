@@ -39,6 +39,15 @@ type matrix = (int * int * float) list
     requirement for indices to be sorted. *)
 type block_diag_matrix = (int * matrix) list
 
+(** Options for calling MOSEK. *)
+type options = {
+  verbose : int;  (** verbosity level, non negative integer, 0 (default)
+                      means no output *)
+}
+
+(** Default values above. *)
+val default : options
+
 (** [solve obj constraints] solves the SDP problem: max\{ tr(obj X) |
     tr(A_1 X) = a_1,..., tr(A_m X) = a_m, X psd \} with [\[(A_1,
     a_1);...; (A_m, a_m)\]] the [constraints] list. It returns both
@@ -51,7 +60,8 @@ type block_diag_matrix = (int * matrix) list
     in the objective or one of the constraints. In case of success (or
     partial success), the array returned for y has the same size and
     same order than the input list of constraints. *)
-val solve : block_diag_matrix -> (block_diag_matrix * float) list ->
+val solve : ?options:options ->
+            block_diag_matrix -> (block_diag_matrix * float) list ->
             SdpRet.t * (float * float)
             * ((int * float array array) list * float array)
 
@@ -74,7 +84,8 @@ val solve : block_diag_matrix -> (block_diag_matrix * float) list ->
     the constraints. In case of success (or partial success), the
     array returned for y has the same size and same order than the
     input list of constraints. *)
-val solve_ext : ((int * float) list * block_diag_matrix) ->
+val solve_ext : ?options:options ->
+                ((int * float) list * block_diag_matrix) ->
                 ((int * float) list * block_diag_matrix * float * float) list ->
                 (int * float * float) list ->
                 SdpRet.t * (float * float)

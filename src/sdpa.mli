@@ -44,6 +44,8 @@ type solver = Sdpa | SdpaGmp | SdpaDd
 (** Options for calling SDPA. *)
 type options = {
   solver : solver;  (** default: Sdpa *)
+  verbose : int;  (** verbosity level, non negative integer, 0 (default)
+                      means no output *)
   max_iteration : int;  (** maxIteration (default: 100) *)
   stop_criterion : float;  (** epsilonStar and epsilonDash (default: 1.0E-7) *)
   initial : float;  (** lambdaStar (default: 1.0E2) *)

@@ -25,6 +25,7 @@ type solver = Sdpa | SdpaGmp | SdpaDd
 
 type options = {
   solver : solver;
+  verbose : int;
   max_iteration : int;
   stop_criterion : float;
   initial : float;
@@ -33,6 +34,7 @@ type options = {
 
 let default = {
   solver = Sdpa;
+  verbose = 0;
   max_iteration = 100;
   stop_criterion = 1.0E-7;
   initial = 1.0E2;
@@ -145,8 +147,9 @@ let solve ?options obj constraints =
       | SdpaDd -> Sdpa_paths.sdpa_dd in
     if sdpa = "no" then failwith "caml_osdp: compiled without SDPA support!";
     Format.asprintf
-      "%s -ds %s -o %s -p %s > /dev/null"
-      sdpa dat_s_filename out_filename param_filename in
+      "%s -ds %s -o %s -p %s%s"
+      sdpa dat_s_filename out_filename param_filename
+      (if options.verbose > 0 then "" else "> /dev/null") in
   let ret = Sys.command cmd in
   let res =
     if ret = 0 then read_output block_struct out_filename

@@ -5,7 +5,9 @@
               tr([0, -8; -8, -2] X) = 20
               X sdp *)
 
-let options = { Osdp.Sdp.default with Osdp.Sdp.solver = Osdp.Sdp.Sdpa }
+let options = { Osdp.Sdp.default with
+                Osdp.Sdp.solver = Osdp.Sdp.Sdpa;
+                Osdp.Sdp.verbose = 1 }
 
 (* Uncomment the following to use SDPA-GMP or SDPA-DD: *)
 

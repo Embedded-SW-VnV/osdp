@@ -52,6 +52,7 @@ type solver = Csdp | Mosek | Sdpa | SdpaGmp | SdpaDd
 
 type options = {
   solver : solver;
+  verbose : int;
   max_iteration : int;
   stop_criterion : float;
   initial : float;
@@ -60,6 +61,7 @@ type options = {
 
 let default = {
   solver = Csdp;
+  verbose = 0;
   max_iteration = 100;
   stop_criterion = 1.0E-7;
   initial = 1.0E2;
@@ -115,7 +117,10 @@ let solve_sparse ?options ?solver obj constraints =
       ([], max_idx + 1) (List.rev constraints) in
   let ret, res, (res_X, res_y) = match get_solver options solver with
     | Csdp -> Csdp.solve obj constraints
-    | Mosek -> Moseksdp.solve obj constraints
+    | Mosek ->
+       let options = match options with Some o -> o | None -> default in
+       let options = { Moseksdp.verbose = options.verbose } in
+       Moseksdp.solve ~options obj constraints
     | (Sdpa | SdpaGmp | SdpaDd) as s ->
        let options = match options with Some o -> o | None -> default in
        let solver =
@@ -123,6 +128,7 @@ let solve_sparse ?options ?solver obj constraints =
          | Sdpa -> Sdpa.Sdpa | SdpaGmp -> Sdpa.SdpaGmp | SdpaDd -> Sdpa.SdpaDd
          | _ -> assert false in
        let options = { Sdpa.solver = solver;
+                       Sdpa.verbose = options.verbose;
                        Sdpa.max_iteration = options.max_iteration;
                        Sdpa.stop_criterion = options.stop_criterion;
                        Sdpa.initial = options.initial;
@@ -248,7 +254,10 @@ let solve_ext_sparse ?options ?solver obj constraints bounds =
      let ret, (pobj, dobj), res =
        solve_sparse ?options ?solver obj constraints in
      ret, (pobj +. offset, dobj +. offset), of_simple_res trans res
-  | Mosek -> Moseksdp.solve_ext obj constraints bounds
+  | Mosek ->
+     let options = match options with Some o -> o | None -> default in
+     let options = { Moseksdp.verbose = options.verbose } in
+     Moseksdp.solve_ext ~options obj constraints bounds
 
 let solve_ext ?options ?solver obj constraints bounds =
   check_prog_ext check_sym obj constraints;

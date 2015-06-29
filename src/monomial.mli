@@ -45,6 +45,8 @@ val var_deg : int -> int -> t
 
 val compare : t -> t -> int
 
+(** [nb_vars m] returns the largest index of a variable appearing in
+    [m] (0 if none). *)
 val nb_vars : t -> int
 
 val degree : t -> int

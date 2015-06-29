@@ -281,14 +281,15 @@ static MSKboundkeye get_bk(double lb, double ub)
   }
 }
 
-/* static void MSKAPI printstr(void *handle, MSKCONST char str[]) */
-/* { */
-/*   printf("%s", str); */
-/* } */
-
-value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds)
+static void MSKAPI printstr(void *handle, MSKCONST char str[])
 {
-  CAMLparam3(ml_obj, ml_cstrs, ml_bounds);
+  printf("%s", str);
+}
+
+value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds,
+                         value ml_verbose)
+{
+  CAMLparam4(ml_obj, ml_cstrs, ml_bounds, ml_verbose);
 
   CAMLlocal2(ml_res, ml_res_obj);
   CAMLlocal4(ml_res_xXy, ml_res_x, ml_res_X, ml_res_y);
@@ -321,7 +322,8 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds)
 
   MS(makeenv(&env, NULL));
   MS(maketask(env, nb_cstrs, 0, &task));
-  /* MS(linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr)); */
+  if (Bool_val(ml_verbose))
+    MS(linkfunctotaskstream(task, MSK_STREAM_LOG, NULL, printstr));
   MS(appendcons(task, nb_cstrs));
   MS(appendvars(task, nb_lin_vars));
   MS(appendbarvars(task, nb_vars, dimvar));
@@ -454,9 +456,10 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds)
 
 #else
 
-value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds)
+value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds,
+                         value ml_verbose)
 {
-  CAMLparam3(ml_obj, ml_cstrs, ml_bounds);
+  CAMLparam4(ml_obj, ml_cstrs, ml_bounds, ml_verbose);
 
   CAMLlocal1(ml_res);
 

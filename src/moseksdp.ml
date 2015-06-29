@@ -21,9 +21,17 @@
 type matrix = (int * int * float) list
 type block_diag_matrix = (int * matrix) list
 
+type options = {
+  verbose : int;
+}
+
+let default = {
+  verbose = 0;
+}
+
 external solve_ext : ((int * float) list * block_diag_matrix) ->
                      ((int * float) list * block_diag_matrix * float * float) list ->
-                     (int * float * float) list ->
+                     (int * float * float) list -> bool ->
                      SdpRet.t * (float * float)
                      * (float array * float array array list * float array) =
   "moseksdp_solve_ext"
@@ -33,8 +41,10 @@ external solve_ext : ((int * float) list * block_diag_matrix) ->
    block index appearing in the input (obj and constraints). We have
    to clean that to keep only indices actually appearing in the
    input. Same for res_x. *)
-let solve_ext obj constraints bounds =
-  let ret, res, (res_x, res_X, res_y) = solve_ext obj constraints bounds in
+let solve_ext ?options obj constraints bounds =
+  let options = match options with Some options -> options | None -> default in
+  let ret, res, (res_x, res_X, res_y) =
+    solve_ext obj constraints bounds (options.verbose > 0) in
   let res_x =
     let min_idx, max_idx =
       let range_idx =
@@ -69,7 +79,8 @@ let solve_ext obj constraints bounds =
       |> List.filter (fun (i, _) -> appear.(i - min_idx)) in
   ret, res, (res_x, res_X, res_y)
 
-let solve obj constraints =
+let solve ?options obj constraints =
   let ret, res, (_, res_X, res_y) =
-    solve_ext ([], obj) (List.map (fun (m, b) -> [], m, b, b) constraints) [] in
+    solve_ext ?options ([], obj)
+              (List.map (fun (m, b) -> [], m, b, b) constraints) [] in
   ret, res, (res_X, res_y)

@@ -78,7 +78,8 @@ module type S = sig
       [nb_vars p]. *)
   val eval : t -> Coeff.t list -> Coeff.t
 
-  (** Number of variables appearing in the polynomial. *)
+  (** [nb_vars p] returns the largest index of a variable appearing in
+      [p] (0 if none). *)
   val nb_vars : t -> int
 
   (** -1 for the null polynomial. *)
