@@ -120,7 +120,9 @@ let solve_sparse ?options ?solver obj constraints =
     | Mosek ->
        let options = match options with Some o -> o | None -> default in
        let options = { Moseksdp.verbose = options.verbose } in
-       Moseksdp.solve ~options obj constraints
+       let ret, res, (res_X, res_y, _) =
+         Moseksdp.solve ~options obj constraints in
+       ret, res, (res_X, res_y)
     | (Sdpa | SdpaGmp | SdpaDd) as s ->
        let options = match options with Some o -> o | None -> default in
        let solver =
@@ -257,7 +259,9 @@ let solve_ext_sparse ?options ?solver obj constraints bounds =
   | Mosek ->
      let options = match options with Some o -> o | None -> default in
      let options = { Moseksdp.verbose = options.verbose } in
-     Moseksdp.solve_ext ~options obj constraints bounds
+     let ret, res, (res_x, res_X, res_y, _) =
+       Moseksdp.solve_ext ~options obj constraints bounds in
+     ret, res, (res_x, res_X, res_y)
 
 let solve_ext ?options ?solver obj constraints bounds =
   check_prog_ext check_sym obj constraints;

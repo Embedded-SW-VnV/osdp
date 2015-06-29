@@ -52,18 +52,19 @@ val default : options
     tr(A_1 X) = a_1,..., tr(A_m X) = a_m, X psd \} with [\[(A_1,
     a_1);...; (A_m, a_m)\]] the [constraints] list. It returns both
     the primal and dual objective values and a witness for X (primal)
-    and y (dual, see {{:./Sdp.html}Sdp}). In case of success (or
-    partial success), the block diagonal matrix returned for X
-    contains exactly the indices, sorted by increasing order, that
+    and y and Z (dual, see {{:./Sdp.html}Sdp}). In case of success (or
+    partial success), the block diagonal matrices returned for X and Z
+    contain exactly the indices, sorted by increasing order, that
     appear in the objective or one of the constraints. Size of each
-    diagonal block in X is the maximum size appearing for that block
-    in the objective or one of the constraints. In case of success (or
-    partial success), the array returned for y has the same size and
-    same order than the input list of constraints. *)
+    diagonal block in X or Z is the maximum size appearing for that
+    block in the objective or one of the constraints. In case of
+    success (or partial success), the array returned for y has the
+    same size and same order than the input list of constraints. *)
 val solve : ?options:options ->
             block_diag_matrix -> (block_diag_matrix * float) list ->
             SdpRet.t * (float * float)
-            * ((int * float array array) list * float array)
+            * ((int * float array array) list
+               * float array * (int * float array array) list)
 
 (** [solve obj constraints] solves the SDP problem: max\{ c^T x +
     tr(obj X) | b_1^- <= a_1^T x + tr(A_1 X) <= a_1^+,..., b_m^- <=
@@ -74,12 +75,12 @@ val solve : ?options:options ->
     are considered as [(neg_infinity, infinity)], bounds about
     variables x_i not appearing in the objective or constraints may be
     ignored). It returns both the primal and dual objective values and
-    a witness for (x, X) (primal) and y (dual, see
+    a witness for (x, X) (primal) and (y, Z) (dual, see
     {{:./Sdp.html}Sdp}). In case of success (or partial success), the
     vector (resp. block diagonal matrix) returned for x (resp. X)
     contains exactly the indices, sorted by increasing order, that
     appear in the linear (resp. matrix) part of the objective or one
-    of the constraints. Size of each diagonal block in X is the
+    of the constraints. Size of each diagonal block in X or Z is the
     maximum size appearing for that block in the objective or one of
     the constraints. In case of success (or partial success), the
     array returned for y has the same size and same order than the
@@ -89,4 +90,5 @@ val solve_ext : ?options:options ->
                 ((int * float) list * block_diag_matrix * float * float) list ->
                 (int * float * float) list ->
                 SdpRet.t * (float * float)
-                * ((int * float) list * (int * float array array) list * float array)
+                * ((int * float) list * (int * float array array) list
+                   * float array * (int * float array array) list)

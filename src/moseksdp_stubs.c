@@ -268,6 +268,55 @@ static MSKrescodee MSK_read_y(MSKtask_t task, int nb_cstrs, value *ml_res_y)
   return r;
 }
 
+static MSKrescodee MSK_read_barsj(MSKtask_t task, int j, int dim, value *matrix)
+{
+  MSKrescodee r = MSK_RES_OK;
+  value line;
+  double *bars;
+  int i, k;
+
+  bars = (double*)MSK_calloctask(task, dim * (dim + 1) / 2, sizeof(MSKrealt));
+
+  MS(getbarsj(task, MSK_SOL_ITR, j, bars));
+  
+  *matrix = dim > 0 ? caml_alloc(dim, 0) : Atom(0);
+  for (i = 0; i < dim; ++i) {
+    line = caml_alloc(dim * Double_wosize, Double_array_tag);
+    Store_field(*matrix, i, line);
+  }
+
+  for (j = 0, k = 0; j < dim; ++j) {
+    for (i = j; i < dim; ++i, ++k) {
+      Store_double_field(Field(*matrix, i), j, bars[k]);
+      Store_double_field(Field(*matrix, j), i, bars[k]);
+    }
+  }
+  
+  MSK_freetask(task, bars);
+
+  return r;
+}
+
+static MSKrescodee MSK_read_bars(MSKtask_t task, int nb_vars, int *dimvar,
+                                 value *matrix,
+                                 value *ml_res_S)
+{
+  MSKrescodee r = MSK_RES_OK;
+  value cons;
+  int j;
+
+  *ml_res_S = Val_emptylist;
+  for (j = nb_vars - 1; j >= 0; --j) {
+    MS(read_barsj(task, j, dimvar[j], matrix));
+    cons = caml_alloc(2, 0);
+    Store_field(cons, 0, *matrix);
+    Store_field(cons, 1, *ml_res_S);
+    *ml_res_S = cons;
+  }
+
+  return r;
+}
+
 static MSKboundkeye get_bk(double lb, double ub)
 {
   if (isfinite(lb) && isfinite(ub)) {
@@ -292,7 +341,7 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds,
   CAMLparam4(ml_obj, ml_cstrs, ml_bounds, ml_verbose);
 
   CAMLlocal2(ml_res, ml_res_obj);
-  CAMLlocal4(ml_res_xXy, ml_res_x, ml_res_X, ml_res_y);
+  CAMLlocal5(ml_res_xXyS, ml_res_x, ml_res_X, ml_res_y, ml_res_S);
   CAMLlocal3(cons, matrix, line);
 
   value tmp, tmp2;
@@ -416,6 +465,7 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds,
   ml_res_x = Atom(Double_array_tag);
   ml_res_X = Val_emptylist;
   ml_res_y = Atom(Double_array_tag);
+  ml_res_S = Val_emptylist;
 
   if (sdp_ret == SDP_RET_SUCCESS || sdp_ret == SDP_RET_PARTIAL_SUCCESS) {
     /* printf("Optimal primal solution\n"); */
@@ -425,6 +475,7 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds,
     MS(read_x(task, nb_lin_vars, &ml_res_x));
     MS(read_barx(task, nb_vars, dimvar, &matrix, &ml_res_X));
     MS(read_y(task, nb_cstrs, &ml_res_y));
+    MS(read_bars(task, nb_vars, dimvar, &matrix, &ml_res_S));
   }
 
   if (r != MSK_RES_OK) {
@@ -445,11 +496,12 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds,
   Store_field(ml_res_obj, 0, caml_copy_double(-pobj));
   Store_field(ml_res_obj, 1, caml_copy_double(-dobj));
   Store_field(ml_res, 1, ml_res_obj);
-  ml_res_xXy = caml_alloc(3, 0);
-  Store_field(ml_res_xXy, 0, ml_res_x);
-  Store_field(ml_res_xXy, 1, ml_res_X);
-  Store_field(ml_res_xXy, 2, ml_res_y);
-  Store_field(ml_res, 2, ml_res_xXy);
+  ml_res_xXyS = caml_alloc(4, 0);
+  Store_field(ml_res_xXyS, 0, ml_res_x);
+  Store_field(ml_res_xXyS, 1, ml_res_X);
+  Store_field(ml_res_xXyS, 2, ml_res_y);
+  Store_field(ml_res_xXyS, 3, ml_res_S);
+  Store_field(ml_res, 2, ml_res_xXyS);
 
   CAMLreturn(ml_res);
 }

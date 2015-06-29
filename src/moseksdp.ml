@@ -33,7 +33,8 @@ external solve_ext : ((int * float) list * block_diag_matrix) ->
                      ((int * float) list * block_diag_matrix * float * float) list ->
                      (int * float * float) list -> bool ->
                      SdpRet.t * (float * float)
-                     * (float array * float array array list * float array) =
+                     * (float array * float array array list
+                        * float array * float array array list) =
   "moseksdp_solve_ext"
 
 (* The C stub above returns a block diagonal matrix with (M-m+1)
@@ -43,7 +44,7 @@ external solve_ext : ((int * float) list * block_diag_matrix) ->
    input. Same for res_x. *)
 let solve_ext ?options obj constraints bounds =
   let options = match options with Some options -> options | None -> default in
-  let ret, res, (res_x, res_X, res_y) =
+  let ret, res, (res_x, res_X, res_y, res_S) =
     solve_ext obj constraints bounds (options.verbose > 0) in
   let res_x =
     let min_idx, max_idx =
@@ -61,7 +62,7 @@ let solve_ext ?options obj constraints bounds =
         mark (fst obj); List.iter (fun (v, _, _, _) -> mark v) constraints; a in
       List.mapi (fun i m -> i + min_idx, m) (Array.to_list res_x)
       |> List.filter (fun (i, _) -> appear.(i - min_idx)) in
-  let res_X =
+  let res_X, res_S =
     let min_idx, max_idx =
       let range_idx_block_diag =
         List.fold_left (fun (mi, ma) (i, _) -> min mi i, max ma i) in
@@ -69,18 +70,20 @@ let solve_ext ?options obj constraints bounds =
       List.fold_left
         (fun range (_, m, _, _) -> range_idx_block_diag range m)
         range constraints in
-    if min_idx > max_idx then []
+    if min_idx > max_idx then [], []
     else
       let appear =
         let a = Array.make (max_idx - min_idx + 1) false in
         let mark = List.iter (fun (i, _) -> a.(i - min_idx) <- true) in
         mark (snd obj); List.iter (fun (_, m, _, _) -> mark m) constraints; a in
-      List.mapi (fun i m -> i + min_idx, m) res_X
-      |> List.filter (fun (i, _) -> appear.(i - min_idx)) in
-  ret, res, (res_x, res_X, res_y)
+      let index m =
+        List.mapi (fun i m -> i + min_idx, m) m
+        |> List.filter (fun (i, _) -> appear.(i - min_idx)) in
+      index res_X, index res_S in
+  ret, res, (res_x, res_X, res_y, res_S)
 
 let solve ?options obj constraints =
-  let ret, res, (_, res_X, res_y) =
+  let ret, res, (_, res_X, res_y, res_S) =
     solve_ext ?options ([], obj)
               (List.map (fun (m, b) -> [], m, b, b) constraints) [] in
-  ret, res, (res_X, res_y)
+  ret, res, (res_X, res_y, res_S)

@@ -30,7 +30,7 @@
     X psd]}
     (X psd meaning X positive semi-definite)
     corresponds to the dual problem {[min b^T y
-    \sum_i y_i A_i - C psd]}
+    \sum_i y_i A_i - C = Z psd]}
     where C, A_i and X are symmetric matrices, C, A_i and b_i are
     parameters whereas X (resp. y) is the primal (resp. dual)
     variable. *)
@@ -143,7 +143,7 @@ val solve : ?options:options -> ?solver:solver ->
     (X psd meaning X positive semi-definite)
     corresponds to the dual problem {[min (b^+)^T s^+ - (b^-)^T s^- + (d^+)^T t^+ - (d^-)^T t^-
     y = s^+ - s^-
-    \sum_i y_i A_i - C psd
+    \sum_i y_i A_i - C = Z psd
     [a_1,..., a_n] y - c + t^+ - t^- = 0
     s^+, s^-, t^+, t^- >= 0]}
     where C, A_i and X are symmetric matrices, C, A_i, a_i, b_i and d
