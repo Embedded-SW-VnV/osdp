@@ -50,6 +50,7 @@ rule token = parse
   | "objValPrimal" { OBJVALPRIMAL }
   | "objValDual" { OBJVALDUAL }
   | "xVec" { XVEC }
+  | "xMat" { XMAT }
   | "yMat" { YMAT }
   | '{' { LBRA }
   | '}' { RBRA }

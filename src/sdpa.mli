@@ -59,7 +59,7 @@ val default : options
     tr(A_1 X) = a_1,..., tr(A_n X) = a_n, X psd \} with [\[(A_1,
     a_1);...; (A_n, a_n)\]] the [constraints] list. It returns both
     the primal and dual objective values and a witness for X (primal)
-    and y (dual, see {{:./Sdp.html}Sdp}). In case of success (or
+    and y and Z (dual, see {{:./Sdp.html}Sdp}). In case of success (or
     partial success), the block diagonal matrix returned for X
     contains exactly the indices, sorted by increasing order, that
     appear in the objective or one of the constraints. Size of each
@@ -70,4 +70,5 @@ val default : options
 val solve : ?options:options ->
             block_diag_matrix -> (block_diag_matrix * float) list ->
             SdpRet.t * (float * float)
-            * ((int * float array array) list * float array)
+            * ((int * float array array) list
+               * float array * (int * float array array) list)

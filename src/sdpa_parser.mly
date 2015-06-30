@@ -23,9 +23,9 @@
 %token <float> FLOAT
 %token LBRA RBRA
 %token PHASEDVALUE NOINFO PFEAS DFEAS PDFEAS PDINF PFEASDINF PINFDFEAS PDOPT PUNBD DUNBD
-%token OBJVALPRIMAL OBJVALDUAL XVEC YMAT EOF
+%token OBJVALPRIMAL OBJVALDUAL XVEC XMAT YMAT EOF
 
-%type <SdpRet.t * (float * float) * (float array array array * float array)> resobjyx
+%type <SdpRet.t * (float * float) * (float array array array * float array * float array array array)> resobjyx
 %start resobjyx
 
 %%
@@ -34,6 +34,7 @@ garbageunit:
 | LBRA { }
 | RBRA { }
 | FLOAT { }
+| XMAT { }
 
 garbage:
 | /* empty */ { }
@@ -73,8 +74,11 @@ blockmat:
 | /* empty */ { [] }
 | LBRA mat RBRA blockmat { Array.of_list $2 :: $4 }
 
+xmat:
+| XMAT LBRA blockmat RBRA { Array.of_list $3 }
+
 ymat:
 | YMAT LBRA blockmat RBRA { Array.of_list $3 }
 
 resobjyx:
-| garbage retcode garbage obj garbage xvec garbage ymat garbage EOF { $2, $4, ($8, $6) } 
+| garbage retcode garbage obj garbage xvec xmat ymat garbage EOF { $2, $4, ($8, $6, $7) } 

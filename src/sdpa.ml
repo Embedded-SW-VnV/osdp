@@ -109,12 +109,15 @@ let output_param options =
 let read_output block_struct filename =
   let ic = open_in filename in
   let lexbuf = Lexing.from_channel ic in
-  let ret, (pobj, dobj), (res_X, res_y) =
+  let ret, (pobj, dobj), (res_X, res_y, res_Z) =
     Sdpa_parser.resobjyx Sdpa_lexer.token lexbuf in
   close_in ic;
-  let res_X =
-    IntMap.fold (fun i (j, _) l -> (i, res_X.(j - 1)) :: l) block_struct [] in
-  ret, (dobj, pobj), (List.rev res_X, res_y)
+  let res_X, res_Z =
+    let tr a =
+      IntMap.fold (fun i (j, _) l -> (i, a.(j - 1)) :: l) block_struct []
+      |> List.rev in
+    tr res_X, tr res_Z in
+  ret, (dobj, pobj), (res_X, res_y, res_Z)
 
 let solve ?options obj constraints =
   let block_struct =
@@ -149,12 +152,12 @@ let solve ?options obj constraints =
     Format.asprintf
       "%s -ds %s -o %s -p %s%s"
       sdpa dat_s_filename out_filename param_filename
-      (if options.verbose > 0 then "" else "> /dev/null") in
+      (if options.verbose > 0 then "" else " > /dev/null") in
   let ret = Sys.command cmd in
   let res =
     if ret = 0 then read_output block_struct out_filename
-    else SdpRet.Unknown, (0., 0.), ([], [||]) in
+    else SdpRet.Unknown, (0., 0.), ([], [||], []) in
   Sys.remove dat_s_filename;
   Sys.remove param_filename;
-  Sys.remove out_filename;
+  (* Sys.remove out_filename; *)
   res

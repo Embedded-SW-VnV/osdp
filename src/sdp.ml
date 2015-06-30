@@ -135,7 +135,9 @@ let solve_sparse ?options ?solver obj constraints =
                        Sdpa.stop_criterion = options.stop_criterion;
                        Sdpa.initial = options.initial;
                        Sdpa.precision = options.precision } in
-       Sdpa.solve ~options obj constraints in
+       let ret, res, (res_X, res_y, _) =
+         Sdpa.solve ~options obj constraints in
+       ret, res, (res_X, res_y) in
   ret, res, (List.filter (fun (i, _) -> i <= max_idx) res_X, res_y)
 
 let solve ?options ?solver obj constraints =
