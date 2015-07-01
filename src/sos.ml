@@ -344,7 +344,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     (* call SDP solver *)
     let module PreSdp = PreSdp.Make (S) in
-    let ret, (pobj, dobj), (res_x, res_X, _) =
+    let ret, (pobj, dobj), (res_x, res_X, _, _) =
       PreSdp.solve_ext_sparse ?options:sdp_options ?solver obj cstrs [] in
 
     let obj = let f o = obj_sign *. (o +. obj_cst) in f pobj, f dobj in

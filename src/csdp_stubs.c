@@ -266,7 +266,8 @@ static void build_cstrs(value ml_cstrs,
 static void solve(int dim_X, int nb_cstrs, struct blockmatrix *obj,
                   double *b, struct constraintmatrix *cstrs,
                   sdp_ret_t *sdp_ret, double *pobj, double *dobj,
-                  struct blockmatrix *res_X, double **res_y)
+                  struct blockmatrix *res_X,
+                  double **res_y, struct blockmatrix *res_Z)
 {
   struct blockmatrix X,Z;
   double *y;
@@ -316,6 +317,9 @@ static void solve(int dim_X, int nb_cstrs, struct blockmatrix *obj,
 
   *res_y = (double*)malloc_fail(nb_cstrs, sizeof(double));
   for (i = 0; i < nb_cstrs; ++i) (*res_y)[i] = y[i + 1];
+
+  alloc_mat(Z, res_Z);
+  copy_mat(Z, *res_Z);
 
   free_prob(dim_X, nb_cstrs, *obj, b, cstrs, X, y, Z);
 }
@@ -374,10 +378,11 @@ value csdp_solve(value ml_obj, value ml_cstrs)
 {
   CAMLparam2(ml_obj, ml_cstrs);
 
-  CAMLlocal5(ml_res, ml_res_obj, ml_res_Xy, ml_res_X, ml_res_y);
+  CAMLlocal2(ml_res, ml_res_obj);
+  CAMLlocal4(ml_res_XyZ, ml_res_X, ml_res_y, ml_res_Z);
   CAMLlocal3(cons, matrix, line);
 
-  struct blockmatrix *obj, res_X;
+  struct blockmatrix *obj, res_X, res_Z;
   int idx_offset, nb_vars, *dimvar;
   int nb_cstrs, dim_X;
   struct constraintmatrix *cstrs;
@@ -390,9 +395,11 @@ value csdp_solve(value ml_obj, value ml_cstrs)
   build_obj(ml_obj, idx_offset, nb_vars, dimvar, &obj);
 
   build_cstrs(ml_cstrs, idx_offset, dimvar, nb_cstrs, &cstrs, &b);
-  solve(dim_X, nb_cstrs, obj, b, cstrs, &sdp_ret, &pobj, &dobj, &res_X, &res_y);
+  solve(dim_X, nb_cstrs, obj, b, cstrs,
+        &sdp_ret, &pobj, &dobj, &res_X, &res_y, &res_Z);
   build_res_X(&res_X, &ml_res_X, &cons, &matrix, &line);
   build_res_y(nb_cstrs, res_y, &ml_res_y);
+  build_res_X(&res_Z, &ml_res_Z, &cons, &matrix, &line);
 
   /* TODO: free res_X and res_y */
 
@@ -405,10 +412,11 @@ value csdp_solve(value ml_obj, value ml_cstrs)
   Store_field(ml_res_obj, 0, caml_copy_double(pobj));
   Store_field(ml_res_obj, 1, caml_copy_double(dobj));
   Store_field(ml_res, 1, ml_res_obj);
-  ml_res_Xy = caml_alloc(2, 0);
-  Store_field(ml_res_Xy, 0, ml_res_X);
-  Store_field(ml_res_Xy, 1, ml_res_y);
-  Store_field(ml_res, 2, ml_res_Xy);
+  ml_res_XyZ = caml_alloc(3, 0);
+  Store_field(ml_res_XyZ, 0, ml_res_X);
+  Store_field(ml_res_XyZ, 1, ml_res_y);
+  Store_field(ml_res_XyZ, 2, ml_res_Z);
+  Store_field(ml_res, 2, ml_res_XyZ);
 
   CAMLreturn(ml_res);
 }

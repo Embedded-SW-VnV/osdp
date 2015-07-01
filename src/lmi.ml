@@ -468,7 +468,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
     (* Format.printf ">@."; *)
 
     (* call SDP solver *)
-    let ret, (pres, dres), (primal_sol, dual_sol) =
+    let ret, (pres, dres), (_, dual_sol, _) =
       Sdp.solve ?solver !blks_C constraints in
 
     let res = let f o = obj_sign *. (o +. obj_cst) in f pres, f dres in

@@ -27,7 +27,8 @@ module type S = sig
                          Sdp.sparse_matrix obj_ext ->
                          Sdp.sparse_matrix constr_ext list -> Sdp.bounds ->
                          SdpRet.t * (float * float)
-                         * (vector * Sdp.matrix Sdp.block_diag * float array)
+                         * (vector * Sdp.matrix Sdp.block_diag
+                            * float array * Sdp.matrix Sdp.block_diag)
 end
 
 module Make (S : Scalar.S) : S with module Scalar = S = struct
@@ -131,7 +132,7 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
     (*   ) *)
     (*   constraints; *)
 
-    let ret, obj, (res_x, res_X, res_y) =
+    let ret, obj, (res_x, res_X, res_y, res_Z) =
       Sdp.solve_ext_sparse ?options ?solver obj constraints bounds in
 
     let res_x =
@@ -156,7 +157,7 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
     let obj =
       let offset = S.to_float offset in
       fst obj +. offset, snd obj +. offset in
-    ret, obj, (res_x, res_X, res_y)
+    ret, obj, (res_x, res_X, res_y, res_Z)
 end
 
 module Float = Make (Scalar.Float)

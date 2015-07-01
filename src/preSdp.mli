@@ -47,7 +47,8 @@ module type S = sig
                          Sdp.sparse_matrix obj_ext ->
                          Sdp.sparse_matrix constr_ext list -> Sdp.bounds ->
                          SdpRet.t * (float * float)
-                         * (vector * Sdp.matrix Sdp.block_diag * float array)
+                         * (vector * Sdp.matrix Sdp.block_diag
+                            * float array * Sdp.matrix Sdp.block_diag)
 end
 
 module Make (S : Scalar.S) : S with module Scalar = S

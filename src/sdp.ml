@@ -115,14 +115,12 @@ let solve_sparse ?options ?solver obj constraints =
        | Le (bd, f) -> ((i, [0, 0, 1.]) :: bd, f) :: cstrs, i + 1
        | Ge (bd, f) -> ((i, [0, 0, -1.]) :: bd, f) :: cstrs, i + 1)
       ([], max_idx + 1) (List.rev constraints) in
-  let ret, res, (res_X, res_y) = match get_solver options solver with
+  let ret, res, (res_X, res_y, res_Z) = match get_solver options solver with
     | Csdp -> Csdp.solve obj constraints
     | Mosek ->
        let options = match options with Some o -> o | None -> default in
        let options = { Moseksdp.verbose = options.verbose } in
-       let ret, res, (res_X, res_y, _) =
-         Moseksdp.solve ~options obj constraints in
-       ret, res, (res_X, res_y)
+       Moseksdp.solve ~options obj constraints
     | (Sdpa | SdpaGmp | SdpaDd) as s ->
        let options = match options with Some o -> o | None -> default in
        let solver =
@@ -135,10 +133,9 @@ let solve_sparse ?options ?solver obj constraints =
                        Sdpa.stop_criterion = options.stop_criterion;
                        Sdpa.initial = options.initial;
                        Sdpa.precision = options.precision } in
-       let ret, res, (res_X, res_y, _) =
-         Sdpa.solve ~options obj constraints in
-       ret, res, (res_X, res_y) in
-  ret, res, (List.filter (fun (i, _) -> i <= max_idx) res_X, res_y)
+       Sdpa.solve ~options obj constraints in
+  let filter = List.filter (fun (i, _) -> i <= max_idx) in
+  ret, res, (filter res_X, res_y, filter res_Z)
 
 let solve ?options ?solver obj constraints =
   check_prog check_sym obj constraints;
@@ -226,7 +223,7 @@ let to_simple obj constraints bounds =
       [] (List.rev constraints) in
   obj, offset, constraints @ add_cstrs, (trans, max_idx)
 
-let of_simple_res (trans, max_idx) (res_X, res_y) =
+let of_simple_res (trans, max_idx) (res_X, res_y, res_Z) =
   let res_X, vars = List.partition (fun (i, _) -> i <= max_idx) res_X in
   let vars =
     List.fold_left
@@ -243,7 +240,8 @@ let of_simple_res (trans, max_idx) (res_X, res_y) =
          | Some vn -> vb -. IntMap.find vn vars in
        (v, vb) :: l)
       trans [] in
-  List.rev res_x, res_X, res_y
+  let res_Z = List.filter (fun (i, _) -> i <= max_idx) res_Z in
+  List.rev res_x, res_X, res_y, res_Z
                                           
 let check_prog_ext f obj constraints =
   let check_block f = List.iter (fun (_, m) -> f m) in
@@ -261,9 +259,9 @@ let solve_ext_sparse ?options ?solver obj constraints bounds =
   | Mosek ->
      let options = match options with Some o -> o | None -> default in
      let options = { Moseksdp.verbose = options.verbose } in
-     let ret, res, (res_x, res_X, res_y, _) =
+     let ret, res, (res_x, res_X, res_y, res_Z) =
        Moseksdp.solve_ext ~options obj constraints bounds in
-     ret, res, (res_x, res_X, res_y)
+     ret, res, (res_x, res_X, res_y, res_Z)
 
 let solve_ext ?options ?solver obj constraints bounds =
   check_prog_ext check_sym obj constraints;
