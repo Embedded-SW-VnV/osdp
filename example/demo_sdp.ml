@@ -26,8 +26,34 @@ let _ =
   let c1 = Osdp.Sdp.Eq ([1, [0, 0, 10.; 1, 0, 4.]], 48.) in
   let c2 = Osdp.Sdp.Eq ([1, [1, 1, -8.]], -8.) in
   let c3 = Osdp.Sdp.Eq ([1, [1, 0, -8.; 1, 1, -2.]], 20.) in
+  let init = None in
+  (* Uncomment one of the following to set an initial point: *)
+  (* (\* feasible initial point *\) *)
+  (* let init = [1, [|[|5.9; -1.375|]; *)
+  (*                  [|-1.375; 1.0|]|]], *)
+  (*            [|0.0; -4.0; 0.0|], *)
+  (*            [1, [|[|11.0; 0.0|]; *)
+  (*                  [|0.0; 9.0|]|]] in *)
+  (* (\* near optimal initial point (only two iterations) *\) *)
+  (* let init = Some ([1, [|[|5.9; -1.375|]; *)
+  (*                        [|-1.375; 1.0|]|]], *)
+  (*                  [|-1.1; -2.7375; -0.55|], *)
+  (*                  [1, [|[|2e-7; 2e-7|]; *)
+  (*                        [|2e-7; 1e-6|]|]]) in *)
+  (* (\* some initial point (matrices are psd) *\) *)
+  (* let init = Some ([1, [|[|1000000.0; 0.0|]; *)
+  (*                        [|0.0; 1000000.0|]|]], *)
+  (*                  [|0.0; 0.0; 0.0|], *)
+  (*                  [1, [|[|1000000.0; 0.0|]; *)
+  (*                        [|0.0; 1000000.0|]|]]) in *)
+  (* (\* don't do that: incorrect initial point (matrices not psd) *\) *)
+  (* let init = Some ([1, [|[|-1.0; 0.0|]; *)
+  (*                        [|0.0; -1.0|]|]], *)
+  (*                  [|0.0; 0.0; 0.0|], *)
+  (*                  [1, [|[|-1.0; 0.0|]; *)
+  (*                        [|0.0; -1.0|]|]]) in *)
   let ret, (pobj, dobj), (rX, ry, rZ) =
-    Osdp.Sdp.solve_sparse ~options obj [c1; c2; c3] in
+    Osdp.Sdp.solve_sparse ~options ?init obj [c1; c2; c3] in
   Format.printf "ret = %a@." Osdp.SdpRet.pp ret;
   Format.printf "pobj, dobj = %g, %g@." pobj dobj; 
   List.iter

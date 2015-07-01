@@ -100,7 +100,7 @@ let check_prog f obj constraints =
     (function Eq (m, _) | Le (m, _) | Ge (m, _) -> check_block f m)
     constraints
 
-let solve_sparse ?options ?solver obj constraints =
+let solve_sparse ?options ?solver ?init obj constraints =
   check_prog check_sparse obj constraints;
   let max_idx =
     let f = List.fold_left (fun m (i, _) -> max m i) in
@@ -133,11 +133,11 @@ let solve_sparse ?options ?solver obj constraints =
                        Sdpa.stop_criterion = options.stop_criterion;
                        Sdpa.initial = options.initial;
                        Sdpa.precision = options.precision } in
-       Sdpa.solve ~options obj constraints in
+       Sdpa.solve ~options ?init obj constraints in
   let filter = List.filter (fun (i, _) -> i <= max_idx) in
   ret, res, (filter res_X, res_y, filter res_Z)
 
-let solve ?options ?solver obj constraints =
+let solve ?options ?solver ?init obj constraints =
   check_prog check_sym obj constraints;
   let obj = block_diag_to_sparse obj in
   let constraints =
@@ -147,7 +147,7 @@ let solve ?options ?solver obj constraints =
         | Le (c, b) -> Le (block_diag_to_sparse c, b)
         | Ge (c, b) -> Ge (block_diag_to_sparse c, b))
       constraints in
-  solve_sparse ?options ?solver obj constraints
+  solve_sparse ?options ?solver ?init obj constraints
 
 (*************************)
 (* Extended formulation. *)

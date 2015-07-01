@@ -77,6 +77,31 @@ let output_dat block_struct obj constraints =
   close_out oc;
   filename
 
+let output_ini block_struct (ini_X, ini_y, ini_Z) =
+  let filename, oc = Filename.open_temp_file "sdpa_init_" ".ini-s" in
+  (* y *)
+  Array.iter (fun f -> output_string oc (string_of_float f ^ " ")) ini_y;
+  output_char oc '\n';
+  (* Z and X *)
+  let pr_mat i m =
+    let pr_block (j, m) =
+      let j, _ = IntMap.find j block_struct in
+      let sz = Array.length m in
+      for i' = 0 to sz - 1 do
+        for j' = i' to sz - 1 do
+          let f = m.(i').(j') in
+          let i', j' = i' + 1, j' + 1 in
+          output_string oc (string_of_int i ^ " " ^ string_of_int j ^ " ");
+          output_string oc (string_of_int i' ^ " " ^ string_of_int j' ^ " ");
+          output_string oc (string_of_float f ^ "\n")
+        done
+      done in
+    List.iter pr_block m in
+  pr_mat 1 ini_Z;
+  pr_mat 2 ini_X;
+  close_out oc;
+  filename
+
 let output_param options =
   let filename, oc = Filename.open_temp_file "sdpa_param_" ".sdpa" in
   output_string oc (string_of_int options.max_iteration
@@ -119,7 +144,7 @@ let read_output block_struct filename =
     tr res_X, tr res_Z in
   ret, (dobj, pobj), (res_X, res_y, res_Z)
 
-let solve ?options obj constraints =
+let solve ?options ?init obj constraints =
   let block_struct =
     let struct_block_diag =
       let size = List.fold_left (fun m (i, j, _) -> max m (max i j + 1)) 0 in
@@ -140,6 +165,10 @@ let solve ?options obj constraints =
   (* block_struct is now a binding from each block index i to (i', sz)
      with i' a new index starting from 1 and sz the size of the block. *)
   let dat_s_filename = output_dat block_struct obj constraints in
+  let ini_s_filename =
+    match init with
+    | Some init -> Some (output_ini block_struct init)
+    | None -> None in
   let options = match options with Some options -> options | None -> default in
   let param_filename = output_param options in
   let out_filename = Filename.temp_file "sdpa_output_" ".out" in
@@ -150,14 +179,17 @@ let solve ?options obj constraints =
       | SdpaDd -> Sdpa_paths.sdpa_dd in
     if sdpa = "no" then failwith "caml_osdp: compiled without SDPA support!";
     Format.asprintf
-      "%s -ds %s -o %s -p %s%s"
-      sdpa dat_s_filename out_filename param_filename
+      "%s -ds %s -o %s%s -p %s%s"
+      sdpa dat_s_filename out_filename
+      (match ini_s_filename with | None -> "" | Some fn -> " -is " ^ fn)
+      param_filename
       (if options.verbose > 0 then "" else " > /dev/null") in
   let ret = Sys.command cmd in
   let res =
     if ret = 0 then read_output block_struct out_filename
     else SdpRet.Unknown, (0., 0.), ([], [||], []) in
   Sys.remove dat_s_filename;
+  begin match ini_s_filename with None -> () | Some fn -> Sys.remove fn end;
   Sys.remove param_filename;
-  (* Sys.remove out_filename; *)
+  Sys.remove out_filename;
   res

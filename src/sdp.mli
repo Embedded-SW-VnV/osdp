@@ -110,6 +110,8 @@ type 'a constr =
     @raise Invalid_argument "non symmetric matrix" in case the
     objective or one of the constraints is non symmetric. *)
 val solve_sparse : ?options:options -> ?solver:solver ->
+                   ?init:(matrix block_diag
+                          * float array * matrix block_diag) ->
                    sparse_matrix obj -> sparse_matrix constr list ->
                    SdpRet.t * (float * float)
                    * (matrix block_diag * float array * matrix block_diag)
@@ -124,6 +126,7 @@ val solve_sparse : ?options:options -> ?solver:solver ->
     @raise Invalid_argument "non symmetric matrix" in case the
     objective or one of the constraints is not a sparse matrix. *)
 val solve : ?options:options -> ?solver:solver ->
+            ?init:(matrix block_diag * float array * matrix block_diag) ->
             matrix obj -> matrix constr list ->
             SdpRet.t * (float * float)
             * (matrix block_diag * float array * matrix block_diag)
