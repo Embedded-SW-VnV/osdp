@@ -85,13 +85,6 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
       match find_repl constraints with
       | None -> to_replace, constraints
       | Some ((i, bv), constraints) ->
-         Format.printf
-           "replace %d with %a + @[%a@]@."
-           i S.pp (fst bv)
-           (Utils.pp_list
-              ~sep:"@ + " (fun fmt (v, c) ->
-                           Format.fprintf fmt "%a %d" S.pp c v))
-           (snd bv);
          let to_replace = IntMap.map (replace_repl i bv) to_replace in
          let constraints = List.map (replace i bv) constraints in
          find_all_repl (IntMap.add i bv to_replace) constraints in
@@ -148,26 +141,11 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
           (fun m (i, f) -> IntMap.add i (S.of_float f) m)
           IntMap.empty res_x in
       let res_x' =
-        IntMap.mapi
-          (fun orig_i (b, v) ->
-           let r =
-             List.fold_left
-               (fun b (i, c) -> S.add b (S.mult c (IntMap.find i res_x)))
-               b v in
-           Format.printf
-             "%d <- %a + @[%a@] = %a@."
-             orig_i S.pp b
-             (Utils.pp_list
-                ~sep:"@ + " (fun fmt (v, c) ->
-                             Format.fprintf fmt "%a %a" S.pp c S.pp (IntMap.find v res_x)))
-             v
-             S.pp r;
-           let r' =
-             List.fold_left
-               (fun b (i, c) -> Q.add b (Q.mul (S.to_q c) (S.to_q (IntMap.find i res_x))))
-               (Q.sub (S.to_q b) (S.to_q r)) v in
-           Format.printf "sum: %a@." Q.pp_print r';
-           r)
+        IntMap.map
+          (fun (b, v) ->
+           List.fold_left
+             (fun b (i, c) -> S.add b (S.mult c (IntMap.find i res_x)))
+             b v)
           to_replace in
       IntMap.bindings
         (IntMap.merge
