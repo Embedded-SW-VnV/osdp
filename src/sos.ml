@@ -318,11 +318,11 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
        spec in the mli), we will need \lambda_min(X) >= n perr. That's
        why we perform the change of variable X' := X - n perr I. *)
     let paddings, cstrs =
-      let perr =
+      let perr = if false then 1e-15 else
         let bl = List.map (fun (_, c) -> List.map snd c) monoms_cstrs
                  |> List.flatten |> List.map S.to_float in
         Sdp.pfeas_stop_crit ?options:sdp_options ?solver bl in
-      (* Format.printf "perr = %g@." perr; *)
+      Format.printf "perr = %g@." perr;
       let pad_cstrs (monoms, constraints) =
         let pad = 2. *. float_of_int (Array.length monoms) *. perr in
         let has_diag mat =
@@ -420,7 +420,14 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           s := M.Set.add (M.mult v.(i) v.(j)) !s
         done
       done;
+      Format.printf
+        "monoms p: @[%a@]@."
+        (Utils.pp_list ~sep:",@ " Monomial.pp) (PQ.to_list p |> List.map fst);
+      Format.printf
+        "monoms s: @[%a@]@."
+        (Utils.pp_list ~sep:",@ " Monomial.pp) (M.Set.elements !s);
       List.for_all (fun (m, _) -> M.Set.mem m !s) (PQ.to_list p) in
+    Format.printf "check_base = %B@." check_base;
     if not check_base then false else
       (* compute polynomial v^T q v *)
       let p' =
@@ -443,7 +450,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            else if cmp < 0 then Q.max (Q.abs c) (cpt_diff l p')
            else (* cmp > 0 *) Q.max (Q.abs c') (cpt_diff p l') in
       let r = cpt_diff (PQ.to_list p) (PQ.to_list p') in
-      (* Format.printf "r = %g@." (Utils.float_of_q r); *)
+      Format.printf "r = %g@." (Utils.float_of_q r);
       (* Format.printf "Q = %a@." Matrix.Float.pp (Matrix.Float.of_array_array q); *)
       (* form the interval matrix q +/- r *)
       let qpmr =
