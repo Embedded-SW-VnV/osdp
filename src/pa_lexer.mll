@@ -52,8 +52,8 @@ rule token = parse
   | "<=" { LEQ }
   | ">=" { GEQ }
   | ("0x" digit+ 'p' '-'? digit+) as n { FLOAT n }
-  | (('0' | (['1'-'9'] digit*)) '.' digit*) as n { FLOAT n }
-  | ('.' digit+) as n { FLOAT n }
+  | (('0' | (['1'-'9'] digit*)) '.' digit*) ('e' ('+'? | '-') digit+)? as n { FLOAT n }
+  | ('.' digit+) ('e' ('+'? | '-') digit+)? as n { FLOAT n }
   | '0' { INT0 }
   | (['1'-'9'] digit*) as n { INT n }
   | 'x' ((digit+) as n) { MID (int_of_string n) }
