@@ -318,11 +318,11 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
        spec in the mli), we will need \lambda_min(X) >= n perr. That's
        why we perform the change of variable X' := X - n perr I. *)
     let paddings, cstrs =
-      let perr =
+      let perr = if false then 0. else
         let bl = List.map (fun (_, c) -> List.map snd c) monoms_cstrs
                  |> List.flatten |> List.map S.to_float in
         Sdp.pfeas_stop_crit ?options:sdp_options ?solver bl in
-      (* Format.printf "perr = %g@." perr; *)
+      Format.printf "perr = %g@." perr;
       let pad_cstrs (monoms, constraints) =
         let pad = 2. *. float_of_int (Array.length monoms) *. perr in
         let has_diag mat =
@@ -386,10 +386,28 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     | Poly _ -> raise Not_found
 
   let value_poly e m =
-    let id = match e with Var (Vpoly p) -> p.name | _ -> raise Not_found in
-    match Ident.Map.find id m with
-    | Scalar _ -> raise Not_found
-    | Poly p -> p
+    let rec aux = function
+      | Const p -> p
+      | Var (Vscalar id) ->
+         begin
+           match Ident.Map.find id m with
+           | Scalar s -> Poly.of_list [Monomial.one, s]
+           | Poly p -> raise Not_found
+         end
+      | Var (Vpoly p) ->
+         begin
+           match Ident.Map.find p.name m with
+           | Scalar _ -> raise Not_found
+           | Poly p -> p
+         end
+      | Mult_scalar (c, e) -> Poly.mult_scalar c (aux e)
+      | Add (e1, e2) -> Poly.add (aux e1) (aux e2)
+      | Sub (e1, e2) -> Poly.sub (aux e1) (aux e2)
+      | Mult (e1, e2) -> Poly.mult (aux e1) (aux e2)
+      | Power (e, d) -> Poly.power (aux e) d
+      | Compose (e, el) -> Poly.compose (aux e) (List.map aux el)
+      | Derive (e, i) -> Poly.derive (aux e) i in
+    aux e
 
   let check e (v, q) =
     let module PQ = Polynomial.Q in let module M = Monomial in
@@ -443,7 +461,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            else if cmp < 0 then Q.max (Q.abs c) (cpt_diff l p')
            else (* cmp > 0 *) Q.max (Q.abs c') (cpt_diff p l') in
       let r = cpt_diff (PQ.to_list p) (PQ.to_list p') in
-      (* Format.printf "r = %g@." (Utils.float_of_q r); *)
+      Format.printf "r = %g@." (Utils.float_of_q r);
       (* Format.printf "Q = %a@." Matrix.Float.pp (Matrix.Float.of_array_array q); *)
       (* form the interval matrix q +/- r *)
       let qpmr =
