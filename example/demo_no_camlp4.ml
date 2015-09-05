@@ -24,32 +24,26 @@ let e1 = Sub (p,
 let e2 = Sub (p, Eye 2)
 let () = Format.printf "e1 = %a@." pp e1
 let () = Format.printf "e2 = %a@." pp e2
-let _, _, vars = solve ~solver Purefeas [e1; e2]
-let () =
-  try
-    let p' = value_mat p vars in
-    Format.printf "%a = %a@." pp p Mat.pp p'
-  with Not_found -> Format.printf "SDP error.@."
+let ret, _, vars = solve ~solver Purefeas [e1; e2]
+let () = Format.printf "%a@." Osdp.SdpRet.pp ret
+let () = Format.printf "%a@." Mat.pp (value_mat p vars)
 
 let () = Format.printf "@."
 
-open Osdp.Sos.Float
+module Sos = Osdp.Sos.Float
 
 let () = Format.printf "SOS@."
 let deg = 4
+let p = Sos.var_poly "p" 2 ~homogen:true deg
+let x, y = Sos.(??0, ??1)
 let names = ["x"; "y"]
-let pp = pp_names names
-let pol_of_list l =
-  Poly.of_list (List.map (fun (s, m) -> Osdp.Monomial.of_list m, s) l)
-let a = List.map pol_of_list [[1.5, [1]; -0.7, [0; 1]]; [1., [1]; 0., [0; 1]]]
-let p = var_poly "p" 2 ~homogen:true deg
-let e1 = Sub (p, Compose (p, List.map (fun p -> Const p) a))
-let e2 = Sub (p, Const (pol_of_list [1., [deg]; 1., [0; deg]]))
-let () = Format.printf "e1 = %a@." pp e1
-let () = Format.printf "e2 = %a@." pp e2
-let _, _, vars, _ = solve ~solver Purefeas [e1; e2]
-let () =
-  try
-    let p' = value_poly p vars in
-    Format.printf "%a = %a@." pp p (Poly.pp_names names) p'
-  with Not_found -> Format.printf "SDP error.@."
+let a0 = Sos.(1.5 *. x - 0.7 *. y)
+let a1 = x
+let e1 = Sos.(p - Compose (p, [a0; x]))
+(* or let l = [a0; a1] in let e1 = Sos.(p - Compose (p, l)) *)
+let e2 = Sos.(p - (x**4 + y**4))
+let () = Format.printf "e1 = %a@." (Sos.pp_names names) e1
+let () = Format.printf "e2 = %a@." (Sos.pp_names names) e2
+let ret, _, vars, _ = Sos.solve ~solver Sos.Purefeas [e1; e2]
+let () = Format.printf "%a@." Osdp.SdpRet.pp ret
+let () = Format.printf "%a@." (Sos.Poly.pp_names names) (Sos.value_poly p vars)

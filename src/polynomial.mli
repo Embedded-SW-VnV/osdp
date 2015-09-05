@@ -103,6 +103,39 @@ module type S = sig
       c and [None] otherwise. *)
   val is_const : t -> Coeff.t option
                               
+  (** {2 Prefix and infix operators.} *)
+
+  (** To use this operators, it's convenient to use local opens. For
+      instance to write the polynomial 2.3 x0^3 x2^2 + x1 + 0.5:
+
+      {[let module P = Osdp.Polynomial.Float in
+P.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
+
+  (** {{:#VALvar}var} *)
+  val ( ?? ) : int -> t
+
+  (** {{:#VALconst}const} *)
+  val ( ! ) : Coeff.t -> t
+                        
+  (** {{:#VALmult_scalar}mult_scalar} *)
+  val ( *. ) : Coeff.t -> t -> t
+                        
+  (** {{:#VALadd}add} *)
+  val ( + ) : t -> t -> t
+                        
+  (** {{:#VALsub}sub} *)
+  val ( - ) : t -> t -> t
+                        
+  (** {{:#VALmult}mult} *)
+  val ( * ) : t -> t -> t
+                        
+  (** [p / c] is equivaent to [mult_scalar (Coeff.div Coeff.one c)
+      p]. *)
+  val ( / ) : t -> Coeff.t -> t
+                        
+  (** {{:#VALpower}power} *)
+  val ( ** ) : t -> int -> t
+                        
   (** {2 Printing.} *)
 
   val pp : Format.formatter -> t -> unit

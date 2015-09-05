@@ -41,6 +41,14 @@ module type S = sig
   val is_homogeneous : t -> bool
   val is_var : t -> (Coeff.t * int * int) option
   val is_const : t -> Coeff.t option
+  val ( ?? ) : int -> t
+  val ( ! ) : Coeff.t -> t
+  val ( *. ) : Coeff.t -> t -> t
+  val ( + ) : t -> t -> t
+  val ( - ) : t -> t -> t
+  val ( * ) : t -> t -> t
+  val ( / ) : t -> Coeff.t -> t
+  val ( ** ) : t -> int -> t
   val pp : Format.formatter -> t -> unit
   val pp_names : string list -> Format.formatter -> t -> unit
 end
@@ -171,7 +179,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
        match Monomial.to_list m with
        | [] -> Some c
        | _ -> None
-                   
+
   let pp_names names fmt = function
     | [] -> Format.fprintf fmt "0"
     | l ->
@@ -189,6 +197,15 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
                       (List.rev l)
 
   let pp = pp_names []
+                   
+  let ( ?? ) i = var i
+  let ( ! ) = const
+  let ( *. ) = mult_scalar
+  let ( + ) = add
+  let ( - ) = sub
+  let ( * ) = mult
+  let ( / ) p c = mult_scalar (Coeff.div Coeff.one c) p
+  let ( ** ) = power
 end
 
 module Q = Make (Scalar.Q)

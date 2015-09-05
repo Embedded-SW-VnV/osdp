@@ -33,6 +33,15 @@ module type S = sig
     | Derive of polynomial_expr * int
   val var : string -> polynomial_expr
   val var_poly : string -> int -> ?homogen:bool -> int -> polynomial_expr
+  val ( !! ) : Poly.t -> polynomial_expr
+  val ( ?? ) : int -> polynomial_expr
+  val ( ! ) : Poly.Coeff.t -> polynomial_expr
+  val ( *. ) : Poly.Coeff.t -> polynomial_expr -> polynomial_expr
+  val ( + ) : polynomial_expr -> polynomial_expr -> polynomial_expr
+  val ( - ) : polynomial_expr -> polynomial_expr -> polynomial_expr
+  val ( * ) : polynomial_expr -> polynomial_expr -> polynomial_expr
+  val ( / ) : polynomial_expr -> Poly.Coeff.t -> polynomial_expr
+  val ( ** ) : polynomial_expr -> int -> polynomial_expr
   type options = {
     sdp : Sdp.options
   }
@@ -499,6 +508,16 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         check (repl e) wit in
       if List.for_all2 check_repl el wits then SdpRet.Success, obj, vals, wits
       else SdpRet.PartialSuccess, obj, vals, wits
+
+  let ( !! ) p = Const p
+  let ( ?? ) i = Const (Poly.( ?? ) i)
+  let ( ! ) c = Const (Poly.( ! ) c)
+  let ( *. ) c e = Mult_scalar (c, e)
+  let ( + ) e1 e2 = Add (e1, e2)
+  let ( - ) e1 e2 = Sub (e1, e2)
+  let ( * ) e1 e2 = Mult (e1, e2)
+  let ( / ) e c = Mult_scalar (Poly.Coeff.(div one c), e)
+  let ( ** ) e d = Power (e, d)
 end
 
 module Float = Make (Polynomial.Float)

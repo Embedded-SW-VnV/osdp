@@ -1,6 +1,9 @@
-BINS=demo demo_no_camlp4 demo_sdp demo_sos demo_sos2
+BINS=demo demo_no_camlp4 demo_sdp demo_sos demo_sos2 demo_no_camlp4_sos2
 
 all: $(BINS)
+
+demo_no%: demo_no%.ml
+	ocamlfind ocamlopt -linkpkg -package osdp -o $@ $<
 
 dem%: dem%.ml
 	ocamlfind ocamlopt -linkpkg -package osdp -package camlp4 -syntax camlp4o -o $@ $<

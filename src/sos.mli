@@ -59,6 +59,36 @@ module type S = sig
       negative. *)
   val var_poly : string -> int -> ?homogen:bool -> int -> polynomial_expr
 
+  (** {3 Prefix and infix operators.} *)
+
+  (** To use this operators, it's convenient to use local opens. For
+      instance to write the polynomial 2.3 x0^3 x2^2 + x1 + 0.5:
+
+      {[let module Sos = Osdp.Sos.Float in
+Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
+
+  (** See the module {{:./Polynomial.S.html}Polynomial.S} for
+      details. *)
+
+  (** {{:#TYPEELTpolynomial_expr.Const}Const} *)
+  val ( !! ) : Poly.t -> polynomial_expr
+                        
+  val ( ?? ) : int -> polynomial_expr
+
+  val ( ! ) : Poly.Coeff.t -> polynomial_expr
+                        
+  val ( *. ) : Poly.Coeff.t -> polynomial_expr -> polynomial_expr
+                        
+  val ( + ) : polynomial_expr -> polynomial_expr -> polynomial_expr
+                        
+  val ( - ) : polynomial_expr -> polynomial_expr -> polynomial_expr
+                        
+  val ( * ) : polynomial_expr -> polynomial_expr -> polynomial_expr
+                        
+  val ( / ) : polynomial_expr -> Poly.Coeff.t -> polynomial_expr
+                        
+  val ( ** ) : polynomial_expr -> int -> polynomial_expr
+                        
   (** {2 SOS.} *)
 
   type options = {
