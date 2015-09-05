@@ -25,6 +25,8 @@ module type S = sig
   val to_list : t -> (Monomial.t * Coeff.t) list
   val zero : t
   val one : t
+  val var : ?c:Coeff.t -> ?d:int -> int -> t
+  val const : Coeff.t -> t
   val mult_scalar : Coeff.t -> t -> t
   val add : t -> t -> t
   val sub : t -> t -> t
@@ -37,6 +39,8 @@ module type S = sig
   val nb_vars : t -> int
   val degree : t -> int
   val is_homogeneous : t -> bool
+  val is_var : t -> (Coeff.t * int * int) option
+  val is_const : t -> Coeff.t option
   val pp : Format.formatter -> t -> unit
   val pp_names : string list -> Format.formatter -> t -> unit
 end
@@ -64,8 +68,14 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let to_list p = p
 
   let zero = []
-  let one = [Monomial.of_list [], Coeff.one]
+  let one = [Monomial.one, Coeff.one]
 
+  let var ?c ?d i =
+    let c = match c with Some c -> c | None -> Coeff.one in
+    of_list [Monomial.var ?d i, c]
+
+  let const c = var ~c ~d:0 0
+            
   let mult_scalar s p =
     if Coeff.is_zero s then []
     else List.map (fun (m, s') -> m, Coeff.mult s s') p
@@ -148,6 +158,20 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
        let d = Monomial.degree h in
        List.for_all (fun (m, _) -> Monomial.degree m = d) t
 
+  let is_var p = match p with
+    | [] | _ :: _ :: _ -> None
+    | [m, c] ->
+       match Monomial.is_var m with
+       | Some (d, i) -> Some (c, d, i)
+       | None -> None
+
+  let is_const p = match p with
+    | [] | _ :: _ :: _ -> None
+    | [m, c] ->
+       match Monomial.to_list m with
+       | [] -> Some c
+       | _ -> None
+                   
   let pp_names names fmt = function
     | [] -> Format.fprintf fmt "0"
     | l ->

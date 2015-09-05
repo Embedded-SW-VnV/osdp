@@ -45,6 +45,14 @@ module type S = sig
   val zero : t
   val one : t
 
+  (** [var ?c ?d i] returns c xi^d, this is equivalent to [of_list [c,
+      Monomial.var ~d i]]. [c] is [Coeff.one] and [d] is [1] by
+      default. [i] and [d] must be non negative. *)
+  val var : ?c:Coeff.t -> ?d:int -> int -> t
+ 
+  (** [const c] is equivalent to [var ~c ~d:0 0]. *)
+  val const : Coeff.t -> t
+                                             
   (** {2 Arithmetic operations.} *)
                                          
   val mult_scalar : Coeff.t -> t -> t
@@ -70,13 +78,13 @@ module type S = sig
       non negative. *)
   val derive : t -> int -> t
 
-  (** {2 Various functions.} *)
-
   (** [eval p \[x_1;...; x_n\]] returns p(x_1,..., x_n).
 
       @raise Invalid_argument "Polynomial.eval" if [n] is less than
       [nb_vars p]. *)
   val eval : t -> Coeff.t list -> Coeff.t
+
+  (** {2 Various functions.} *)
 
   (** [nb_vars p] returns the largest index of a variable appearing in
       [p] (0 if none). *)
@@ -86,7 +94,15 @@ module type S = sig
   val degree : t -> int
 
   val is_homogeneous : t -> bool
-                                         
+
+  (** [is_var p] returns [Some (c, d, i)] if [p] is a polynomial of
+      the form c xi^d and [None] otherwise. *)
+  val is_var : t -> (Coeff.t * int * int) option
+                              
+  (** [is_const p] returns [Some c] if [p] is the constant polynomial
+      c and [None] otherwise. *)
+  val is_const : t -> Coeff.t option
+                              
   (** {2 Printing.} *)
 
   val pp : Format.formatter -> t -> unit

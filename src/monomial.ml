@@ -33,22 +33,10 @@ let to_list m = m
 
 let one = []
 
-let var_deg i d =
+let var ?d i =
+  let d = match d with Some d -> d | None -> 1 in
   let rec aux i = if i <= 0 then [d] else 0 :: aux (i - 1) in
   if d <= 0 || i < 0 then one else aux i
-
-let var i = var_deg i 1
-
-let rec compare m1 m2 = match m1, m2 with
-  | [], [] -> 0
-  | [], _ -> compare [0] m2
-  | _, [] -> compare m1 [0]
-  | h1 :: t1, h2 :: t2 ->
-     if h1 > h2 then 1 else if h1 < h2 then -1 else compare t1 t2
-
-let nb_vars = List.length
-
-let degree = List.fold_left ( + ) 0
 
 let rec mult m1 m2 = match m1, m2 with
   | [], _ -> m2
@@ -66,6 +54,27 @@ let rec derive m i = match m with
        | 0, _ -> 0, []
        | j, t -> j, (h :: t)
                       
+let rec compare m1 m2 = match m1, m2 with
+  | [], [] -> 0
+  | [], _ -> compare [0] m2
+  | _, [] -> compare m1 [0]
+  | h1 :: t1, h2 :: t2 ->
+     if h1 > h2 then 1 else if h1 < h2 then -1 else compare t1 t2
+
+let nb_vars = List.length
+
+let degree = List.fold_left ( + ) 0
+
+let rec is_var = function
+  | [d] -> Some (d, 0)
+  | 0 :: l ->
+     begin
+       match is_var l with
+       | Some (d, i) -> Some (d, i + 1)
+       | None -> None
+     end
+  | _ -> None
+                            
 let rec list_eq n d =
   if n <= 0 then [[]] else
     List.map (fun m -> (List.fold_left ( - ) d m) :: m) (list_le (n - 1) d)

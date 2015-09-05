@@ -20,7 +20,10 @@
 
 (** Monomials of multiple variables (e.g., x^2 y z^3). *)
 
+(** Type of monomials. *)
 type t
+
+(** {2 Conversion functions.} *)
 
 (** [of_list l] produces the monomial corresponding to list [l]. For
     instance, considering the variables x0, x1, x2 and x3,
@@ -32,25 +35,18 @@ val of_list : int list -> t
     element is non zero (or the list is empty). *)
 val to_list : t -> int list
 
-(** Equivalent to [to_list []]. *)
+(** {2 A few values.} *)
+
+(** Equivalent to [of_list []]. *)
 val one : t
 
-(** [var i] returns xi, this is equivalent to [of_list [0;...; O; 1]]
-    with [i] zeros. [i] must be non negative. *)
-val var : int -> t
+(** [var ?d i] returns xi^d, this is equivalent to [of_list [0;...; O;
+    d]] with [i] zeros. [d] is [1] by default. [i] and [d] must be non
+    negative. [var ~d:0 i] is equivalent to [one]. *)
+val var : ?d:int -> int -> t
 
-(** [var_deg i d] returns xi^d, this is equivalent to [of_list [0;...;
-    O; d]] with [i] zeros. [i] and [d] must be non negative. *)
-val var_deg : int -> int -> t
-
-val compare : t -> t -> int
-
-(** [nb_vars m] returns the largest index of a variable appearing in
-    [m] (0 if none). *)
-val nb_vars : t -> int
-
-val degree : t -> int
-
+(** {2 Arithmetic operations.} *)
+                                         
 (** [mult m1 m2] multiplies the two monomials [m1] and [m2]. If one of
     them is defined on less variables, the undefined exponents are
     considered as 0 (for instance [mult (of_list \[1; 2\]) (of_list
@@ -62,6 +58,22 @@ val mult : t -> t -> t
     the monomial [m] and [0, one] otherwise. [i] must be non
     negative. *)
 val derive : t -> int -> int * t
+
+(** {2 Various functions.} *)
+
+val compare : t -> t -> int
+
+(** [nb_vars m] returns the largest index of a variable appearing in
+    [m] (0 if none). *)
+val nb_vars : t -> int
+
+val degree : t -> int
+
+(** [is_var m] returns [Some (d, i)] if [m] is the monomial xi^d and
+    [None] otherwise. *)
+val is_var : t -> (int * int) option
+                          
+(** {2 Sets of monomials.} *)
 
 (** [list_eq n d] provides the list of all monomials with [n]
     variables of degree equal [d] (for instance, [list_eq 3 2] can
@@ -82,6 +94,8 @@ val list_le : int -> int -> t list
     2009. *)
 val filter_newton_polytope : t list -> t list -> t list
 
+(** {2 Printing.} *)
+
 (** Pretty printing. Variables will be printed as x0, x1,... *)
 val pp : Format.formatter -> t -> unit
 
@@ -90,6 +104,8 @@ val pp : Format.formatter -> t -> unit
     however, as the generated names may collide with the provided
     ones. *)
 val pp_names : string list -> Format.formatter -> t -> unit
+
+(** {2 Sets and maps.} *)
 
 module Set : Set.S with type elt = t
 
