@@ -59,6 +59,17 @@ module type S = sig
       negative. *)
   val var_poly : string -> int -> ?homogen:bool -> int -> polynomial_expr
 
+  (** Functions for above constructors. *)
+
+  val const : Poly.t -> polynomial_expr
+  val mult_scalar : Poly.Coeff.t -> polynomial_expr -> polynomial_expr
+  val add : polynomial_expr -> polynomial_expr -> polynomial_expr
+  val sub : polynomial_expr -> polynomial_expr -> polynomial_expr
+  val mult : polynomial_expr -> polynomial_expr -> polynomial_expr
+  val power : polynomial_expr -> int -> polynomial_expr
+  val compose : polynomial_expr -> polynomial_expr list -> polynomial_expr
+  val derive : polynomial_expr -> int -> polynomial_expr
+                                                            
   (** {3 Prefix and infix operators.} *)
 
   (** To use this operators, it's convenient to use local opens. For
@@ -79,6 +90,8 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
                         
   val ( *. ) : Poly.Coeff.t -> polynomial_expr -> polynomial_expr
                         
+  val ( ~- ) : polynomial_expr -> polynomial_expr
+                                 
   val ( + ) : polynomial_expr -> polynomial_expr -> polynomial_expr
                         
   val ( - ) : polynomial_expr -> polynomial_expr -> polynomial_expr
@@ -87,8 +100,16 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
                         
   val ( / ) : polynomial_expr -> Poly.Coeff.t -> polynomial_expr
                         
-  val ( ** ) : polynomial_expr -> int -> polynomial_expr
+  val ( /. ) : Poly.Coeff.t -> Poly.Coeff.t -> polynomial_expr
                         
+  val ( ** ) : polynomial_expr -> int -> polynomial_expr
+
+  (** [e1 >= e2] is just syntactic sugar for [e1 - e2]. *)
+  val ( >= ) : polynomial_expr -> polynomial_expr -> polynomial_expr
+                                           
+  (** [e1 <= e2] is just syntactic sugar for [e2 - e1]. *)
+  val ( <= ) : polynomial_expr -> polynomial_expr -> polynomial_expr
+                                           
   (** {2 SOS.} *)
 
   type options = {

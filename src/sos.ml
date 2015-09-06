@@ -33,15 +33,27 @@ module type S = sig
     | Derive of polynomial_expr * int
   val var : string -> polynomial_expr
   val var_poly : string -> int -> ?homogen:bool -> int -> polynomial_expr
+  val const : Poly.t -> polynomial_expr
+  val mult_scalar : Poly.Coeff.t -> polynomial_expr -> polynomial_expr
+  val add : polynomial_expr -> polynomial_expr -> polynomial_expr
+  val sub : polynomial_expr -> polynomial_expr -> polynomial_expr
+  val mult : polynomial_expr -> polynomial_expr -> polynomial_expr
+  val power : polynomial_expr -> int -> polynomial_expr
+  val compose : polynomial_expr -> polynomial_expr list -> polynomial_expr
+  val derive : polynomial_expr -> int -> polynomial_expr
   val ( !! ) : Poly.t -> polynomial_expr
   val ( ?? ) : int -> polynomial_expr
   val ( ! ) : Poly.Coeff.t -> polynomial_expr
   val ( *. ) : Poly.Coeff.t -> polynomial_expr -> polynomial_expr
+  val ( ~- ) : polynomial_expr -> polynomial_expr
   val ( + ) : polynomial_expr -> polynomial_expr -> polynomial_expr
   val ( - ) : polynomial_expr -> polynomial_expr -> polynomial_expr
   val ( * ) : polynomial_expr -> polynomial_expr -> polynomial_expr
   val ( / ) : polynomial_expr -> Poly.Coeff.t -> polynomial_expr
+  val ( /. ) : Poly.Coeff.t -> Poly.Coeff.t -> polynomial_expr
   val ( ** ) : polynomial_expr -> int -> polynomial_expr
+  val ( >= ) : polynomial_expr -> polynomial_expr -> polynomial_expr
+  val ( <= ) : polynomial_expr -> polynomial_expr -> polynomial_expr
   type options = {
     sdp : Sdp.options
   }
@@ -95,6 +107,15 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       homogeneous = match homogen with None -> false | Some h -> h } in
     Var (Vpoly p)
 
+  let const p = Const p
+  let mult_scalar c e = Mult_scalar (c, e)
+  let add e1 e2 = Add (e1, e2)
+  let sub e1 e2 = Sub (e1, e2)
+  let mult e1 e2 = Mult (e1, e2)
+  let power e d = Power (e, d)
+  let compose e l = Compose (e, l)
+  let derive e i = Derive (e, i)
+        
   let pp_names names fmt e =
     let rec pp_prior prior fmt = function
       | Const p ->
@@ -509,15 +530,19 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       if List.for_all2 check_repl el wits then SdpRet.Success, obj, vals, wits
       else SdpRet.PartialSuccess, obj, vals, wits
 
-  let ( !! ) p = Const p
-  let ( ?? ) i = Const (Poly.( ?? ) i)
-  let ( ! ) c = Const (Poly.( ! ) c)
-  let ( *. ) c e = Mult_scalar (c, e)
-  let ( + ) e1 e2 = Add (e1, e2)
-  let ( - ) e1 e2 = Sub (e1, e2)
-  let ( * ) e1 e2 = Mult (e1, e2)
+  let ( !! ) = const
+  let ( ?? ) i = const (Poly.( ?? ) i)
+  let ( ! ) c = const (Poly.const c)
+  let ( *. ) = mult_scalar
+  let ( ~- ) = sub (const Poly.zero)
+  let ( + ) = add
+  let ( - ) = sub
+  let ( * ) = mult
   let ( / ) e c = Mult_scalar (Poly.Coeff.(div one c), e)
-  let ( ** ) e d = Power (e, d)
+  let ( /. ) c1 c2 = const (Poly.( /. ) c1 c2)
+  let ( ** ) = power
+  let ( >= ) e1 e2 = e1 - e2
+  let ( <= ) e1 e2 = e2 - e1
 end
 
 module Float = Make (Polynomial.Float)

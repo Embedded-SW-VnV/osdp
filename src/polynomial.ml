@@ -44,10 +44,12 @@ module type S = sig
   val ( ?? ) : int -> t
   val ( ! ) : Coeff.t -> t
   val ( *. ) : Coeff.t -> t -> t
+  val ( ~- ) : t -> t
   val ( + ) : t -> t -> t
   val ( - ) : t -> t -> t
   val ( * ) : t -> t -> t
   val ( / ) : t -> Coeff.t -> t
+  val ( /. ) : Coeff.t -> Coeff.t -> t
   val ( ** ) : t -> int -> t
   val pp : Format.formatter -> t -> unit
   val pp_names : string list -> Format.formatter -> t -> unit
@@ -201,10 +203,12 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let ( ?? ) i = var i
   let ( ! ) = const
   let ( *. ) = mult_scalar
+  let ( ~- ) = sub zero
   let ( + ) = add
   let ( - ) = sub
   let ( * ) = mult
   let ( / ) p c = mult_scalar (Coeff.div Coeff.one c) p
+  let ( /. ) c1 c2 = !c1 / c2
   let ( ** ) = power
 end
 

@@ -119,7 +119,10 @@ P.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
                         
   (** {{:#VALmult_scalar}mult_scalar} *)
   val ( *. ) : Coeff.t -> t -> t
-                        
+
+  (** Unary minus, [~- p] is syntactic sugar for [sub zero p]. *)
+  val ( ~- ) : t -> t
+                                 
   (** {{:#VALadd}add} *)
   val ( + ) : t -> t -> t
                         
@@ -132,6 +135,9 @@ P.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
   (** [p / c] is equivaent to [mult_scalar (Coeff.div Coeff.one c)
       p]. *)
   val ( / ) : t -> Coeff.t -> t
+                        
+  (** [c1 /. c2] is equivaent to [!c1 / c2]. *)
+  val ( /. ) : Coeff.t -> Coeff.t -> t
                         
   (** {{:#VALpower}power} *)
   val ( ** ) : t -> int -> t
