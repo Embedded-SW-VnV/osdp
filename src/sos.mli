@@ -49,15 +49,18 @@ module type S = sig
   (** [var s] creates a new scalar variable ([Var v]). *)
   val var : string -> polynomial_expr
 
-  (** [var_poly s n ~homogen:h d] creates a new polynomial variable
-      ([Var v]). [n] is the number of variables of the new polynomial
-      variable. It must be positive. [h] is [true] if the polynomial
-      is homogeneous (i.e., all monomials of same degree (for instance
-      x_0 x_1^3 + x_0^4 is homogeneous, x_0 x_1^3 + x_0^3 is not)),
-      [false] if the polynomial is fully parameterized. [h] is [false]
-      by default. [d] is the degree of the polynomial. It must be non
-      negative. *)
-  val var_poly : string -> int -> ?homogen:bool -> int -> polynomial_expr
+  (** [var_poly s n ~homogen:h d] returns [Var v, l]. [Var v] is a new
+      polynomial variable. [n] is the number of variables of the new
+      polynomial variable. It must be positive. [h] is [true] if the
+      polynomial is homogeneous (i.e., all monomials of same degree
+      (for instance x_0 x_1^3 + x_0^4 is homogeneous, x_0 x_1^3 +
+      x_0^3 is not)), [false] if the polynomial is fully
+      parameterized. [h] is [false] by default. [d] is the degree of
+      the polynomial. It must be non negative. [l] is a list of pairs
+      [m, v'] wher [m] is a monomial and [v'] a variable that could
+      have been created by the above function [var]. *)
+  val var_poly : string -> int -> ?homogen:bool -> int ->
+                 polynomial_expr * (Monomial.t * polynomial_expr) list
 
   (** Functions for above constructors. *)
 

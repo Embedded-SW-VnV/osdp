@@ -10,10 +10,10 @@ open Osdp.Sos.Float
 
 let _ =
   let lower = var "lower" in
-  let q1 = var_poly "q1" 2 2 in
-  let q2 = var_poly "q2" 2 2 in
-  let q3 = var_poly "q3" 2 2 in
-  let q4 = var_poly "q4" 2 2 in
+  let q1, _ = var_poly "q1" 2 2 in
+  let q2, _ = var_poly "q2" 2 2 in
+  let q3, _ = var_poly "q3" 2 2 in
+  let q4, _ = var_poly "q4" 2 2 in
   let p = <:sos< (1 + x0 x1)^2 - x0 x1 + (1 - x1)^2 >> in
   let e = <:sos< p - lower - q1 * (1-x0) - q2 * (1+x0) - q3 * (1-x1) - q4 * (1+x1) >> in
   let () = Format.printf "e = %a@." pp e in

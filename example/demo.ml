@@ -23,7 +23,7 @@ open Osdp.Sos.Float
 
 let () = Format.printf "SOS@."
 let deg = 4
-let p = var_poly "p" 2 ~homogen:true deg
+let p, _ = var_poly "p" 2 ~homogen:true deg
 let a0 = <:sos< 1.5 x0 - 0.7 x1 >>
 let a1 = <:sos< x0 >>
 let e1 = <:sos< p - p(a0, x0) >>

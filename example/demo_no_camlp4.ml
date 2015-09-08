@@ -34,7 +34,7 @@ module Sos = Osdp.Sos.Float
 
 let () = Format.printf "SOS@."
 let deg = 4
-let p = Sos.var_poly "p" 2 ~homogen:true deg
+let p, _ = Sos.var_poly "p" 2 ~homogen:true deg
 let x, y = Sos.(??0, ??1)
 let names = ["x"; "y"]
 let a0 = Sos.(1.5 *. x - 0.7 *. y)
