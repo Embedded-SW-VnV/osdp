@@ -70,7 +70,7 @@ module type S = sig
               SdpRet.t * (float * float) * values * witness list
   val value : polynomial_expr -> values -> Poly.Coeff.t
   val value_poly : polynomial_expr -> values -> Poly.t
-  val check : polynomial_expr -> witness -> bool
+  val check : polynomial_expr -> ?values:values -> witness -> bool
   val pp : Format.formatter -> polynomial_expr -> unit
   val pp_names : string list -> Format.formatter -> polynomial_expr -> unit
 end
@@ -363,10 +363,6 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         paddings witnesses;
       ret, obj, vars, witnesses
 
-  let value e m =
-    let id = match e with Var (Vscalar id) -> id | _ -> raise Not_found in
-    Ident.Map.find id m
-
   let value_poly e m =
     let rec aux = function
       | Const p -> p
@@ -383,7 +379,13 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | Derive (e, i) -> Poly.derive (aux e) i in
     aux e
 
-  let check e (v, q) =
+  let value e m =
+    match Poly.is_const (value_poly e m) with
+    | None -> raise Dimension_error
+    | Some c -> c
+
+  let check e ?values:values (v, q) =
+    let values = match values with Some v -> v | None -> Ident.Map.empty in
     let module PQ = Polynomial.Q in let module M = Monomial in
     (* first compute (exactly, using Q) a polynomial p from
        polynomial_expr e *)
@@ -392,7 +394,12 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          Poly.to_list p
          |> List.map (fun (m, c) -> m, Poly.Coeff.to_q c)
          |> PQ.of_list
-      | Var _ -> raise (Invalid_argument "Sos.check")
+      | Var (Vscalar id) ->
+         PQ.const (Poly.Coeff.to_q (Ident.Map.find id values))
+      | Var (Vpoly p) ->
+         List.map (fun (m, id) -> m, Ident.Map.find id values) p.poly
+         |> List.map (fun (m, c) -> m, Poly.Coeff.to_q c)
+         |> PQ.of_list
       | Mult_scalar (c, e) ->
          PQ.mult_scalar (Poly.Coeff.to_q c) (scalarize e)
       | Add (e1, e2) -> PQ.add (scalarize e1) (scalarize e2)
@@ -455,22 +462,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   let solve ?options ?solver obj el =
     let ret, obj, vals, wits = solve ?options ?solver obj el in
     if not (SdpRet.is_success ret) then ret, obj, vals, wits else
-      let check_repl e wit =
-        (* replace variables by their values and run check *)
-        let rec repl e = match e with
-          | Const _ -> e
-          | Var (Vscalar _) ->
-             let s = value e vals in
-             Const (Poly.of_list [Monomial.of_list [], s])
-          | Var (Vpoly _) -> Const (value_poly e vals)
-          | Mult_scalar (s, e) -> Mult_scalar (s, repl e)
-          | Add (e1, e2) -> Add (repl e1, repl e2)
-          | Sub (e1, e2) -> Sub (repl e1, repl e2)
-          | Mult (e1, e2) -> Mult (repl e1, repl e2)
-          | Power (e, d) -> Power (repl e, d)
-          | Compose (e, el) -> Compose (repl e, List.map repl el)
-          | Derive (e, i) -> Derive (repl e, i) in
-        check (repl e) wit in
+      let check_repl e wit = check e ~values:vals wit in
       if List.for_all2 check_repl el wits then SdpRet.Success, obj, vals, wits
       else SdpRet.PartialSuccess, obj, vals, wits
 

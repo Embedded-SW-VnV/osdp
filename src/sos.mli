@@ -57,7 +57,7 @@ module type S = sig
       x_0^3 is not)), [false] if the polynomial is fully
       parameterized. [h] is [false] by default. [d] is the degree of
       the polynomial. It must be non negative. [l] is a list of pairs
-      [m, v'] wher [m] is a monomial and [v'] a variable that could
+      [m, v'] where [m] is a monomial and [v'] a variable that could
       have been created by the above function [var]. *)
   val var_poly : string -> int -> ?homogen:bool -> int ->
                  polynomial_expr * (Monomial.t * polynomial_expr) list
@@ -166,27 +166,31 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
               obj -> polynomial_expr list ->
               SdpRet.t * (float * float) * values * witness list
 
-  (** [value var values] returns the value contained in [values] for
-      variable [var].
+  (** [value e values] returns the evaluation of polynomial expression
+      [e], replacing all [Var] by the correspoding value in [values].
 
-      @raise Not_found if the given polynomial_expr [var] was not
-      obtained with the function {{:#VALvar}var} or if no value is
-      found for [var] in [values]. *)
+      @raise Not_found if one of the variables appearing in [e] has no
+      corresponding value in [values].
+
+      @raise Dimension_error if [e] is not a scalar. *)
   val value : polynomial_expr -> values -> Poly.Coeff.t
 
-  (** [value_poly var values] returns the value contained in [values]
-      for polynomial variable [var].
+  (** [value_poly e values] returns the evaluation of polynomial
+      expression [e], replacing all [Var] by the correspoding value in
+      [values].
 
-      @raise Not_found if the given polynomial_expr [var] was not
-      obtained with the function {{:#VALvar_poly}var_poly} or if no
-      value is found for [var] in [values]. *)
+      @raise Not_found if one of the variables appearing in [e] has no
+      corresponding value in [values]. *)
   val value_poly : polynomial_expr -> values -> Poly.t
 
-  (** If [check e (v, Q)] returns [true], then [e] is SOS. Otherwise,
-      either [e] is not SOS or the difference between [e] and v^T Q v
-      is too large or Q is not positive definite enough for the proof
-      to succeed. The witness [(v, Q)] is typically obtained from the
-      above function {{:#VALsolve}solve}.
+  (** If [check e ?values (v, Q)] returns [true], then [e] is
+      SOS. Otherwise, either [e] is not SOS or the difference between
+      [e] and v^T Q v is too large or Q is not positive definite
+      enough for the proof to succeed. The witness [(v, Q)] is
+      typically obtained from the above function
+      {{:#VALsolve}solve}. If [e] contains variables, they are
+      replaced by the corresponding value in [values] ([values] is
+      empty by default).
 
       Here is how it works. [e] is expected to be the polynomial v^T Q
       v modulo numerical errors. To prove that [e] is SOS despite
@@ -198,9 +202,9 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
       the polynomials [e] and v^T Q v. If all such matrices Q + R are
       positive definite, then [e] is SOS.
 
-      @raise Invalid_argument "Sos.check" if [e] contains variables
-      [Var]. *)
-  val check : polynomial_expr -> witness -> bool
+      @raise Not_found if [e] contains a variable not present in
+      [values]. *)
+  val check : polynomial_expr -> ?values:values -> witness -> bool
                                                   
   (** {2 Printing functions.} *)
 
