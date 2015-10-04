@@ -28,19 +28,20 @@ module type S = sig
   val mult_scalar : Coeff.t -> t -> t
   val add : t -> t -> t
   val sub : t -> t -> t
-  val eq : t -> t -> bool
-  val is_const : t -> bool
+  val compare : t -> t -> int
+  val is_const : t -> Coeff.t option
   val pp : Format.formatter -> t -> unit
 end
 
 module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   module Coeff = SC
 
-  (* type invariant: lin doesn't contain any zero coefficient *)
+  (* type invariant: lin is sorted by Ident.compare
+   * and doesn't contain any zero coefficient *)
   type t = { const : Coeff.t; lin : (Ident.t * Coeff.t) list }
 
   let of_list l c =
-    let l = List.filter (fun (_, s) -> not (Coeff.is_zero s)) l in
+    let l = List.filter (fun (_, s) -> Coeff.compare s Coeff.zero <> 0) l in
     let l = List.sort (fun (i1, _) (i2, _) -> Ident.compare i1 i2) l in
     let rec remove_duplicates = function
       | [] -> []
@@ -60,7 +61,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let var id = { const = Coeff.zero; lin = [id, Coeff.one] }
 
   let mult_scalar s a =
-    if Coeff.is_zero s then
+    if Coeff.compare s Coeff.zero = 0 then
       const Coeff.zero
     else
       { const = Coeff.mult s a.const;
@@ -78,33 +79,41 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
          (i2, f Coeff.zero c2) :: map2 f l1 t2
        else  (* cmp = 0 *)
          let c = f c1 c2 in
-         if Coeff.is_zero c then map2 f t1 t2
+         if Coeff.compare c Coeff.zero = 0 then map2 f t1 t2
          else (i1, f c1 c2) :: map2 f t1 t2
   let map2 f a1 a2 =
     { const = f a1.const a2.const; lin = map2 f a1.lin a2.lin }
   let add = map2 Coeff.add
   let sub = map2 Coeff.sub
 
-  let eq a1 a2 =
-    let cmp c1 c2 = Coeff.is_zero (Coeff.sub c1 c2) in
-    try
-      cmp a1.const a2.const
-      && List.for_all2 (fun (_, c1) (_, c2) -> cmp c1 c2)  a1.lin a2.lin
-    with Invalid_argument _ -> false
+  let compare a1 a2 =
+    let rec compare l1 l2 = match l1, l2 with
+      | [], [] -> 0
+      | [], (_, c) :: _ -> Coeff.compare Coeff.zero c
+      | (_, c) :: _, [] -> Coeff.compare c Coeff.zero
+      | (i1, c1) :: t1, (i2, c2) :: t2 ->
+         let cmpi = Ident.compare i1 i2 in
+         if cmpi < 0 then Coeff.compare c1 Coeff.zero
+         else if cmpi > 0 then Coeff.compare Coeff.zero c2
+         else (* cmpi = 0 *)
+           let cmpc = Coeff.compare c1 c2 in
+           if cmpc <> 0 then cmpc else compare t1 t2 in
+    let cmpc = Coeff.compare a1.const a2.const in
+    if cmpc <> 0 then cmpc else compare a1.lin a2.lin
 
-  let is_const a = a.lin = []
+  let is_const a = if a.lin = [] then Some a.const else None
 
   let pp fmt a =
     let pp_coeff fmt (x, a) =
-      if Coeff.is_zero (Coeff.sub a Coeff.one) then
+      if Coeff.compare a Coeff.one = 0 then
         Format.fprintf fmt "%a" Ident.pp x
-      else if Coeff.is_zero (Coeff.add a Coeff.one) then
+      else if Coeff.compare a (Coeff.sub Coeff.zero Coeff.one) = 0 then
         Format.fprintf fmt "-%a" Ident.pp x
       else
         Format.fprintf fmt "%a %a" Coeff.pp a Ident.pp x in
-    if is_const a then
+    if is_const a <> None then
       Format.fprintf fmt "%a" Coeff.pp a.const
-    else if Coeff.is_zero a.const then
+    else if Coeff.compare a.const Coeff.zero = 0 then
       Format.fprintf fmt "@[%a@]"
                      (Utils.pp_list ~sep:"@ + " pp_coeff)
                      a.lin
@@ -123,9 +132,9 @@ exception Not_linear
 
 module MakeScalar (L : S) : Scalar.S with type t = L.t = struct
   type t = L.t
+  let compare = L.compare
   let zero = L.const L.Coeff.zero
   let one = L.const L.Coeff.one
-  let is_zero e = L.is_const e && let _, c = L.to_list e in L.Coeff.is_zero c
   let of_float f = L.const (L.Coeff.of_float f)
   let to_float _ = assert false  (* should never happen *)
   let to_q _ = assert false  (* should never happen *)
@@ -133,17 +142,15 @@ module MakeScalar (L : S) : Scalar.S with type t = L.t = struct
   let sub = L.sub
   let mult e1 e2 =
     match L.is_const e1, L.is_const e2 with
-    | false, false -> raise Not_linear
-    | true, _ ->
-       let _, s = L.to_list e1 in
-       L.mult_scalar s e2
-    | false, true ->
-       let _, s = L.to_list e2 in
-       L.mult_scalar s e1
+    | None, None -> raise Not_linear
+    | Some s, _ -> L.mult_scalar s e2
+    | None, Some s -> L.mult_scalar s e1
   let div _ _ = assert false  (* should never happen *)
   let pp fmt a =
     let lin, const = L.to_list a in
-    let l, l' = (if L.Coeff.is_zero const then 0 else 1), List.length lin in
+    let l, l' =
+      (if L.Coeff.compare const L.Coeff.zero = 0 then 0 else 1),
+      List.length lin in
     if l + l' <= 1 then Format.fprintf fmt "%a" L.pp a
     else Format.fprintf fmt "(%a)" L.pp a
 end

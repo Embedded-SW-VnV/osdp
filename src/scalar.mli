@@ -26,11 +26,12 @@
 module type S = sig
   type t 
 
+  val compare : t -> t -> int
+         
   (** {2 A few values.} *)
 
   val zero : t
   val one : t
-  val is_zero : t -> bool
 
   (** {2 Conversion functions.} *)
 

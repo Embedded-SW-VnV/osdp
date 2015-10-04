@@ -35,6 +35,7 @@ module type S = sig
   val var_poly : string -> int -> ?homogen:bool -> int ->
                  polynomial_expr * (Monomial.t * polynomial_expr) list
   val const : Poly.t -> polynomial_expr
+  val monomial : Monomial.t -> polynomial_expr
   val mult_scalar : Poly.Coeff.t -> polynomial_expr -> polynomial_expr
   val add : polynomial_expr -> polynomial_expr -> polynomial_expr
   val sub : polynomial_expr -> polynomial_expr -> polynomial_expr
@@ -109,6 +110,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     List.map (fun (m, id) -> m, Var (Vscalar id)) l
 
   let const p = Const p
+  let monomial m = Const (Poly.monomial m)
   let mult_scalar c e = Mult_scalar (c, e)
   let add e1 e2 = Add (e1, e2)
   let sub e1 e2 = Sub (e1, e2)

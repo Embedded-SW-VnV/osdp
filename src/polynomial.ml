@@ -27,6 +27,7 @@ module type S = sig
   val one : t
   val var : ?c:Coeff.t -> ?d:int -> int -> t
   val const : Coeff.t -> t
+  val monomial : Monomial.t -> t
   val mult_scalar : Coeff.t -> t -> t
   val add : t -> t -> t
   val sub : t -> t -> t
@@ -36,11 +37,13 @@ module type S = sig
   val compose : t -> t list -> t
   val derive : t -> int -> t
   val eval : t -> Coeff.t list -> Coeff.t
+  val compare : t -> t -> int
   val nb_vars : t -> int
   val degree : t -> int
   val is_homogeneous : t -> bool
   val is_var : t -> (Coeff.t * int * int) option
   val is_const : t -> Coeff.t option
+  val is_monomial : t -> Monomial.t option
   val ( ?? ) : int -> t
   val ( ! ) : Coeff.t -> t
   val ( *. ) : Coeff.t -> t -> t
@@ -63,7 +66,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   type t = (Monomial.t * Coeff.t) list
 
   let of_list l =
-    let l = List.filter (fun (_, s) -> not (Coeff.is_zero s)) l in
+    let l = List.filter (fun (_, s) -> Coeff.compare s Coeff.zero <> 0) l in
     let l = List.sort (fun (m1, _) (m2, _) -> Monomial.compare m1 m2) l in
     let rec remove_duplicates = function
       | [] -> []
@@ -85,9 +88,11 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
     of_list [Monomial.var ?d i, c]
 
   let const c = var ~c ~d:0 0
-            
+
+  let monomial m = [m, Coeff.one]
+                    
   let mult_scalar s p =
-    if Coeff.is_zero s then []
+    if Coeff.compare s Coeff.zero = 0 then []
     else List.map (fun (m, s') -> m, Coeff.mult s s') p
 
   let rec map2 f l1 l2 = match l1, l2 with
@@ -102,7 +107,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
          (m2, f Coeff.zero c2) :: map2 f l1 t2
        else  (* cmp = 0 *)
          let c = f c1 c2 in
-         if Coeff.is_zero c then map2 f t1 t2
+         if Coeff.compare c Coeff.zero = 0 then map2 f t1 t2
          else (m1, f c1 c2) :: map2 f t1 t2
   let add = map2 Coeff.add
   let sub = map2 Coeff.sub
@@ -158,6 +163,18 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
       (fun r (m, c) -> Coeff.add r (Coeff.mult c (eval_monomial m)))
       Coeff.zero p
 
+  let rec compare p1 p2 = match p1, p2 with
+    | [], [] -> 0
+    | [], (_, c) :: _ -> Coeff.compare Coeff.zero c
+    | (_, c) :: _, [] -> Coeff.compare c Coeff.zero
+    | (m1, c1) :: t1, (m2, c2) :: t2 ->
+       let cmpm = Monomial.compare m1 m2 in
+       if cmpm < 0 then Coeff.compare c1 Coeff.zero
+       else if cmpm > 0 then Coeff.compare Coeff.zero c2
+       else (* cmpm = 0 *)
+         let cmpc = Coeff.compare c1 c2 in
+         if cmpc <> 0 then cmpc else compare t1 t2
+
   let nb_vars = List.fold_left (fun n (m, _) -> max n (Monomial.nb_vars m)) 0
 
   let degree = List.fold_left (fun d (m, _) -> max d (Monomial.degree m)) (-1)
@@ -168,27 +185,31 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
        let d = Monomial.degree h in
        List.for_all (fun (m, _) -> Monomial.degree m = d) t
 
-  let is_var p = match p with
+  let is_var = function
     | [] | _ :: _ :: _ -> None
     | [m, c] ->
        match Monomial.is_var m with
        | Some (d, i) -> Some (c, d, i)
        | None -> None
 
-  let is_const p = match p with
+  let is_const = function
     | [] | _ :: _ :: _ -> None
     | [m, c] ->
        match Monomial.to_list m with
        | [] -> Some c
        | _ -> None
 
+  let is_monomial = function
+    | [m, c] -> if Coeff.compare c Coeff.one = 0 then Some m else None
+    | _ -> None
+                
   let pp_names names fmt = function
     | [] -> Format.fprintf fmt "0"
     | l ->
        let pp_coeff fmt (m, s) =
-         if Coeff.is_zero (Coeff.sub s Coeff.one) then
+         if Coeff.compare s Coeff.one = 0 then
            Format.fprintf fmt "%a" (Monomial.pp_names names) m
-         else if Coeff.is_zero (Coeff.add s Coeff.one) then
+         else if Coeff.compare s (Coeff.sub Coeff.zero Coeff.one) = 0 then
            Format.fprintf fmt "-%a" (Monomial.pp_names names) m
          else if Monomial.compare m (Monomial.of_list []) = 0 then
            Format.fprintf fmt "%a" Coeff.pp s

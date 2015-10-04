@@ -288,7 +288,7 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
     let empty_c = Array.make m.col true in
     for i = 0 to m.line -1 do
       for j = 0 to m.col - 1 do
-        if not (ET.is_zero m.content.(i).(j)) then begin
+        if ET.compare m.content.(i).(j) ET.zero <> 0 then begin
           empty_r.(i) <- false;
           empty_c.(j) <- false;
         end
@@ -347,7 +347,7 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
           (* we reached the end of the matrix without finding a non null value for
 	     column i *)
           -1
-        else if not (ET.is_zero m.content.(cpt).(col)) then
+        else if ET.compare m.content.(cpt).(col) ET.zero <> 0 then
           cpt
         else
           aux (cpt+1) in
@@ -372,7 +372,7 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
         switch_lines base_change !current_line pivot_line;
         (* Make sure that we have 0 for idx i for all lines j > i *)
         for j = !current_line+1 to m.line -1 do
-  	  if not (ET.is_zero m.content.(j).(col)) then
+  	  if ET.compare m.content.(j).(col) ET.zero <> 0 then
   	    let coeff = ET.sub ET.zero
                                (ET.div m.content.(j).(col)
                                        m.content.(!current_line).(col)) in
@@ -389,7 +389,7 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
     let rank, filtered =
       List.fold_right
         (fun (row, row2) (rank, reduced) -> 
-           if List.exists (fun el -> not (ET.is_zero el)) row then
+           if List.exists (fun el -> ET.compare el ET.zero <> 0) row then
              (* We keep the line *)
              rank, (row, row2)::reduced
            else (* We remove it, the rank decreases *)

@@ -71,7 +71,7 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
     let rec find_repl = function
       | [] -> None
       | ((i, c) :: v, ([] | [_, []]), bl, bu) :: cstrs
-           when S.is_zero (S.sub bu bl) && not (S.is_zero c)
+           when (S.compare bu bl = 0) && (S.compare c S.zero <> 0)
                 && List.for_all (fun (j, _, _) -> j <> i) bounds ->
          let v =
            let c = S.sub S.zero c in

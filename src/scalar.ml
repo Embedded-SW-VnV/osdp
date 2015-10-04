@@ -19,10 +19,10 @@
  *)
 
 module type S = sig
-  type t 
+  type t
+  val compare : t -> t -> int
   val zero : t
   val one : t
-  val is_zero : t -> bool
   val of_float : float -> t
   val to_float : t -> float
   val to_q : t -> Q.t
@@ -35,9 +35,9 @@ end
 
 module Q : S with type t = Q.t = struct 
   type t = Q.t
+  let compare = Q.compare
   let zero = Q.zero
   let one = Q.one
-  let is_zero n = Q.equal n zero
   let of_float = Q.of_float
   let to_float = Utils.float_of_q
   let to_q x = x
@@ -50,9 +50,9 @@ end
 
 module Float : S with type t = float = struct
   type t = float
+  let compare = compare
   let zero = 0.
   let one = 1.
-  let is_zero f = f = 0.
   let of_float x = x
   let to_float x = x
   let to_q x = Q.of_float x

@@ -57,14 +57,17 @@ module type S = sig
       x_0^3 is not)), [false] if the polynomial is fully
       parameterized. [h] is [false] by default. [d] is the degree of
       the polynomial. It must be non negative. [l] is a list of pairs
-      [m, v'] where [m] is a monomial and [v'] a variable that could
-      have been created by the above function [var]. *)
+      [m, v'] where [m] is a monomial (a polynomial_expr can be
+      obtained with function {{:#VALmonomial}monomial} below) and [v']
+      a variable that could have been created by the above function
+      [var]. *)
   val var_poly : string -> int -> ?homogen:bool -> int ->
                  polynomial_expr * (Monomial.t * polynomial_expr) list
 
   (** Functions for above constructors. *)
 
   val const : Poly.t -> polynomial_expr
+  val monomial : Monomial.t -> polynomial_expr
   val mult_scalar : Poly.Coeff.t -> polynomial_expr -> polynomial_expr
   val add : polynomial_expr -> polynomial_expr -> polynomial_expr
   val sub : polynomial_expr -> polynomial_expr -> polynomial_expr

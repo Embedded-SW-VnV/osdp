@@ -55,9 +55,9 @@ module type S = sig
 
   (** {2 Various operations.} *)
 
-  val eq : t -> t -> bool
+  val compare : t -> t -> int
                                          
-  val is_const : t -> bool
+  val is_const : t -> Coeff.t option
 
   (** {2 Printing.} *)
                                          

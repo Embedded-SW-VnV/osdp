@@ -53,6 +53,9 @@ module type S = sig
   (** [const c] is equivalent to [var ~c ~d:0 0]. *)
   val const : Coeff.t -> t
                                              
+  (** [monomial m] is equivalent to [of_list [m, Coeff.one]]. *)
+  val monomial : Monomial.t -> t
+                                             
   (** {2 Arithmetic operations.} *)
                                          
   val mult_scalar : Coeff.t -> t -> t
@@ -86,6 +89,8 @@ module type S = sig
 
   (** {2 Various functions.} *)
 
+  val compare : t -> t -> int
+
   (** [nb_vars p] returns the largest index of a variable appearing in
       [p] (0 if none). *)
   val nb_vars : t -> int
@@ -102,6 +107,10 @@ module type S = sig
   (** [is_const p] returns [Some c] if [p] is the constant polynomial
       c and [None] otherwise. *)
   val is_const : t -> Coeff.t option
+                              
+  (** [is_monomial p] returns [Some m] if [p] is a monmial x_0^i_0
+      ... x_n^i_n and [None] otherwise. *)
+  val is_monomial : t -> Monomial.t option
                               
   (** {2 Prefix and infix operators.} *)
 

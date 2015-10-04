@@ -418,7 +418,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
              raise Not_symmetric; 
            for i = 0 to sz - 1 do
              for j = i + 1 to sz - 1 do
-               if not (LinExprSC.eq a.(i).(j) a.(j).(i)) then
+               if LinExprSC.compare a.(i).(j) a.(j).(i) <> 0 then
                  raise Not_symmetric
              done
            done
