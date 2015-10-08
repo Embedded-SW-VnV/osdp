@@ -217,7 +217,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
            Format.fprintf fmt "%a %a" Coeff.pp s (Monomial.pp_names names) m in
        Format.fprintf fmt "@[%a@]"
                       (Utils.pp_list ~sep:"@ + " pp_coeff)
-                      (List.rev l)
+                      l
 
   let pp = pp_names []
                    

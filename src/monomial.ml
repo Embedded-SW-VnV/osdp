@@ -54,16 +54,20 @@ let rec derive m i = match m with
        | 0, _ -> 0, []
        | j, t -> j, (h :: t)
                       
-let rec compare m1 m2 = match m1, m2 with
-  | [], [] -> 0
-  | [], _ -> compare [0] m2
-  | _, [] -> compare m1 [0]
-  | h1 :: t1, h2 :: t2 ->
-     if h1 > h2 then 1 else if h1 < h2 then -1 else compare t1 t2
+let degree = List.fold_left ( + ) 0
+
+let compare m1 m2 =
+  let rec compare m1 m2 = match m1, m2 with
+    | [], [] -> 0
+    | [], _ -> compare [0] m2
+    | _, [] -> compare m1 [0]
+    | h1 :: t1, h2 :: t2 ->
+       let c = compare t1 t2 in
+       if c <> 0 then c else Pervasives.compare h1 h2 in
+  let c = Pervasives.compare (degree m1) (degree m2) in
+  if c <> 0 then c else (* c = 0 *) compare m1 m2
 
 let nb_vars = List.length
-
-let degree = List.fold_left ( + ) 0
 
 let rec is_var = function
   | [d] -> Some (d, 0)
