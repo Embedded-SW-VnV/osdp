@@ -119,7 +119,8 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
   (** {2 SOS.} *)
 
   type options = {
-    sdp : Sdp.options  (** default: {{:./Sdp.html#VALdefault}Sdp.default} *)
+    sdp : Sdp.options;  (** default: {{:./Sdp.html#VALdefault}Sdp.default} *)
+    padd : float  (** padding factor (default: 2.), 0. means no padding *)
   }
 
   (** Default values above. *)

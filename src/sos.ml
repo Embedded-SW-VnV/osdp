@@ -57,7 +57,8 @@ module type S = sig
   val ( >= ) : polynomial_expr -> polynomial_expr -> polynomial_expr
   val ( <= ) : polynomial_expr -> polynomial_expr -> polynomial_expr
   type options = {
-    sdp : Sdp.options
+    sdp : Sdp.options;
+    padd : float
   }
   val default : options
   type obj =
@@ -198,10 +199,11 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   (*********)
 
   type options = {
-    sdp : Sdp.options
+    sdp : Sdp.options;
+    padd : float
   }
 
-  let default = { sdp = Sdp.default }
+  let default = { sdp = Sdp.default; padd = 2. }
 
   type obj =
       Minimize of polynomial_expr | Maximize of polynomial_expr | Purefeas
@@ -211,7 +213,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   type witness = Monomial.t array * float array array
 
   let solve ?options ?solver obj el =
-    let sdp_options = match options with None -> None | Some o -> Some o.sdp in
+    let options, sdp_options =
+      match options with None -> default, None | Some o -> o, Some o.sdp in
 
     let obj, obj_sign = match obj with
       | Minimize obj -> Mult_scalar (S.of_float (-1.), obj), -1.
@@ -323,7 +326,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         Sdp.pfeas_stop_crit ?options:sdp_options ?solver bl in
       Format.printf "perr = %g@." perr;
       let pad_cstrs (monoms, constraints) =
-        let pad = 2. *. float_of_int (Array.length monoms) *. perr in
+        let pad = options.padd *. float_of_int (Array.length monoms) *. perr in
         let has_diag mat =
           let diag (i, j, _) = i = j in
           List.exists (fun (_, m) -> List.exists diag m) mat in
