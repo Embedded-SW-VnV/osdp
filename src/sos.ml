@@ -58,7 +58,8 @@ module type S = sig
   val ( <= ) : polynomial_expr -> polynomial_expr -> polynomial_expr
   type options = {
     sdp : Sdp.options;
-    padd : float
+    scale : bool;
+    pad : float
   }
   val default : options
   type obj =
@@ -79,7 +80,6 @@ end
 
 module Make (P : Polynomial.S) : S with module Poly = P = struct
   module Poly = P
-  module S = Poly.Coeff
 
   type polynomial_var = {
     name : Ident.t;
@@ -131,7 +131,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | Var (Vpoly p) -> Ident.pp fmt p.name
       | Mult_scalar (n, e) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
-         S.pp n (pp_prior 1) e
+         Poly.Coeff.pp n (pp_prior 1) e
       | Add (e1, e2) -> Format.fprintf fmt
          (if 0 < prior then "(@[%a@ + %a@])" else "@[%a@ + %a@]")
          (pp_prior 0) e1 (pp_prior 0) e2
@@ -200,15 +200,16 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
   type options = {
     sdp : Sdp.options;
-    padd : float
+    scale : bool;
+    pad : float
   }
 
-  let default = { sdp = Sdp.default; padd = 2. }
+  let default = { sdp = Sdp.default; scale = true; pad = 2. }
 
   type obj =
       Minimize of polynomial_expr | Maximize of polynomial_expr | Purefeas
 
-  type values = S.t Ident.Map.t
+  type values = Poly.Coeff.t Ident.Map.t
 
   type witness = Monomial.t array * float array array
 
@@ -217,7 +218,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       match options with None -> default, None | Some o -> o, Some o.sdp in
 
     let obj, obj_sign = match obj with
-      | Minimize obj -> Mult_scalar (S.of_float (-1.), obj), -1.
+      | Minimize obj -> Mult_scalar (Poly.Coeff.of_float (-1.), obj), -1.
       | Maximize obj -> obj, 1.
       | Purefeas -> Const (Poly.zero), 0. in
 
@@ -242,13 +243,35 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | [] -> assert false
       | obj :: scalarized -> obj, scalarized in
 
+    (* scaling *)
+    let scaling_factors =
+      let sqrt_norm e =
+        let coeffs_e =
+          LEPoly.to_list e
+          |> List.map
+               (fun (_, l) ->
+                let l, c = LinExprSC.to_list l in c :: List.map snd l)
+          |> List.flatten in
+        let sum =
+          List.fold_left
+            (fun s c -> s +. Poly.Coeff.to_float c ** 2.)
+            0. coeffs_e in
+        sqrt (sqrt sum) in
+      if options.scale then List.map sqrt_norm scalarized
+      else List.map (fun _ -> 1.) scalarized in
+    let scalarized =
+      let scale s e =
+        let s = 1. /. s |> Poly.Coeff.of_float |> LinExprSC.const in
+        LEPoly.mult_scalar s e in
+      List.map2 scale scaling_factors scalarized in
+
     (* build the objective (see sdp.mli) *)
     let obj, obj_cst = match LEPoly.to_list obj with
       | [] -> ([], []), 0.
       | [m, c] when Monomial.to_list m = [] ->
          let le, c = LinExprSC.to_list c in
          let v = List.map (fun (id, c) -> Ident.Map.find id var_idx, c) le in
-         (v, []), S.to_float c
+         (v, []), Poly.Coeff.to_float c
       | _ -> raise Not_linear in
 
     (* associate a monomial basis to each SOS constraint *)
@@ -284,7 +307,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          expressions) of polynomials corresponding to the same
          monomial *)
       let constraints =
-        let le_zero = LinExprSC.const S.zero in
+        let le_zero = LinExprSC.const Poly.Coeff.zero in
         let rec match_polys l p1 p2 = match p1, p2 with
           | [], [] -> l
           | [], (_, c2) :: t2 -> match_polys ((le_zero, c2) :: l) [] t2
@@ -304,7 +327,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            let vect =
              List.map
                (fun (id, c) ->
-                Ident.Map.find id var_idx, S.sub S.zero c)
+                Ident.Map.find id var_idx, Poly.Coeff.(sub zero c))
                le in
            let mat = [ei, List.map (fun (i, j) -> i, j, 1.) lij] in
            (vect, mat), b)
@@ -322,11 +345,11 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     let paddings, cstrs =
       let perr = if false then 0. else
         let bl = List.map (fun (_, c) -> List.map snd c) monoms_cstrs
-                 |> List.flatten |> List.map S.to_float in
-        Sdp.pfeas_stop_crit ?options:sdp_options ?solver bl in
+                 |> List.flatten |> List.map Poly.Coeff.to_float in
+        options.pad *. Sdp.pfeas_stop_crit ?options:sdp_options ?solver bl in
       Format.printf "perr = %g@." perr;
       let pad_cstrs (monoms, constraints) =
-        let pad = options.padd *. float_of_int (Array.length monoms) *. perr in
+        let pad = float_of_int (Array.length monoms) *. perr in
         let has_diag mat =
           let diag (i, j, _) = i = j in
           List.exists (fun (_, m) -> List.exists diag m) mat in
@@ -334,7 +357,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         List.map
           (fun ((vect, mat), b) ->
            (* there is at most one diagonal coefficient in mat *)
-           let b = if has_diag mat then S.sub b (S.of_float pad) else b in
+           let b =
+             if has_diag mat then Poly.Coeff.(sub b (of_float pad)) else b in
            vect, mat, b, b)
           constraints in
       List.split (List.map pad_cstrs monoms_cstrs) in
@@ -345,7 +369,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     (* Format.printf ">@."; *)
 
     (* call SDP solver *)
-    let module PreSdp = PreSdp.Make (S) in
+    let module PreSdp = PreSdp.Make (Poly.Coeff) in
     let ret, (pobj, dobj), (res_x, res_X, _, _) =
       PreSdp.solve_ext_sparse ?options:sdp_options ?solver obj cstrs [] in
 
@@ -366,6 +390,16 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          let sz = Array.length q in
          for i = 0 to sz - 1 do q.(i).(i) <- q.(i).(i) +. pad done)
         paddings witnesses;
+      (* unscale result *)
+      List.iter2
+        (fun s (_, q) ->
+         let sz = Array.length q in
+         for i = 0 to sz - 1 do
+           for j = 0 to sz - 1 do
+             q.(i).(j) <- s *. q.(i).(j)
+           done
+         done)
+        scaling_factors witnesses;
       ret, obj, vars, witnesses
 
   let value_poly e m =
