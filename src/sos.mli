@@ -226,4 +226,8 @@ end
 
 module Make (P : Polynomial.S) : S with module Poly = P
 
+(** TODO: explain differences between these modules. *)
+
+module Q : S with module Poly = Polynomial.Q
+
 module Float : S with module Poly = Polynomial.Float

@@ -513,4 +513,6 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
     Ident.Map.find id m
 end
 
+module Q = Make (Matrix.Q)
+
 module Float = Make (Matrix.Float)

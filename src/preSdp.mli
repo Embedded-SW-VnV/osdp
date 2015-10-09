@@ -53,4 +53,8 @@ end
 
 module Make (S : Scalar.S) : S with module Scalar = S
 
+(** TODO: explain differences between these modules. *)
+
+module Q : S with module Scalar = Scalar.Q
+
 module Float : S with module Scalar = Scalar.Float

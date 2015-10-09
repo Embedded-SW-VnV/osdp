@@ -350,7 +350,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         let bl = List.map (fun (_, c) -> List.map snd c) monoms_cstrs
                  |> List.flatten |> List.map Poly.Coeff.to_float in
         options.pad *. Sdp.pfeas_stop_crit ?options:sdp_options ?solver bl in
-      if options.verbose >= 0 then Format.printf "perr = %g@." perr;
+      if options.verbose > 0 then Format.printf "perr = %g@." perr;
       let pad_cstrs (monoms, constraints) =
         let pad = float_of_int (Array.length monoms) *. perr in
         let has_diag mat =
@@ -523,5 +523,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   let ( >= ) e1 e2 = e1 - e2
   let ( <= ) e1 e2 = e2 - e1
 end
+
+module Q = Make (Polynomial.Q)
 
 module Float = Make (Polynomial.Float)

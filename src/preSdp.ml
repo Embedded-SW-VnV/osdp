@@ -160,4 +160,6 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
     ret, obj, (res_x, res_X, res_y, res_Z)
 end
 
+module Q = Make (Scalar.Q)
+
 module Float = Make (Scalar.Float)

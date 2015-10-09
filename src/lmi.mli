@@ -112,4 +112,8 @@ end
 
 module Make (M : Matrix.S) : S with module Mat = M
 
+(** TODO: explain differences between these modules. *)
+
+module Q : S with module Mat = Matrix.Q
+
 module Float : S with module Mat = Matrix.Float
