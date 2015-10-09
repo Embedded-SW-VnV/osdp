@@ -120,6 +120,8 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
 
   type options = {
     sdp : Sdp.options;  (** default: {{:./Sdp.html#VALdefault}Sdp.default} *)
+    verbose : int;  (** verbosity level, non negative integer, 0 (default)
+                        means no output (but see sdp.verbose just above) *)
     scale : bool;  (** scale (default: true) *)
     pad : float  (** padding factor (default: 2.), 0. means no padding *)
   }
@@ -188,7 +190,7 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
       corresponding value in [values]. *)
   val value_poly : polynomial_expr -> values -> Poly.t
 
-  (** If [check e ?values (v, Q)] returns [true], then [e] is
+  (** If [check ?options e ?values (v, Q)] returns [true], then [e] is
       SOS. Otherwise, either [e] is not SOS or the difference between
       [e] and v^T Q v is too large or Q is not positive definite
       enough for the proof to succeed. The witness [(v, Q)] is
@@ -209,7 +211,8 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
 
       @raise Not_found if [e] contains a variable not present in
       [values]. *)
-  val check : polynomial_expr -> ?values:values -> witness -> bool
+  val check : ?options:options -> polynomial_expr -> ?values:values ->
+              witness -> bool
                                                   
   (** {2 Printing functions.} *)
 

@@ -58,6 +58,7 @@ module type S = sig
   val ( <= ) : polynomial_expr -> polynomial_expr -> polynomial_expr
   type options = {
     sdp : Sdp.options;
+    verbose : int;
     scale : bool;
     pad : float
   }
@@ -73,7 +74,8 @@ module type S = sig
               SdpRet.t * (float * float) * values * witness list
   val value : polynomial_expr -> values -> Poly.Coeff.t
   val value_poly : polynomial_expr -> values -> Poly.t
-  val check : polynomial_expr -> ?values:values -> witness -> bool
+  val check : ?options:options -> polynomial_expr -> ?values:values ->
+              witness -> bool
   val pp : Format.formatter -> polynomial_expr -> unit
   val pp_names : string list -> Format.formatter -> polynomial_expr -> unit
 end
@@ -200,11 +202,12 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
   type options = {
     sdp : Sdp.options;
+    verbose : int;
     scale : bool;
     pad : float
   }
 
-  let default = { sdp = Sdp.default; scale = true; pad = 2. }
+  let default = { sdp = Sdp.default; verbose = 0; scale = true; pad = 2. }
 
   type obj =
       Minimize of polynomial_expr | Maximize of polynomial_expr | Purefeas
@@ -347,7 +350,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         let bl = List.map (fun (_, c) -> List.map snd c) monoms_cstrs
                  |> List.flatten |> List.map Poly.Coeff.to_float in
         options.pad *. Sdp.pfeas_stop_crit ?options:sdp_options ?solver bl in
-      Format.printf "perr = %g@." perr;
+      if options.verbose >= 0 then Format.printf "perr = %g@." perr;
       let pad_cstrs (monoms, constraints) =
         let pad = float_of_int (Array.length monoms) *. perr in
         let has_diag mat =
@@ -423,7 +426,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     | None -> raise Dimension_error
     | Some c -> c
 
-  let check e ?values:values (v, q) =
+  let check ?options:options e ?values:values (v, q) =
+    let options = match options with Some o -> o | None -> default in
     let values = match values with Some v -> v | None -> Ident.Map.empty in
     let module PQ = Polynomial.Q in let module M = Monomial in
     (* first compute (exactly, using Q) a polynomial p from
@@ -481,7 +485,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            else if cmp < 0 then Q.max (Q.abs c) (cpt_diff l p')
            else (* cmp > 0 *) Q.max (Q.abs c') (cpt_diff p l') in
       let r = cpt_diff (PQ.to_list p) (PQ.to_list p') in
-      Format.printf "r = %g@." (Utils.float_of_q r);
+      if options.verbose > 0 then Format.printf "r = %g@." (Utils.float_of_q r);
       (* Format.printf "Q = %a@." Matrix.Float.pp (Matrix.Float.of_array_array q); *)
       (* form the interval matrix q +/- r *)
       let qpmr =
@@ -501,7 +505,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   let solve ?options ?solver obj el =
     let ret, obj, vals, wits = solve ?options ?solver obj el in
     if not (SdpRet.is_success ret) then ret, obj, vals, wits else
-      let check_repl e wit = check e ~values:vals wit in
+      let check_repl e wit = check ?options e ~values:vals wit in
       if List.for_all2 check_repl el wits then SdpRet.Success, obj, vals, wits
       else SdpRet.PartialSuccess, obj, vals, wits
 
