@@ -57,7 +57,7 @@ rule token = parse
   | '0' { INT0 }
   | (['1'-'9'] digit*) as n { INT n }
   | 'x' ((digit+) as n) { MID (int_of_string n) }
-  | (['a'-'z'] (alpha|digit|['_' '\''])*) as n { ID n }
+  | (['a'-'z' '_'] (alpha|digit|['_' '\''])*) as n { ID n }
   | '$' { AQ (antiquotation 0 lexbuf) }
   | eof { EOF }
   | _ { raise (Lexing_error "unknown char") }

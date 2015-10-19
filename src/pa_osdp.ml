@@ -33,7 +33,7 @@ f ::= n | "0x" [0-9]+ "p" "-"? [0-9]+
 
 mid ::= 'x'[0-9]+
 
-id ::= [a-z][a-zA-Z0-9_']*  (OCaml id)
+id ::= [a-z_][a-zA-Z0-9_']*  (OCaml id)
 
 ncid ::= n | id | "$" OCaml code (type int) "$"
 
