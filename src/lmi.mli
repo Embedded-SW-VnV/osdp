@@ -64,6 +64,15 @@ module type S = sig
 
   type values
 
+  type options = {
+      sdp : Sdp.options;  (** default: {{:./Sdp.html#VALdefault}Sdp.default} *)
+      verbose : int;  (** verbosity level, non negative integer, 0 (default)
+                        means no output (but see sdp.verbose just above) *)
+    }
+		   
+  (** Default values above. *)
+  val default : options
+
   exception Type_error of string
 
   exception Not_linear
@@ -87,7 +96,7 @@ module type S = sig
 
       @raise Not_symmetric if one of the input matrix expressions in [l]
       is non symmetric. *)
-  val solve : ?solver:Sdp.solver -> obj -> matrix_expr list ->
+  val solve : ?options:options -> ?solver:Sdp.solver -> obj -> matrix_expr list ->
               SdpRet.t * (float * float) * values
 
   (** [value v m] returns the value contained in [m] for variable [v].

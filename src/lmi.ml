@@ -39,10 +39,16 @@ module type S = sig
   val scalar : Mat.Coeff.t -> matrix_expr
   type obj = Minimize of matrix_expr | Maximize of matrix_expr | Purefeas
   type values
+  type options = { 
+      sdp : Sdp.options;
+      verbose : int;
+    }
+  val default : options
+
   exception Type_error of string
   exception Not_linear
   exception Not_symmetric
-  val solve : ?solver:Sdp.solver -> obj -> matrix_expr list ->
+  val solve : ?options:options -> ?solver:Sdp.solver -> obj -> matrix_expr list ->
     SdpRet.t * (float * float) * values
   val value : matrix_expr -> values -> Mat.Coeff.t
   val value_mat : matrix_expr -> values -> Mat.t
@@ -380,13 +386,23 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
   (* Solve *)
   (*********)
 
+  type options = {
+      sdp : Sdp.options;
+      verbose : int;
+    }
+
+  let default = { sdp = Sdp.default; verbose = 0;  }
+
   type obj = Minimize of matrix_expr | Maximize of matrix_expr | Purefeas
 
   type values = Mat.t Ident.Map.t
 
   exception Not_symmetric
 
-  let solve ?solver obj el = 
+  let solve ?options ?solver obj el =
+    let options, sdp_options =
+      match options with None -> default, None | Some o -> o, Some o.sdp in
+    
     let obj, obj_sign = match obj with
       | Minimize obj -> obj, 1.
       | Maximize obj -> Minus obj, -1.
@@ -469,7 +485,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
 
     (* call SDP solver *)
     let ret, (pres, dres), (_, dual_sol, _) =
-      Sdp.solve ?solver !blks_C constraints in
+      Sdp.solve ?options:sdp_options ?solver !blks_C constraints in
 
     let res = let f o = obj_sign *. (o +. obj_cst) in f pres, f dres in
 
@@ -502,15 +518,28 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       let vars = Ident.Map.map Mat.of_array_array matrices in
        ret, res, vars
 
-  let value e m =
+  let value e env =
     let id = match e with Var v -> v.name | _ -> raise Not_found in
-    match Mat.to_list_list (Ident.Map.find id m) with
+    match Mat.to_list_list (Ident.Map.find id env) with
     | [[s]] -> s
     | _ -> raise Not_found
 
-  let value_mat e m =
-    let id = match e with Var v -> v.name | _ -> raise Not_found in
-    Ident.Map.find id m
+  let rec value_mat e env =
+    match e with
+    | Var v -> Ident.Map.find v.name env
+    | Const mat -> mat
+    | Zeros (n, m) -> Mat.zeros n m
+    | Eye n -> Mat.eye n
+    | Kron (n, i, j) -> Mat.kron n i j
+    | Kron_sym (n, i, j) -> Mat.kron_sym n i j
+    | Block a -> Mat.block (Array.map (Array.map (fun mat -> value_mat mat env)) a)
+    | Lift_block (m, i, j, k, l) -> Mat.lift_block (value_mat m env) i j k l
+    | Transpose m -> Mat.transpose (value_mat m env)
+    | Minus m -> Mat.minus (value_mat m env)
+    | Add (e1, e2) -> Mat.add (value_mat e1 env) (value_mat e2 env)
+    | Sub (e1, e2) -> Mat.sub (value_mat e1 env) (value_mat e2 env)
+    | Mult (e1, e2) -> Mat.mult (value_mat e1 env) (value_mat e2 env)
+
 end
 
 module Q = Make (Matrix.Q)
