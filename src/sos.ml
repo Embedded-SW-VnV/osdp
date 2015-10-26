@@ -78,7 +78,7 @@ module type S = sig
               SdpRet.t * (float * float) * values * witness list
   val value : polynomial_expr -> values -> Poly.Coeff.t
   val value_poly : polynomial_expr -> values -> Poly.t
-  val check : ?options:options -> polynomial_expr -> ?values:values ->
+  val check : ?options:options -> ?values:values -> polynomial_expr ->
               witness -> bool
   val pp : Format.formatter -> polynomial_expr -> unit
   val pp_names : string list -> Format.formatter -> polynomial_expr -> unit
@@ -437,7 +437,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     | None -> raise Dimension_error
     | Some c -> c
 
-  let check ?options:options e ?values:values (v, q) =
+  let check ?options:options ?values:values e (v, q) =
     let options = match options with Some o -> o | None -> default in
     let values = match values with Some v -> v | None -> Ident.Map.empty in
     let module PQ = Polynomial.Q in let module M = Monomial in
@@ -516,7 +516,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   let solve ?options ?solver obj el =
     let ret, obj, vals, wits = solve ?options ?solver obj el in
     if not (SdpRet.is_success ret) then ret, obj, vals, wits else
-      let check_repl e wit = check ?options e ~values:vals wit in
+      let check_repl e wit = check ?options ~values:vals e wit in
       if List.for_all2 check_repl el wits then SdpRet.Success, obj, vals, wits
       else SdpRet.PartialSuccess, obj, vals, wits
 

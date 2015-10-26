@@ -228,7 +228,7 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
 
       @raise Not_found if [e] contains a variable not present in
       [values]. *)
-  val check : ?options:options -> polynomial_expr -> ?values:values ->
+  val check : ?options:options -> ?values:values -> polynomial_expr ->
               witness -> bool
                                                   
   (** {2 Printing functions.} *)

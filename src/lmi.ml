@@ -66,7 +66,8 @@ module type S = sig
   val ( <= ) : matrix_expr -> matrix_expr -> matrix_expr
   type options = { 
     sdp : Sdp.options;
-    verbose : int
+    verbose : int;
+    pad : float
   }
   val default : options
   type obj = Minimize of matrix_expr | Maximize of matrix_expr | Purefeas
@@ -79,6 +80,7 @@ module type S = sig
               SdpRet.t * (float * float) * values
   val value : matrix_expr -> values -> Mat.Coeff.t
   val value_mat : matrix_expr -> values -> Mat.t
+  val check : ?options:options -> ?values:values -> matrix_expr -> bool
   val pp : Format.formatter -> matrix_expr -> unit
 end
 
@@ -243,10 +245,11 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
 
   type options = {
     sdp : Sdp.options;
-    verbose : int
+    verbose : int;
+    pad : float
   }
 
-  let default = { sdp = Sdp.default; verbose = 0 }
+  let default = { sdp = Sdp.default; verbose = 0; pad = 2. }
 
   type obj = Minimize of matrix_expr | Maximize of matrix_expr | Purefeas
 
@@ -323,6 +326,12 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
        let b_i = try Ident.Map.find id obj with Not_found -> 0. in
        id :: lv, Sdp.Eq (blks, b_i) :: lc) blks_A ([], []) in
 
+    (* pad constraints *)
+    let padd_diag m =
+      let sz = Array.length m in
+      for i = 0 to sz - 1 do m.(i).(i) <- m.(i).(i) +. 1e-7 done in
+    List.iter (fun (_, m) -> padd_diag m) !blks_C;
+
     (* Format.printf "SDP solved <@."; *)
     (* Format.printf "%a@." Sdp.pp (!blks_C, constraints); *)
     (* Format.printf ">@."; *)
@@ -366,6 +375,44 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
     match Mat.to_list_list (value_mat e m) with
     | [[s]] -> s
     | _ -> raise (Dimension_error "value (scalar expected)")
+
+  let check ?options:options ?values:values e =
+    let values = match values with Some v -> v | None -> Ident.Map.empty in
+    let module MQ = Matrix.Q in
+    (* first compute (exactly, using Q) a matrix m from matrix_expr e *)
+    let rec scalarize = function
+      | Const mat ->
+         Mat.to_list_list mat
+         |> List.map (List.map Mat.Coeff.to_q)
+         |> MQ.of_list_list
+      | Var v ->
+         Array.map (Array.map (fun id -> Ident.Map.find id values)) v.mat
+         |> Array.map (Array.map Mat.Coeff.to_q)
+         |> MQ.of_array_array
+      | Zeros (n, m) -> MQ.zeros n m
+      | Eye n -> MQ.eye n
+      | Kron (n, i, j) -> MQ.kron n i j
+      | Kron_sym (n, i, j) -> MQ.kron_sym n i j
+      | Block a -> MQ.block (Array.map (Array.map scalarize) a)
+      | Lift_block (m, i, j, k, l) -> MQ.lift_block (scalarize m) i j k l
+      | Transpose m -> MQ.transpose (scalarize m)
+      | Minus m -> MQ.minus (scalarize m)
+      | Add (e1, e2) -> MQ.add (scalarize e1) (scalarize e2)
+      | Sub (e1, e2) -> MQ.sub (scalarize e1) (scalarize e2)
+      | Mult (e1, e2) -> MQ.mult (scalarize e1) (scalarize e2)
+      | Power (e, d) -> MQ.power (scalarize e) d in
+    let m = scalarize e in
+    (* then check that m is positive definite *)
+    Posdef.check (MQ.to_array_array m)
+
+  (* function solve including a posteriori checking with check just
+     above *)
+  let solve ?options ?solver obj el =
+    let ret, obj, vals = solve ?options ?solver obj el in
+    if not (SdpRet.is_success ret) then ret, obj, vals else
+      let check_repl e = check ?options e ~values:vals in
+      if List.for_all check_repl el then SdpRet.Success, obj, vals
+      else SdpRet.PartialSuccess, obj, vals
 
   let ( !! ) = const
   let ( ! ) = scalar

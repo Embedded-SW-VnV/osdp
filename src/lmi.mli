@@ -122,8 +122,9 @@ M.(m1 * m2 + eye 3)]} *)
 
   type options = {
     sdp : Sdp.options;  (** default: {{:./Sdp.html#VALdefault}Sdp.default} *)
-    verbose : int  (** verbosity level, non negative integer, 0 (default)
-                       means no output (but see sdp.verbose just above) *)
+    verbose : int;  (** verbosity level, non negative integer, 0 (default)
+                        means no output (but see sdp.verbose just above) *)
+    pad : float  (** padding factor (default: 2.), 0. means no padding *)
   }
 		   
   (** Default values above. *)
@@ -144,21 +145,29 @@ M.(m1 * m2 + eye 3)]} *)
 
   (** [solve obj l] tries to optimise the objective [obj] under the
       constraint that each matrix expressions in [l] is positive
-      semi-definite. Returns both the achieved objective value and a
-      map with values for each variable appearing in [l]. The returned
-      map will be empty in case of failure (i.e., [SdpRet.t] being not
-      Success or PartialSuccess).
+      semi-definite. If [solver] is provided, it will supersed the
+      solver given in [options]. Returns a tuple [ret, (pobj, dobj),
+      values]. If {{:./SdpRet.html#VALis_success}SdpRet.is_success}
+      [ret], then the following holds. [pobj] (resp. [dobj]) is the
+      achieved primal (resp. dual) objective value. [values] contains
+      values for each variable appearing in [l] (to be retrieved
+      through following functions {{:#VALvalue}value} and
+      {{:#VALvalue_mat}value_mat}).
 
-      @raise Dimension_error with an explanatory message in case something
-      inconsistent is found or the type of a variable cannot be
-      determined.
+      If [ret] is {{:./SdpRet.html#TYPEELTt.Success}SdpRet.Success},
+      then all LMI constraints in [l] are indeed satisfied by the
+      values returned in [values] (this is checked through the
+      function {{:#VALcheck}check} below).
+
+      @raise Dimension_error with an explanatory message in case
+      something inconsistent is found in a LMI.
 
       @raise Not_linear if the objective [obj] is not a scalar (1x1
       matrix) or one of the input matrix expressions in [l] is non
       linear.
 
-      @raise Not_symmetric if one of the input matrix expressions in [l]
-      is non symmetric. *)
+      @raise Not_symmetric if one of the input matrix expressions in
+      [l] is non symmetric. *)
   val solve : ?options:options -> ?solver:Sdp.solver ->
               obj -> matrix_expr list ->
               SdpRet.t * (float * float) * values
@@ -179,6 +188,16 @@ M.(m1 * m2 + eye 3)]} *)
       corresponding value in [values]. *)
   val value_mat : matrix_expr -> values -> Mat.t
 
+  (** If [check ?options e ?values] returns [true], then [e] is
+      positive semi-definite (PSD). Otherwise, either [e] is not PSD
+      or it is not positive definite enough for the proof to
+      succeed. If [e] contains variables, they are replaced by the
+      corresponding value in [values] ([values] is empty by default).
+
+      @raise Not_found if [e] contains a variable not present in
+      [values]. *)
+  val check : ?options:options -> ?values:values -> matrix_expr -> bool
+                                                  
   (** {2 Printing function.} *)
 
   (** Printer for LMI. *)
