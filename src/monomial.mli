@@ -63,8 +63,10 @@ val derive : t -> int -> int * t
 
 val compare : t -> t -> int
 
-(** [nb_vars m] returns the largest index of a variable appearing in
-    [m] (0 if none). *)
+(** [nb_vars m] returns the largest index (starting from 0) of a
+    variable appearing in [m] plus one (0 if none). For instance,
+    [nb_var m] returns 4 if [m] is the monomial x_0 x_3^2 (even if
+    variables x_1 and x_2 don't actually appear in [m]) *)
 val nb_vars : t -> int
 
 val degree : t -> int

@@ -91,8 +91,10 @@ module type S = sig
 
   val compare : t -> t -> int
 
-  (** [nb_vars p] returns the largest index of a variable appearing in
-      [p] (0 if none). *)
+  (** [nb_vars p] returns the largest index (starting from 0) of a
+      variable appearing in [p] plus one (0 if none). For instance,
+      [nb_var p] returns 5 if [p] is the polynomial x_2^2 + x_4 (even if
+      variables x_0, x_1 and x_3 don't actually appear in [p]) *)
   val nb_vars : t -> int
 
   (** -1 for the null polynomial. *)

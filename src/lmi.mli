@@ -58,7 +58,7 @@ module type S = sig
   (** [scalar s] returns [Const (Mat.of_list_list [[s]])]. *)
   val scalar : Mat.Coeff.t -> matrix_expr
 
-  (** {2 SOS.} *)
+  (** {2 LMI.} *)
 
   type options = {
     sdp : Sdp.options;  (** default: {{:./Sdp.html#VALdefault}Sdp.default} *)
