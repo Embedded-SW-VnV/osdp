@@ -170,7 +170,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   exception Not_linear
 
   (* Compile each polynomial_expr as a LEPoly.t. *)
-  let scalarize (el : polynomial_expr list) : LEPoly.t list =
+  let scalarize (e : polynomial_expr) : LEPoly.t =
 
     let rec scalarize = function
       | Const p ->
@@ -192,7 +192,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          LEPoly.compose (scalarize e) (List.map scalarize el)
       | Derive (e, i) -> LEPoly.derive (scalarize e) i in
 
-    try List.map scalarize el
+    try scalarize e
     with
     | LEPoly.Dimension_error -> raise Dimension_error
     | LinExpr.Not_linear -> raise Not_linear
@@ -243,9 +243,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         (fun id (m, i) -> Ident.Map.add id i m, i + 1)
         env (Ident.Map.empty, 0) in
 
-    let obj, scalarized = match scalarize (obj :: el) with
-      | [] -> assert false
-      | obj :: scalarized -> obj, scalarized in
+    let obj = scalarize obj in
+    let scalarized = List.map scalarize el in
 
     (* scaling *)
     let scaling_factors =

@@ -16,7 +16,7 @@ open Osdp.Lmi.Float
 
 let () = Format.printf "LMI@."
 let a = Mat.of_list_list [[1.5; -0.7]; [1.; 0.]]
-let p = var "p"
+let p = var "p" 2
 let e1 = Sub (p,
               Mult (Mult (Transpose (Const a),
                           p),

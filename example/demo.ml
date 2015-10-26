@@ -7,7 +7,7 @@ let solver = Osdp.Sdp.Csdp  (* Osdp.Sdp.Mosek, Osdp.Sdp.Sdpa,... *)
 open Osdp.Lmi.Float
 
 let () = Format.printf "LMI@."
-let p = var "p"
+let p = var "p" 2
 let a = << [1.5, -0.7; 1, 0] >>  (* or <:lmi< ... >> *)
 let e1 = << p - a ' * p * a >>
 let e2 = << p - eye(2) >>

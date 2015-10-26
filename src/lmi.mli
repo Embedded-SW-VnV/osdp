@@ -37,7 +37,7 @@ module type S = sig
       details. *)
   type matrix_expr =
     | Const of Mat.t
-    | Var of var  (** All matrix variables are symmetric. *)
+    | Var of var  (** All variables are symmetric square matrices. *)
     | Zeros of int * int
     | Eye of int
     | Kron of int * int * int
@@ -50,11 +50,10 @@ module type S = sig
     | Sub of matrix_expr * matrix_expr
     | Mult of matrix_expr * matrix_expr  (** [mult_scalar] or [mult], according to he size of the first argument. *)
 
-  (** [var ~dim:n s] creates a new variable ([Var v]). [n] is the size
-      of the variable (scalars and matrix of size 1 are considered the
-      same). It must be positive. By default, [n] will be infered from
-      the context (if possible). *)
-  val var : ?dim:int -> string -> matrix_expr
+  (** [var s n] creates a new variable ([Var v]). [n] is the size of
+      the variable (scalars and matrices of size 1 are considered the
+      same). It must be positive. *)
+  val var : string -> int -> matrix_expr
 
   (** [scalar s] returns [Const (Mat.of_list_list [[s]])]. *)
   val scalar : Mat.Coeff.t -> matrix_expr
