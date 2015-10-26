@@ -35,6 +35,7 @@ module type S = sig
   val var_poly : string -> int -> ?homogen:bool -> int ->
                  polynomial_expr * (Monomial.t * polynomial_expr) list
   val const : Poly.t -> polynomial_expr
+  val scalar : Poly.Coeff.t -> polynomial_expr
   val monomial : Monomial.t -> polynomial_expr
   val mult_scalar : Poly.Coeff.t -> polynomial_expr -> polynomial_expr
   val add : polynomial_expr -> polynomial_expr -> polynomial_expr
@@ -117,6 +118,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     List.map (fun (m, id) -> m, Var (Vscalar id)) l
 
   let const p = Const p
+  let scalar c = Const (Poly.const c)
   let monomial m = Const (Poly.monomial m)
   let mult_scalar c e = Mult_scalar (c, e)
   let add e1 e2 = Add (e1, e2)
@@ -147,7 +149,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | Mult (e1, e2) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
          (pp_prior 1) e1 (pp_prior 1) e2
-      | Power (e, d) -> Format.fprintf fmt "%a^%i" (pp_prior 3) e d
+      | Power (e, d) -> Format.fprintf fmt "%a^%d" (pp_prior 3) e d
       | Compose (e, el) ->
          Format.fprintf fmt "%a(@[%a@])" (pp_prior 2) e
                         (Utils.pp_list ~sep:",@ " (pp_prior 0)) el
@@ -520,7 +522,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
   let ( !! ) = const
   let ( ?? ) i = const (Poly.( ?? ) i)
-  let ( ! ) c = const (Poly.const c)
+  let ( ! ) = scalar
   let ( *. ) = mult_scalar
   let ( ~- ) = sub (const Poly.zero)
   let ( + ) = add

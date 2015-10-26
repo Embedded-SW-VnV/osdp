@@ -35,11 +35,35 @@ module type S = sig
     | Add of matrix_expr * matrix_expr
     | Sub of matrix_expr * matrix_expr
     | Mult of matrix_expr * matrix_expr
+    | Power of matrix_expr * int
   val var : string -> int -> matrix_expr
+  val const : Mat.t -> matrix_expr
   val scalar : Mat.Coeff.t -> matrix_expr
+  val zeros : int -> int -> matrix_expr
+  val eye : int -> matrix_expr
+  val kron : int -> int -> int -> matrix_expr
+  val kron_sym : int -> int -> int -> matrix_expr
+  val block : matrix_expr array array -> matrix_expr
+  val lift_block : matrix_expr -> int -> int -> int -> int -> matrix_expr
+  val transpose : matrix_expr -> matrix_expr
+  val minus : matrix_expr -> matrix_expr
+  val add : matrix_expr -> matrix_expr -> matrix_expr
+  val sub : matrix_expr -> matrix_expr -> matrix_expr
+  val mult : matrix_expr -> matrix_expr -> matrix_expr
+  val power : matrix_expr -> int -> matrix_expr
   val nb_lines : matrix_expr -> int
   val nb_cols : matrix_expr -> int
   val is_symmetric : matrix_expr -> bool
+  val ( !! ) : Mat.t -> matrix_expr
+  val ( ! ) : Mat.Coeff.t -> matrix_expr
+  val ( *. ) : Mat.Coeff.t -> matrix_expr -> matrix_expr
+  val ( ~- ) : matrix_expr -> matrix_expr
+  val ( + ) : matrix_expr -> matrix_expr -> matrix_expr
+  val ( - ) : matrix_expr -> matrix_expr -> matrix_expr
+  val ( * ) : matrix_expr -> matrix_expr -> matrix_expr
+  val ( ** ) : matrix_expr -> int -> matrix_expr
+  val ( >= ) : matrix_expr -> matrix_expr -> matrix_expr
+  val ( <= ) : matrix_expr -> matrix_expr -> matrix_expr
   type options = { 
     sdp : Sdp.options;
     verbose : int
@@ -77,6 +101,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
     | Add of matrix_expr * matrix_expr
     | Sub of matrix_expr * matrix_expr
     | Mult of matrix_expr * matrix_expr
+    | Power of matrix_expr * int
 
   let var s dim =
     let name = Ident.create s in
@@ -93,7 +118,20 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       a in
     Var { name = name; mat = a }
                               
+  let const m = Const m
   let scalar s = Const (Mat.of_list_list [[s]])
+  let zeros n m = Zeros (n, m)
+  let eye n = Eye n
+  let kron n i j = Kron (n, i, j)
+  let kron_sym n i j = Kron_sym (n, i, j)
+  let block a = Block a
+  let lift_block m i j k l = Lift_block (m, i, j, k, l)
+  let transpose m = Transpose m
+  let minus m = Minus m
+  let add m1 m2 = Add (m1, m2)
+  let sub m1 m2 = Sub (m1, m2)
+  let mult m1 m2 = Mult (m1, m2)
+  let power m n = Power (m, n)
 
   let pp fmt e =
     let rec pp_prior prior fmt = function
@@ -105,8 +143,8 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
          end
       | Const m -> Mat.pp fmt m
       | Var v -> Ident.pp fmt v.name
-      | Zeros (n, m) -> Format.fprintf fmt "zeros(%i, %i)" n m
-      | Eye n -> Format.fprintf fmt "eye(%i, %i)" n n
+      | Zeros (n, m) -> Format.fprintf fmt "zeros(%d, %d)" n m
+      | Eye n -> Format.fprintf fmt "eye(%d, %d)" n n
       | Kron (n, i, j) -> Mat.pp fmt (Mat.kron n i j)
       | Kron_sym (n, i, j) -> Mat.pp fmt (Mat.kron_sym n i j)
       | Block a ->
@@ -115,7 +153,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
                            (fun fmt -> Format.fprintf fmt "@[%a@]"
                               (Utils.pp_array ~sep:",@ " (pp_prior 0)))) a
       | Lift_block (m, i, j, k, l) ->
-         Format.fprintf fmt "lift_block(@[%a,@ %i, %i, %i, %i@])"
+         Format.fprintf fmt "lift_block(@[%a,@ %d, %d, %d, %d@])"
                         (pp_prior 0) m i j k l
       | Transpose m -> Format.fprintf fmt "%a'" (pp_prior 2) m
       | Minus m -> Format.fprintf fmt "-%a" (pp_prior (max 1 prior)) m
@@ -127,7 +165,8 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
          (pp_prior 0) e1 (pp_prior 1) e2
       | Mult (e1, e2) -> Format.fprintf fmt
          (if 1 < prior then "(@[%a@ * %a@])" else "@[%a@ * %a@]")
-         (pp_prior 1) e1 (pp_prior 1) e2 in
+         (pp_prior 1) e1 (pp_prior 1) e2
+      | Power (e, d) -> Format.fprintf fmt "%a^%d" (pp_prior 2) e d in
     pp_prior 0 fmt e
 
   (*************)
@@ -180,7 +219,8 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
            | [[e1]] -> LEMat.mult_scalar e1 e2
            | _ -> assert false
          else
-           LEMat.mult e1 e2 in
+           LEMat.mult e1 e2
+      | Power (e, d) -> LEMat.power (scalarize e) d in
 
     (* scalarize *)
     let e =
@@ -318,13 +358,25 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       | Minus m -> Mat.minus (aux m)
       | Add (e1, e2) -> Mat.add (aux e1) (aux e2)
       | Sub (e1, e2) -> Mat.sub (aux e1) (aux e2)
-      | Mult (e1, e2) -> Mat.mult (aux e1) (aux e2) in
+      | Mult (e1, e2) -> Mat.mult (aux e1) (aux e2)
+      | Power (e, d) -> Mat.power (aux e) d in
     aux e
 
   let value e m =
     match Mat.to_list_list (value_mat e m) with
     | [[s]] -> s
     | _ -> raise (Dimension_error "value (scalar expected)")
+
+  let ( !! ) = const
+  let ( ! ) = scalar
+  let ( *. ) c m = mult (scalar c) m
+  let ( ~- ) = minus
+  let ( + ) = add
+  let ( - ) = sub
+  let ( * ) = mult
+  let ( ** ) = power
+  let ( >= ) e1 e2 = e1 - e2
+  let ( <= ) e1 e2 = e2 - e1
 end
 
 module Q = Make (Matrix.Q)

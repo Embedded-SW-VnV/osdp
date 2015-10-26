@@ -17,7 +17,7 @@
 (*                                  if e = 1 then *)
 (*                                    Format.fprintf fmt "%s" n *)
 (*                                  else *)
-(*                                    Format.fprintf fmt "%s^%i" n e)) *)
+(*                                    Format.fprintf fmt "%s^%d" n e)) *)
 (*        l *)
 
 (* let pp = pp_names [] *)

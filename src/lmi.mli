@@ -49,14 +49,32 @@ module type S = sig
     | Add of matrix_expr * matrix_expr
     | Sub of matrix_expr * matrix_expr
     | Mult of matrix_expr * matrix_expr  (** [mult_scalar] or [mult], according to he size of the first argument. *)
+    | Power of matrix_expr * int
 
   (** [var s n] creates a new variable ([Var v]). [n] is the size of
       the variable (scalars and matrices of size 1 are considered the
       same). It must be positive. *)
   val var : string -> int -> matrix_expr
 
+  (** Functions for above constructors. *)
+
+  val const : Mat.t -> matrix_expr
+
   (** [scalar s] returns [Const (Mat.of_list_list [[s]])]. *)
   val scalar : Mat.Coeff.t -> matrix_expr
+
+  val zeros : int -> int -> matrix_expr
+  val eye : int -> matrix_expr
+  val kron : int -> int -> int -> matrix_expr
+  val kron_sym : int -> int -> int -> matrix_expr
+  val block : matrix_expr array array -> matrix_expr
+  val lift_block : matrix_expr -> int -> int -> int -> int -> matrix_expr
+  val transpose : matrix_expr -> matrix_expr
+  val minus : matrix_expr -> matrix_expr
+  val add : matrix_expr -> matrix_expr -> matrix_expr
+  val sub : matrix_expr -> matrix_expr -> matrix_expr
+  val mult : matrix_expr -> matrix_expr -> matrix_expr
+  val power : matrix_expr -> int -> matrix_expr
 
   (** {3 Various operations.} *)
 
@@ -65,6 +83,41 @@ module type S = sig
 
   val is_symmetric : matrix_expr -> bool
 
+  (** {3 Prefix and infix operators.} *)
+
+  (** To use this operators, it's convenient to use local opens. For
+      instance to write the matrix operations m1 * m2 + I_3x3:
+
+      {[let module M = Osdp.Matrix.Float in
+M.(m1 * m2 + eye 3)]} *)
+
+  (** See the module {{:./Matrix.S.html}Matrix.S} for
+      details. *)
+
+  (** {{:#TYPEELTmatrix_expr.Const}Const} *)
+  val ( !! ) : Mat.t -> matrix_expr
+                        
+  (** {{:#VALscalar}scalar} *)
+  val ( ! ) : Mat.Coeff.t -> matrix_expr
+                        
+  val ( *. ) : Mat.Coeff.t -> matrix_expr -> matrix_expr
+                        
+  val ( ~- ) : matrix_expr -> matrix_expr
+                                 
+  val ( + ) : matrix_expr -> matrix_expr -> matrix_expr
+                        
+  val ( - ) : matrix_expr -> matrix_expr -> matrix_expr
+                        
+  val ( * ) : matrix_expr -> matrix_expr -> matrix_expr
+                        
+  val ( ** ) : matrix_expr -> int -> matrix_expr
+
+  (** [e1 >= e2] is just syntactic sugar for [e1 - e2]. *)
+  val ( >= ) : matrix_expr -> matrix_expr -> matrix_expr
+                                           
+  (** [e1 <= e2] is just syntactic sugar for [e2 - e1]. *)
+  val ( <= ) : matrix_expr -> matrix_expr -> matrix_expr
+                                           
   (** {2 LMI.} *)
 
   type options = {

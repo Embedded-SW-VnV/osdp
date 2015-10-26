@@ -38,19 +38,19 @@ module type S = sig
   val add : t -> t -> t
   val sub : t -> t -> t
   val mult : t -> t -> t
-  module Infix : sig
-    val ( ~:. ) : t -> t
-    val ( ~: ) : t -> t
-    val ( */: ) : Coeff.t -> t -> t
-    val ( +: ) : t -> t -> t
-    val ( -: ) : t -> t -> t
-    val ( *: ) : t -> t -> t
-  end
+  val power : t -> int -> t
   val nb_lines : t -> int
   val nb_cols : t -> int
   val is_symmetric : t -> bool
   val remove_0_row_cols : t -> t
   val gauss_split : t -> int * t * t
+  val ( ~: ) : t -> t
+  val ( ~- ) : t -> t
+  val ( *. ) : Coeff.t -> t -> t
+  val ( + ) : t -> t -> t
+  val ( - ) : t -> t -> t
+  val ( * ) : t -> t -> t
+  val ( ** ) : t -> int -> t
   val pp : Format.formatter -> t -> unit
 end
 
@@ -284,14 +284,12 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
       done;
       { line = m1.line; col = m2.col; content = c }
 
-  module Infix = struct
-  let ( ~:. ) = transpose
-  let ( ~: ) = minus
-  let ( */: ) = mult_scalar
-  let ( +: ) = add
-  let ( -: ) = sub
-  let ( *: ) = mult
-  end
+  let rec power m n =
+    if n <= 0 then eye m.line
+    else
+      let m' = power m (n / 2) in
+      if n mod 2 = 0 then mult m' m'
+      else mult m (mult m' m')
 
   let nb_lines m = m.line
   let nb_cols m = m.col
@@ -425,6 +423,13 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
     let base_change = of_list_list base_change_list in
     rank, m, base_change
 
+  let ( ~: ) = transpose
+  let ( ~- ) = minus
+  let ( *. ) = mult_scalar
+  let ( + ) = add
+  let ( - ) = sub
+  let ( * ) = mult
+  let ( ** ) = power
 end
 
 module Q = Make (Scalar.Q) 

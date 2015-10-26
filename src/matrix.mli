@@ -109,27 +109,9 @@ module type S = sig
       the second as rows. *)
   val mult : t -> t -> t
 
-  (** Module that can be opened to get nice infix operatos. *)
-  module Infix : sig
-    (** Same as {!transpose}. *)
-    val ( ~:. ) : t -> t
+  (** [power m n] computes m^n, n must be non negative. *)
+  val power : t -> int -> t
 
-    (** Same as {!minus}. *)
-    val ( ~: ) : t -> t
-
-    (** Same as {!mult_scalar}.  *)
-    val ( */: ) : Coeff.t -> t -> t
-
-    (** Same as {!add}. *)
-    val ( +: ) : t -> t -> t
-
-    (** Same as {!sub}. *)
-    val ( -: ) : t -> t -> t
-
-    (** Same as {!mult}. *)
-    val ( *: ) : t -> t -> t
-  end
-    
   (** {2 Various operations.} *)
                                          
   val nb_lines : t -> int
@@ -148,6 +130,35 @@ module type S = sig
       dependencies, and [m2] a matrix of size l' x l mapping original
       dimensions in [m] to the ones of [m1] (m1 = m2 x m). *)
   val gauss_split : t -> int * t * t
+
+  (** {2 Prefix and infix operators.} *)
+
+  (** To use this operators, it's convenient to use local opens. For
+      instance to write the matrix operations m1 * m2 + I_3x3:
+
+      {[let module M = Osdp.Matrix.Float in
+M.(m1 * m2 + eye 3)]} *)
+
+  (** Same as {{:#VALtranspose}transpose}. *)
+  val ( ~: ) : t -> t
+                       
+  (** Same as {{:#VALminus}minus}. *)
+  val ( ~- ) : t -> t
+                      
+  (** Same as {{:#VALmult_scalar}mult_scalar}. *)
+  val ( *. ) : Coeff.t -> t -> t
+                                  
+  (** Same as {{:#VALadd}add}. *)
+  val ( + ) : t -> t -> t
+
+  (** Same as {{:#VALsub}sub}. *)
+  val ( - ) : t -> t -> t
+                           
+  (** Same as {{:#VALmult}mult}. *)
+  val ( * ) : t -> t -> t
+
+  (** Same as {{:#VALpower}power}. *)
+  val ( ** ) : t -> int -> t
 
   (** {2 Printing.} *)
                                          

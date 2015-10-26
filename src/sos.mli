@@ -67,6 +67,7 @@ module type S = sig
   (** Functions for above constructors. *)
 
   val const : Poly.t -> polynomial_expr
+  val scalar : Poly.Coeff.t -> polynomial_expr
   val monomial : Monomial.t -> polynomial_expr
   val mult_scalar : Poly.Coeff.t -> polynomial_expr -> polynomial_expr
   val add : polynomial_expr -> polynomial_expr -> polynomial_expr
@@ -107,6 +108,7 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
                         
   val ( ?? ) : int -> polynomial_expr
 
+  (** {{:#VALscalar}scalar} *)
   val ( ! ) : Poly.Coeff.t -> polynomial_expr
                         
   val ( *. ) : Poly.Coeff.t -> polynomial_expr -> polynomial_expr
