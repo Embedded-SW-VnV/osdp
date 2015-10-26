@@ -1,7 +1,7 @@
 (*
  * OSDP (OCaml SDP) is an OCaml frontend library to semi-definite
  * programming (SDP) solvers.
- * Copyright (C) 2012, 2014  P. Roux and P.L. Garoche
+ * Copyright (C) 2012, 2014, 2015  P. Roux and P.L. Garoche
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by

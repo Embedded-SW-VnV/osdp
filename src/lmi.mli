@@ -1,7 +1,7 @@
 (*
  * OSDP (OCaml SDP) is an OCaml frontend library to semi-definite
  * programming (SDP) solvers.
- * Copyright (C) 2012, 2014  P. Roux and P.L. Garoche
+ * Copyright (C) 2012, 2014, 2015  P. Roux and P.L. Garoche
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -26,6 +26,8 @@
     See file {{:../example/demo.ml}example/demo.ml} for examples of use. *)
 
 module type S = sig
+  (** {2 Matrix expressions.} *)
+
   module Mat : Matrix.S
 
   (** Scalar or symmetric matrix variables. *)
@@ -57,21 +59,23 @@ module type S = sig
   (** [scalar s] returns [Const (Mat.of_list_list [[s]])]. *)
   val scalar : Mat.Coeff.t -> matrix_expr
 
+  (** {2 SOS.} *)
+
+  type options = {
+    sdp : Sdp.options;  (** default: {{:./Sdp.html#VALdefault}Sdp.default} *)
+    verbose : int  (** verbosity level, non negative integer, 0 (default)
+                       means no output (but see sdp.verbose just above) *)
+  }
+		   
+  (** Default values above. *)
+  val default : options
+
   (** [Minimize e] or [Maximize e] or [Purefeas] (just checking
       feasibility). [e] must be a scalar (i.e., a matrix of size
       1). *)
   type obj = Minimize of matrix_expr | Maximize of matrix_expr | Purefeas
 
   type values
-
-  type options = {
-      sdp : Sdp.options;  (** default: {{:./Sdp.html#VALdefault}Sdp.default} *)
-      verbose : int;  (** verbosity level, non negative integer, 0 (default)
-                        means no output (but see sdp.verbose just above) *)
-    }
-		   
-  (** Default values above. *)
-  val default : options
 
   exception Type_error of string
 
@@ -96,24 +100,27 @@ module type S = sig
 
       @raise Not_symmetric if one of the input matrix expressions in [l]
       is non symmetric. *)
-  val solve : ?options:options -> ?solver:Sdp.solver -> obj -> matrix_expr list ->
+  val solve : ?options:options -> ?solver:Sdp.solver ->
+              obj -> matrix_expr list ->
               SdpRet.t * (float * float) * values
 
-  (** [value v m] returns the value contained in [m] for variable [v].
+  (** [value e values] returns the evaluation of matrix expression
+      [e], replacing all [Var] by the corresponding value in [values].
 
-      @raise Not_found if the given matrix_expr [v] was not obtained
-      with the function [var] or if no value is found for [v] in [m]
-      or if the value found is a matrix (of dimension greater than
-      1). *)
+      @raise Not_found if one of the variables appearing in [e] has no
+      corresponding value in [values].
+
+      @raise Type_error if [e] is not a scalar. *)
   val value : matrix_expr -> values -> Mat.Coeff.t
 
-  (** [value v m] returns the value contained in [m] for matrix
-      variable [v].
+  (** [value_mat e values] returns the evaluation of matrix expression
+      [e], replacing all [Var] by the correspoding value in [values].
 
-      @raise Not_found if the given matrix_expr [v] was not obtained
-      with the function [var] or if no value is found for [v] in
-      [m]. *)
+      @raise Not_found if one of the variables appearing in [e] has no
+      corresponding value in [values]. *)
   val value_mat : matrix_expr -> values -> Mat.t
+
+  (** {2 Printing function.} *)
 
   (** Printer for LMI. *)
   val pp : Format.formatter -> matrix_expr -> unit

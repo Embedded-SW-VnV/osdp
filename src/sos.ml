@@ -1,7 +1,7 @@
 (*
  * OSDP (OCaml SDP) is an OCaml frontend library to semi-definite
  * programming (SDP) solvers.
- * Copyright (C) 2012, 2014  P. Roux and P.L. Garoche
+ * Copyright (C) 2012, 2014, 2015  P. Roux and P.L. Garoche
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -85,7 +85,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
   type polynomial_var = {
     name : Ident.t;
-    poly : (Monomial.t * Ident.t) list }
+    poly : (Monomial.t * Ident.t) list
+  }
 
   type var = Vscalar of Ident.t | Vpoly of polynomial_var
 

@@ -1,7 +1,7 @@
 (*
  * OSDP (OCaml SDP) is an OCaml frontend library to semi-definite
  * programming (SDP) solvers.
- * Copyright (C) 2012, 2014  P. Roux and P.L. Garoche
+ * Copyright (C) 2012, 2014, 2015  P. Roux and P.L. Garoche
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -37,19 +37,19 @@ module type S = sig
     | Mult of matrix_expr * matrix_expr
   val var : ?dim:int -> string -> matrix_expr
   val scalar : Mat.Coeff.t -> matrix_expr
+  type options = { 
+    sdp : Sdp.options;
+    verbose : int
+  }
+  val default : options
   type obj = Minimize of matrix_expr | Maximize of matrix_expr | Purefeas
   type values
-  type options = { 
-      sdp : Sdp.options;
-      verbose : int;
-    }
-  val default : options
-
   exception Type_error of string
   exception Not_linear
   exception Not_symmetric
-  val solve : ?options:options -> ?solver:Sdp.solver -> obj -> matrix_expr list ->
-    SdpRet.t * (float * float) * values
+  val solve : ?options:options -> ?solver:Sdp.solver ->
+              obj -> matrix_expr list ->
+              SdpRet.t * (float * float) * values
   val value : matrix_expr -> values -> Mat.Coeff.t
   val value_mat : matrix_expr -> values -> Mat.t
   val pp : Format.formatter -> matrix_expr -> unit
@@ -387,11 +387,11 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
   (*********)
 
   type options = {
-      sdp : Sdp.options;
-      verbose : int;
-    }
+    sdp : Sdp.options;
+    verbose : int
+  }
 
-  let default = { sdp = Sdp.default; verbose = 0;  }
+  let default = { sdp = Sdp.default; verbose = 0 }
 
   type obj = Minimize of matrix_expr | Maximize of matrix_expr | Purefeas
 
@@ -518,28 +518,27 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       let vars = Ident.Map.map Mat.of_array_array matrices in
        ret, res, vars
 
-  let value e env =
-    let id = match e with Var v -> v.name | _ -> raise Not_found in
-    match Mat.to_list_list (Ident.Map.find id env) with
+  let rec value_mat e m =
+    let rec aux = function
+      | Const mat -> mat
+      | Var v -> Ident.Map.find v.name m
+      | Zeros (n, m) -> Mat.zeros n m
+      | Eye n -> Mat.eye n
+      | Kron (n, i, j) -> Mat.kron n i j
+      | Kron_sym (n, i, j) -> Mat.kron_sym n i j
+      | Block a -> Mat.block (Array.map (Array.map aux) a)
+      | Lift_block (m, i, j, k, l) -> Mat.lift_block (aux m) i j k l
+      | Transpose m -> Mat.transpose (aux m)
+      | Minus m -> Mat.minus (aux m)
+      | Add (e1, e2) -> Mat.add (aux e1) (aux e2)
+      | Sub (e1, e2) -> Mat.sub (aux e1) (aux e2)
+      | Mult (e1, e2) -> Mat.mult (aux e1) (aux e2) in
+    aux e
+
+  let value e m =
+    match Mat.to_list_list (value_mat e m) with
     | [[s]] -> s
-    | _ -> raise Not_found
-
-  let rec value_mat e env =
-    match e with
-    | Var v -> Ident.Map.find v.name env
-    | Const mat -> mat
-    | Zeros (n, m) -> Mat.zeros n m
-    | Eye n -> Mat.eye n
-    | Kron (n, i, j) -> Mat.kron n i j
-    | Kron_sym (n, i, j) -> Mat.kron_sym n i j
-    | Block a -> Mat.block (Array.map (Array.map (fun mat -> value_mat mat env)) a)
-    | Lift_block (m, i, j, k, l) -> Mat.lift_block (value_mat m env) i j k l
-    | Transpose m -> Mat.transpose (value_mat m env)
-    | Minus m -> Mat.minus (value_mat m env)
-    | Add (e1, e2) -> Mat.add (value_mat e1 env) (value_mat e2 env)
-    | Sub (e1, e2) -> Mat.sub (value_mat e1 env) (value_mat e2 env)
-    | Mult (e1, e2) -> Mat.mult (value_mat e1 env) (value_mat e2 env)
-
+    | _ -> raise (Type_error "scalar expected.")
 end
 
 module Q = Make (Matrix.Q)
