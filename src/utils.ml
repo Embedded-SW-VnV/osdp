@@ -103,3 +103,17 @@ let float_of_q q =
     let l, u = itv_float_of_q q in
     (* Keep a closest one. *)
     if Q.leq (Q.sub (Q.of_float u) q) (Q.sub q (Q.of_float l)) then u else l
+
+let profile f =
+  let fnbeg = Filename.temp_file "beg" "" in
+  let fnend = Filename.temp_file "end" "" in
+  let _ = Sys.command ("date '+%s.%N' > " ^ fnbeg) in
+  let r = f () in
+  let _ = Sys.command ("date '+%s.%N' > " ^ fnend) in
+  let t fn =
+    let ic = open_in fn in
+    let t = float_of_string (input_line ic) in
+    close_in ic;
+    Sys.remove fn;
+    t in
+  r, t fnend -. t fnbeg

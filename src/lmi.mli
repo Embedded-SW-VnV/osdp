@@ -99,7 +99,10 @@ M.(m1 * m2 + eye 3)]} *)
                         
   (** {{:#VALscalar}scalar} *)
   val ( ! ) : Mat.Coeff.t -> matrix_expr
-                        
+
+  (** {{:#VALtranspose}transpose} *)
+  val ( ~: ) : matrix_expr -> matrix_expr
+                               
   val ( *. ) : Mat.Coeff.t -> matrix_expr -> matrix_expr
                         
   val ( ~- ) : matrix_expr -> matrix_expr

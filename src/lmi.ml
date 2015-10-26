@@ -56,6 +56,7 @@ module type S = sig
   val is_symmetric : matrix_expr -> bool
   val ( !! ) : Mat.t -> matrix_expr
   val ( ! ) : Mat.Coeff.t -> matrix_expr
+  val ( ~: ) : matrix_expr -> matrix_expr
   val ( *. ) : Mat.Coeff.t -> matrix_expr -> matrix_expr
   val ( ~- ) : matrix_expr -> matrix_expr
   val ( + ) : matrix_expr -> matrix_expr -> matrix_expr
@@ -416,6 +417,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
 
   let ( !! ) = const
   let ( ! ) = scalar
+  let ( ~: ) = transpose
   let ( *. ) c m = mult (scalar c) m
   let ( ~- ) = minus
   let ( + ) = add

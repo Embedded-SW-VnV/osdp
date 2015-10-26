@@ -119,6 +119,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
 
   let rec power p n =
     if n <= 0 then one
+    else if n = 1 then p
     else
       let p' = power p (n / 2) in
       if n mod 2 = 0 then mult p' p'
