@@ -76,7 +76,7 @@ module type S = sig
 
   type values
 
-  exception Type_error of string
+  exception Dimension_error of string
 
   exception Not_linear
 
@@ -89,7 +89,7 @@ module type S = sig
       map will be empty in case of failure (i.e., [SdpRet.t] being not
       Success or PartialSuccess).
 
-      @raise Type_error with an explanatory message in case something
+      @raise Dimension_error with an explanatory message in case something
       inconsistent is found or the type of a variable cannot be
       determined.
 
@@ -109,7 +109,7 @@ module type S = sig
       @raise Not_found if one of the variables appearing in [e] has no
       corresponding value in [values].
 
-      @raise Type_error if [e] is not a scalar. *)
+      @raise Dimension_error if [e] is not a scalar. *)
   val value : matrix_expr -> values -> Mat.Coeff.t
 
   (** [value_mat e values] returns the evaluation of matrix expression

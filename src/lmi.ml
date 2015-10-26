@@ -44,7 +44,7 @@ module type S = sig
   val default : options
   type obj = Minimize of matrix_expr | Maximize of matrix_expr | Purefeas
   type values
-  exception Type_error of string
+  exception Dimension_error of string
   exception Not_linear
   exception Not_symmetric
   val solve : ?options:options -> ?solver:Sdp.solver ->
@@ -136,7 +136,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
   (* matrices whose coefficients are linear expressions *)
   module LEMat = Matrix.Make (LinExpr.MakeScalar (LinExprSC))
 
-  exception Type_error of string
+  exception Dimension_error of string
 
   exception Not_linear
 
@@ -144,7 +144,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
      variables and returns a matrix of linear expressions in those
      scalar variables.
 
-     @raise Type_error in case [el] contains an inconsistent
+     @raise Dimension_error in case [el] contains an inconsistent
      operation.
 
      @raise LinExpr.Not_linear if one of the input matrix expressions
@@ -183,7 +183,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
     let e =
       try scalarize e
       with
-      | LEMat.Dimension_error -> raise (Type_error "")
+      | LEMat.Dimension_error s -> raise (Dimension_error s)
       | LinExpr.Not_linear -> raise Not_linear in
     LEMat.to_array_array e
 
@@ -314,7 +314,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
   let value e m =
     match Mat.to_list_list (value_mat e m) with
     | [[s]] -> s
-    | _ -> raise (Type_error "scalar expected.")
+    | _ -> raise (Dimension_error "value (scalar expected)")
 end
 
 module Q = Make (Matrix.Q)

@@ -21,7 +21,7 @@
 module type S = sig
   module Coeff : Scalar.S
   type t
-  exception Dimension_error
+  exception Dimension_error of string
   val of_list_list : Coeff.t list list -> t
   val to_list_list : t -> Coeff.t list list
   val of_array_array : Coeff.t array array -> t
@@ -59,7 +59,7 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
 
   type t = { line : int; col : int; content : ET.t array array }
 
-  exception Dimension_error
+  exception Dimension_error of string
 
   let of_list_list = function
     | [] -> { line = 0; col = 0; content = [||] }
@@ -73,8 +73,10 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
                             (fun j e -> content.(i).(j) <- e; j + 1)
                             0
                             l in
-                  if c <> col then raise Dimension_error;
-                  i + 1)
+                  if c = col then i + 1 else
+                    let s = Format.sprintf "%dth line of %d elements in \
+                                            matrix with %d columns" i c col in
+                    raise (Dimension_error ("of_list_list (" ^ s ^ ")")))
                  0
                  ll in
        { line = line;
@@ -165,20 +167,25 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
 
   let block a =
     if Array.length a <= 0 || Array.length a.(0) <= 0 then
-      raise Dimension_error
+      raise (Dimension_error "block (empty block)")
     else begin
       (* All lines must have the same number of blocks. *)
       let col_blocks = Array.length a.(0) in
       for i = 1 to Array.length a - 1 do
         if Array.length a.(i) <> col_blocks then
-          raise Dimension_error
+          let s = Format.sprintf "%dth line of %d elements in block matrix \
+                                  with %d columns"
+                                 i (Array.length a.(i)) col_blocks in
+          raise (Dimension_error ("block (" ^ s ^ ")"))
       done;
       (* All matrices in each line must have the same number of rows. *)
       for i = 0 to Array.length a - 1 do
         let rows = a.(i).(0).line in
         for j = 1 to Array.length a.(i) - 1 do
           if a.(i).(j).line <> rows then
-            raise Dimension_error
+            let s = Format.sprintf "block %d, %d has %d lines whereas block \
+                                    %d, 0 has %d" i j a.(i).(j).line i rows in
+            raise (Dimension_error ("block (" ^ s ^ ")"))
         done
       done;
       (* All matrices in each column must have the same number of columns. *)
@@ -186,7 +193,9 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
         let cols = a.(0).(j).col in
         for i = 1 to Array.length a -1  do
           if a.(i).(j).col <> cols then
-            raise Dimension_error
+            let s = Format.sprintf "block %d, %d has %d columns whereas block \
+                                    0, %d has %d" i j a.(i).(j).col j cols in
+            raise (Dimension_error ("block (" ^ s ^ ")"))
         done
       done;
       let total_rows = Array.fold_left (fun c m -> c + m.(0).line) 0 a in
@@ -216,14 +225,12 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
           res.content.(pos_l + i).(pos_c + j) <- mat.content.(i).(j) 
         done;
       done;
-      (* Format.eprintf "Lifted mat: %a@." pp res; *)
       res
     with Invalid_argument _ ->
-      Format.eprintf "lifting mat of size %i x %i to a new mat of size %i x %i, \
-                      the initial mat is located at indices %i, %i:@ %a@."
-                     mat.line mat.col
-                     n m pos_l pos_c pp mat;
-      raise Dimension_error
+      let s = Format.sprintf "lifting mat of size %d x %d at %d, %d into a new \
+                              mat of size %d x %d"
+                             mat.line mat.col pos_l pos_c n m in
+      raise (Dimension_error ("lift_block (" ^ s ^ ")"))
 
   let transpose m =
     let c = Array.make_matrix m.col m.line ET.zero in
@@ -242,9 +249,11 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
   let mult_scalar s m =
     { m with content = Array.map (Array.map (ET.mult s)) m.content }
 
-  let map2_matrix op m1 m2 =
+  let map2_matrix op sop m1 m2 =
     if m1.line <> m2.line || m1.col <> m2.col then
-      raise Dimension_error
+      let s = Format.sprintf "operands of different sizes (%d x %d and %d x %d)"
+                             m1.line m1.col m2.line m2.col in
+      raise (Dimension_error (sop ^ " (" ^ s ^ ")"))
     else
       let c = Array.make_matrix m1.line m1.col ET.zero in
       for i = 0 to m1.line - 1 do
@@ -254,23 +263,26 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
       done;
       { line = m1.line; col = m1.col; content = c }
 
-  let add = map2_matrix ET.add
+  let add = map2_matrix ET.add "add"
 
-  let sub = map2_matrix ET.sub
+  let sub = map2_matrix ET.sub "sub"
 
   let mult m1 m2 =
     if m1.col <> m2.line then
-      raise Dimension_error;
-    let c = Array.make_matrix m1.line m2.col ET.zero in
-    for i = 0 to m1.line - 1 do
-      for j = 0 to m2.col - 1 do
-        for k = 0 to m1.col - 1 do
-          c.(i).(j) <- ET.add c.(i).(j)
-                         (ET.mult m1.content.(i).(k) m2.content.(k).(j))
+      let s = Format.sprintf "first operand has %d columns and second has %d \
+                              lines" m1.col m2.line in
+      raise (Dimension_error ("mult (" ^ s ^ ")"))
+    else
+      let c = Array.make_matrix m1.line m2.col ET.zero in
+      for i = 0 to m1.line - 1 do
+        for j = 0 to m2.col - 1 do
+          for k = 0 to m1.col - 1 do
+            c.(i).(j) <- ET.add c.(i).(j)
+                                (ET.mult m1.content.(i).(k) m2.content.(k).(j))
+          done
         done
-      done
-    done;
-  { line = m1.line; col = m2.col; content = c }
+      done;
+      { line = m1.line; col = m2.col; content = c }
 
   module Infix = struct
   let ( ~:. ) = transpose

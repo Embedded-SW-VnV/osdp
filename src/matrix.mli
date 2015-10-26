@@ -28,7 +28,7 @@ module type S = sig
   type t
          
   (** Most of the functions in this module can raise this exception. *)
-  exception Dimension_error 
+  exception Dimension_error of string
               
   (** {2 Conversion functions.} *)
 
