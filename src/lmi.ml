@@ -230,17 +230,9 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
     (* check symmetry *)
     List.iter
       (fun a ->
-         let sz = Array.length a in
-         if sz > 0 && Array.length a.(0) > 0 then begin
-           if sz <> Array.length a.(0) then
-             raise Not_symmetric;
-           for i = 0 to sz - 1 do
-             for j = i + 1 to sz - 1 do
-               if LinExprSC.compare a.(i).(j) a.(j).(i) <> 0 then
-                 raise Not_symmetric
-             done
-           done
-         end) scalarized;
+       if not (LEMat.(is_symmetric (of_array_array a))) then
+         raise Not_symmetric)
+      scalarized;
 
     (* building block matrices A_i and C (see sdp.mli) *)
     let blks_A : (Ident.t, (int * float array array) list) Hashtbl.t = Hashtbl.create 31 in

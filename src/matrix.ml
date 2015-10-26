@@ -48,6 +48,7 @@ module type S = sig
   end
   val nb_lines : t -> int
   val nb_cols : t -> int
+  val is_symmetric : t -> bool
   val remove_0_row_cols : t -> t
   val gauss_split : t -> int * t * t
   val pp : Format.formatter -> t -> unit
@@ -56,7 +57,7 @@ end
 module Make (ET : Scalar.S) : S with module Coeff = ET = struct
   module Coeff = ET
 
-  type t = { line : int; col : int; content : Coeff.t array array }
+  type t = { line : int; col : int; content : ET.t array array }
 
   exception Dimension_error
 
@@ -282,6 +283,18 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
 
   let nb_lines m = m.line
   let nb_cols m = m.col
+
+  let is_symmetric m =
+    if m.line <> m.col then false else
+      try
+        for i = 1 to m.line - 1 do
+          for j = 0 to i - 1 do
+            if ET.compare m.content.(i).(j) m.content.(j).(i) <> 0 then
+              raise Exit
+          done
+        done;
+        true
+      with Exit -> false
 
   let remove_0_row_cols m =
     let empty_r = Array.make m.line true in

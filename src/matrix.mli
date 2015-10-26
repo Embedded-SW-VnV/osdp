@@ -135,6 +135,8 @@ module type S = sig
   val nb_lines : t -> int
   val nb_cols : t -> int
 
+  val is_symmetric : t -> bool
+
   (** Returns the same matrix, without its rows and columns containing
       only 0. *)
   val remove_0_row_cols : t -> t
