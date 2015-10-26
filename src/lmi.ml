@@ -37,6 +37,9 @@ module type S = sig
     | Mult of matrix_expr * matrix_expr
   val var : string -> int -> matrix_expr
   val scalar : Mat.Coeff.t -> matrix_expr
+  val nb_lines : matrix_expr -> int
+  val nb_cols : matrix_expr -> int
+  val is_symmetric : matrix_expr -> bool
   type options = { 
     sdp : Sdp.options;
     verbose : int
@@ -186,6 +189,13 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       | LEMat.Dimension_error s -> raise (Dimension_error s)
       | LinExpr.Not_linear -> raise Not_linear in
     LEMat.to_array_array e
+
+  (* various operations that need scalarize *)
+
+  let nb_lines e = scalarize e |> LEMat.of_array_array |> LEMat.nb_lines
+  let nb_cols e = scalarize e |> LEMat.of_array_array |> LEMat.nb_cols
+
+  let is_symmetric e = scalarize e |> LEMat.of_array_array |> LEMat.is_symmetric
 
   (*********)
   (* Solve *)

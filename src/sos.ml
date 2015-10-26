@@ -43,6 +43,9 @@ module type S = sig
   val power : polynomial_expr -> int -> polynomial_expr
   val compose : polynomial_expr -> polynomial_expr list -> polynomial_expr
   val derive : polynomial_expr -> int -> polynomial_expr
+  val nb_vars : polynomial_expr -> int
+  val degree : polynomial_expr -> int
+  val is_homogeneous : polynomial_expr -> bool
   val ( !! ) : Poly.t -> polynomial_expr
   val ( ?? ) : int -> polynomial_expr
   val ( ! ) : Poly.Coeff.t -> polynomial_expr
@@ -196,6 +199,12 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     with
     | LEPoly.Dimension_error -> raise Dimension_error
     | LinExpr.Not_linear -> raise Not_linear
+
+  (* various operations that need scalarize *)
+
+  let nb_vars e = scalarize e |> LEPoly.nb_vars
+  let degree e = scalarize e |> LEPoly.degree
+  let is_homogeneous e = scalarize e |> LEPoly.is_homogeneous
 
   (*********)
   (* Solve *)

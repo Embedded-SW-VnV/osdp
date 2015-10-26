@@ -58,6 +58,13 @@ module type S = sig
   (** [scalar s] returns [Const (Mat.of_list_list [[s]])]. *)
   val scalar : Mat.Coeff.t -> matrix_expr
 
+  (** {3 Various operations.} *)
+
+  val nb_lines : matrix_expr -> int
+  val nb_cols : matrix_expr -> int
+
+  val is_symmetric : matrix_expr -> bool
+
   (** {2 LMI.} *)
 
   type options = {

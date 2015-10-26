@@ -76,6 +76,21 @@ module type S = sig
   val compose : polynomial_expr -> polynomial_expr list -> polynomial_expr
   val derive : polynomial_expr -> int -> polynomial_expr
                                                             
+  (** {3 Various operations.} *)
+
+  (** See the module {{:./Polynomial.S.html}Polynomial.S} for
+      details. Beware that the returned values correspond to the
+      polynomial_expression and can be larger than the result after
+      solving. For instance, considering the expression v x_1^3 +
+      x_0^2 with v a variable, [nb_vars] and [degree] will
+      respectively return 2 and 3. Although, when asking the
+      expression to be SOS, v will be 0 and then nb_vars and degree
+      will become respectively 1 and 2 in the result. *)
+
+  val nb_vars : polynomial_expr -> int
+  val degree : polynomial_expr -> int
+  val is_homogeneous : polynomial_expr -> bool
+
   (** {3 Prefix and infix operators.} *)
 
   (** To use this operators, it's convenient to use local opens. For
