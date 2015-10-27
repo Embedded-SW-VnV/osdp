@@ -254,8 +254,12 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         (fun id (m, i) -> Ident.Map.add id i m, i + 1)
         env (Ident.Map.empty, 0) in
 
-    let obj = scalarize obj in
-    let scalarized = List.map scalarize el in
+    let (obj, scalarized), tscalarize =
+      Utils.profile (fun () ->
+                     let obj = scalarize obj in
+                     let scalarized = List.map scalarize el in
+                     obj, scalarized) in
+    Format.printf "time for scalarize: %.3fs@." tscalarize;
 
     (* scaling *)
     let scaling_factors =
@@ -384,8 +388,11 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     (* call SDP solver *)
     let module PreSdp = PreSdp.Make (Poly.Coeff) in
-    let ret, (pobj, dobj), (res_x, res_X, _, _) =
-      PreSdp.solve_ext_sparse ?options:sdp_options ?solver obj cstrs [] in
+    let (ret, (pobj, dobj), (res_x, res_X, _, _)), tsolver =
+      Utils.profile (fun () ->
+                     PreSdp.solve_ext_sparse ?options:sdp_options ?solver obj cstrs []
+                    ) in
+    Format.printf "time for solver: %.3fs@." tsolver;
 
     let obj = let f o = obj_sign *. (o +. obj_cst) in f pobj, f dobj in
 
@@ -514,11 +521,18 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   (* function solve including a posteriori checking with check just
      above *)
   let solve ?options ?solver obj el =
-    let ret, obj, vals, wits = solve ?options ?solver obj el in
+    let (ret, obj, vals, wits), tsolve =
+      Utils.profile (fun () -> solve ?options ?solver obj el) in
+    Format.printf "time for solve: %.3fs@." tsolve;
     if not (SdpRet.is_success ret) then ret, obj, vals, wits else
+      let res, tcheck =
+        Utils.profile (fun () ->
       let check_repl e wit = check ?options ~values:vals e wit in
       if List.for_all2 check_repl el wits then SdpRet.Success, obj, vals, wits
       else SdpRet.PartialSuccess, obj, vals, wits
+                      ) in
+      Format.printf "time for check: %.3fs@." tcheck;
+      res
 
   let ( !! ) = const
   let ( ?? ) i = const (Poly.( ?? ) i)
