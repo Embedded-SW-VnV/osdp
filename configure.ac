@@ -385,3 +385,8 @@ echo ""
 echo "  Now type 'make' to build $PACKAGE $VERSION"
 echo "  then 'make install' to install."
 echo ""
+
+if test "x$with_csdp" = xno -a "x$with_mosek" = xno -a "x$with_sdpa" = xno -a "x$with_sdpa_gmp" = xno; then
+  AC_MSG_WARN($PACKAGE_NAME will be compiled without any SDP solver)
+  AC_MSG_WARN(this is quite useless. You should at least install either CSDP or MOSEK or SDPA or SDPA-GMP.)
+fi
