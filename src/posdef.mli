@@ -33,3 +33,8 @@ val check_itv : (float * float) array array -> bool
     otherwise (i.e. the matrix is either not symmetric positive definite
     or its smallest eigenvalue is too small for the proof to succeed). *)
 val check : Q.t array array -> bool
+
+(** Same as [check] but complete (returns true iff the input is
+    positive definite). This is however implemented with rational
+    arithmetic and may be dramatically slower. *)
+val check_complete : Q.t array array -> bool

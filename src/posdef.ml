@@ -21,3 +21,28 @@
 external check_itv : (float * float) array array -> bool = "posdef_check"
 
 let check m = check_itv (Array.map (Array.map Utils.itv_float_of_q) m)
+
+let check_complete m =
+  let sz = Array.length m in
+  Format.printf "Posdef.check_complete: sz = %d@." sz;
+  let l = Array.make_matrix sz sz Q.zero in
+  let d = Array.make sz Q.zero in
+  try
+    for j = 0 to sz - 1 do
+      Format.printf "Posdef.check_complete: j = %d@." j;
+      for i = 0 to j - 1 do
+        let s = ref m.(i).(j) in
+        for k = 0 to i - 1 do
+          s := Q.(!s - l.(k).(i) * l.(k).(j) * d.(k))
+        done;
+        l.(i).(j) <- Q.(!s / d.(i))
+      done;
+      let s = ref m.(j).(j) in
+      for k = 0 to j - 1 do
+        s := Q.(!s - l.(k).(j) * l.(k).(j) * d.(k))
+      done;
+      if Q.leq !s Q.zero then raise Exit;
+      d.(j) <- !s
+    done;
+    true
+  with Exit -> false

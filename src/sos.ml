@@ -515,6 +515,13 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         Array.map (Array.map itv) q in
       (* and check its positive definiteness *)
       let res = Posdef.check_itv qpmr in
+      (* let qmnr = *)
+      (*   let nr = Q.((of_int (Array.length q)) * r) in *)
+      (*   let mdiag i j c = *)
+      (*     let c = Scalar.Q.of_float c in *)
+      (*     if i = j then Q.(c - nr) else c in *)
+      (*   Array.mapi (fun i -> (Array.mapi (fun j -> mdiag i j))) q in *)
+      (* let res = Posdef.check_complete qmnr in *)
       (* Format.printf "res = %B@." res; *)
       res
 
