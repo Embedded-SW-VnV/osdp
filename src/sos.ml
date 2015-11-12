@@ -259,7 +259,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
                      let obj = scalarize obj in
                      let scalarized = List.map scalarize el in
                      obj, scalarized) in
-    Format.printf "time for scalarize: %.3fs@." tscalarize;
+    if options.verbose > 2 then
+      Format.printf "time for scalarize: %.3fs@." tscalarize;
 
     (* scaling *)
     let scaling_factors =
@@ -368,6 +369,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       if options.verbose > 0 then Format.printf "perr = %g@." perr;
       let pad_cstrs (monoms, constraints) =
         let pad = float_of_int (Array.length monoms) *. perr in
+        if options.verbose > 1 then Format.printf "pad = %g@." pad;
         let has_diag mat =
           let diag (i, j, _) = i = j in
           List.exists (fun (_, m) -> List.exists diag m) mat in
@@ -392,7 +394,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       Utils.profile (fun () ->
                      PreSdp.solve_ext_sparse ?options:sdp_options ?solver obj cstrs []
                     ) in
-    Format.printf "time for solver: %.3fs@." tsolver;
+    if options.verbose > 2 then
+      Format.printf "time for solver: %.3fs@." tsolver;
 
     let obj = let f o = obj_sign *. (o +. obj_cst) in f pobj, f dobj in
 
@@ -470,9 +473,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | Compose (e, el) ->
          PQ.compose (scalarize e) (List.map scalarize el)
       | Derive (e, i) -> PQ.derive (scalarize e) i in
-    let p = scalarize e in
+    let p, tval = Utils.profile (fun () -> scalarize e) in
     (* then check that p can be expressed in monomial base v *)
-    let check_base =
+    let check_base, tbase = Utils.profile (fun () ->
       let s = ref M.Set.empty in
       let sz = Array.length v in
       for i = 0 to sz - 1 do
@@ -480,10 +483,10 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           s := M.Set.add (M.mult v.(i) v.(j)) !s
         done
       done;
-      List.for_all (fun (m, _) -> M.Set.mem m !s) (PQ.to_list p) in
-    if not check_base then false else
+      List.for_all (fun (m, _) -> M.Set.mem m !s) (PQ.to_list p)) in
+    if not check_base then false, tval, tbase, 0., 0., 0. else
       (* compute polynomial v^T q v *)
-      let p' =
+      let p', tp = Utils.profile (fun () ->
         let p' = ref [] in
         let sz = Array.length v in
         for i = 0 to sz - 1 do
@@ -491,7 +494,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
             p' := (M.mult v.(i) v.(j), Scalar.Q.of_float q.(i).(j)) :: !p'
           done
         done;
-        PQ.of_list !p' in
+        PQ.of_list !p') in
       (* compute the maximum difference between corresponding
          coefficients *)
       let rec cpt_diff p p' = match p, p' with
@@ -502,44 +505,50 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            if cmp = 0 then Q.max (Q.abs (Q.sub c' c)) (cpt_diff l l')
            else if cmp < 0 then Q.max (Q.abs c) (cpt_diff l p')
            else (* cmp > 0 *) Q.max (Q.abs c') (cpt_diff p l') in
-      let r = cpt_diff (PQ.to_list p) (PQ.to_list p') in
-      if options.verbose > 0 then Format.printf "r = %g@." (Utils.float_of_q r);
+      let r, tdiff = Utils.profile (fun () -> cpt_diff (PQ.to_list p) (PQ.to_list p')) in
+      (* if options.verbose > 0 then Format.printf "r = %g@." (Utils.float_of_q r); *)
       (* Format.printf "Q = %a@." Matrix.Float.pp (Matrix.Float.of_array_array q); *)
       (* form the interval matrix q +/- r *)
-      let qpmr =
+      let qpmr, tqpmr = Utils.profile (fun () ->
         let itv f =
           let q = Q.of_float f in
           let l, _ = Utils.itv_float_of_q (Q.sub q r) in
           let _, u = Utils.itv_float_of_q (Q.add q r) in
           l, u in
-        Array.map (Array.map itv) q in
+        Array.map (Array.map itv) q) in
       (* and check its positive definiteness *)
-      let res = Posdef.check_itv qpmr in
-      (* let qmnr = *)
-      (*   let nr = Q.((of_int (Array.length q)) * r) in *)
-      (*   let mdiag i j c = *)
-      (*     let c = Scalar.Q.of_float c in *)
-      (*     if i = j then Q.(c - nr) else c in *)
-      (*   Array.mapi (fun i -> (Array.mapi (fun j -> mdiag i j))) q in *)
-      (* let res = Posdef.check_complete qmnr in *)
+      let res, tpsd = Utils.profile (fun () -> Posdef.check_itv qpmr) in
       (* Format.printf "res = %B@." res; *)
-      res
+      res, tval, tbase, tp, tdiff +. tqpmr, tpsd
 
   (* function solve including a posteriori checking with check just
      above *)
   let solve ?options ?solver obj el =
     let (ret, obj, vals, wits), tsolve =
       Utils.profile (fun () -> solve ?options ?solver obj el) in
-    Format.printf "time for solve: %.3fs@." tsolve;
+    let options = match options with Some o -> o | None -> default in
+    if options.verbose > 2 then
+      Format.printf "time for solve: %.3fs@." tsolve;
     if not (SdpRet.is_success ret) then ret, obj, vals, wits else
-      let res, tcheck =
+      let (res, tval, tbase, tp, tdiff, tpsd), tcheck =
         Utils.profile (fun () ->
-      let check_repl e wit = check ?options ~values:vals e wit in
-      if List.for_all2 check_repl el wits then SdpRet.Success, obj, vals, wits
-      else SdpRet.PartialSuccess, obj, vals, wits
+      let check_repl e wit = check ~options ~values:vals e wit in
+      let check, tval, tbase, tp, tdiff, tpsd =
+        List.fold_left2
+          (fun (check, tval, tbase, tp, tdiff, tpsd) e wit ->
+           let check', tval', tbase', tp', tdiff', tpsd' = check_repl e wit in
+           check && check', tval +. tval', tbase +. tbase', tp +. tp', tdiff +. tdiff', tpsd +. tpsd')
+          (true, 0., 0., 0., 0., 0.) el wits in
+      if check(*List.for_all2 check_repl el wits*) then (SdpRet.Success, obj, vals, wits), tval, tbase, tp, tdiff, tpsd
+      else (SdpRet.PartialSuccess, obj, vals, wits), tval, tbase, tp, tdiff, tpsd
                       ) in
-      Format.printf "time for check: %.3fs@." tcheck;
+      if options.verbose > 2 then
+        Format.printf "time for check: %.3fs (scalarize: %.3fs, base: %.3fs, p: %.3fs, diff:%.3fs, psd: %.3fs)@." tcheck tval tbase tp tdiff tpsd;
       res
+
+  let check ?options:options ?values:values e (v, q) =
+    let res, _, _, _, _, _ = check ?options ?values e (v, q) in
+    res
 
   let ( !! ) = const
   let ( ?? ) i = const (Poly.( ?? ) i)
