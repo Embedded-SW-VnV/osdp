@@ -533,12 +533,13 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   let solve ?options ?solver obj el =
     let (ret, obj, vals, wits), tsolve =
       Utils.profile (fun () -> solve ?options ?solver obj el) in
+    let options = match options with Some o -> o | None -> default in
     if options.verbose > 2 then
       Format.printf "time for solve: %.3fs@." tsolve;
     if not (SdpRet.is_success ret) then ret, obj, vals, wits else
       let res, tcheck =
         Utils.profile (fun () ->
-      let check_repl e wit = check ?options ~values:vals e wit in
+      let check_repl e wit = check ~options ~values:vals e wit in
       if List.for_all2 check_repl el wits then SdpRet.Success, obj, vals, wits
       else SdpRet.PartialSuccess, obj, vals, wits
                       ) in
