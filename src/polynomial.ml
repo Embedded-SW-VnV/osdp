@@ -215,7 +215,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
          else if Monomial.compare m (Monomial.of_list []) = 0 then
            Format.fprintf fmt "%a" Coeff.pp s
          else
-           Format.fprintf fmt "%a %a" Coeff.pp s (Monomial.pp_names names) m in
+           Format.fprintf fmt "%a * %a" Coeff.pp s (Monomial.pp_names names) m in
        Format.fprintf fmt "@[%a@]"
                       (Utils.pp_list ~sep:"@ + " pp_coeff)
                       l

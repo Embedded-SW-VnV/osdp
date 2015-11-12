@@ -101,11 +101,11 @@ let pp_names names fmt m =
      Format.fprintf
        fmt
        "@[%a@]"
-       (Utils.pp_list ~sep:"@ " (fun fmt (n, e) ->
-                                 if e = 1 then
-                                   Format.fprintf fmt "%s" n
-                                 else
-                                   Format.fprintf fmt "%s^%d" n e))
+       (Utils.pp_list ~sep:"@ * " (fun fmt (n, e) ->
+                                   if e = 1 then
+                                     Format.fprintf fmt "%s" n
+                                   else
+                                     Format.fprintf fmt "%s^%d" n e))
        l
 
 let pp = pp_names []
