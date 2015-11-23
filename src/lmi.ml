@@ -221,8 +221,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
            match LEMat.to_list_list e1 with
            | [[e1]] -> LEMat.mult_scalar e1 e2
            | _ -> assert false
-         else
-           LEMat.mult e1 e2
+         else LEMat.mult e1 e2
       | Power (e, d) -> LEMat.power (scalarize e) d in
 
     (* scalarize *)
@@ -368,7 +367,13 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       | Minus m -> Mat.minus (aux m)
       | Add (e1, e2) -> Mat.add (aux e1) (aux e2)
       | Sub (e1, e2) -> Mat.sub (aux e1) (aux e2)
-      | Mult (e1, e2) -> Mat.mult (aux e1) (aux e2)
+      | Mult (e1, e2) ->
+         let e1, e2 = aux e1, aux e2 in
+         if Mat.nb_lines e1 = 1 && Mat.nb_cols e1 = 1 then
+           match Mat.to_list_list e1 with
+           | [[e1]] -> Mat.mult_scalar e1 e2
+           | _ -> assert false
+         else Mat.mult e1 e2
       | Power (e, d) -> Mat.power (aux e) d in
     aux e
 
@@ -400,7 +405,13 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       | Minus m -> MQ.minus (scalarize m)
       | Add (e1, e2) -> MQ.add (scalarize e1) (scalarize e2)
       | Sub (e1, e2) -> MQ.sub (scalarize e1) (scalarize e2)
-      | Mult (e1, e2) -> MQ.mult (scalarize e1) (scalarize e2)
+      | Mult (e1, e2) ->
+         let e1, e2 = scalarize e1, scalarize e2 in
+         if MQ.nb_lines e1 = 1 && MQ.nb_cols e1 = 1 then
+           match MQ.to_list_list e1 with
+           | [[e1]] -> MQ.mult_scalar e1 e2
+           | _ -> assert false
+         else MQ.mult e1 e2
       | Power (e, d) -> MQ.power (scalarize e) d in
     let m = scalarize e in
     (* then check that m is positive definite *)
