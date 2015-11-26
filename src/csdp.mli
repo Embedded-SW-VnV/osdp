@@ -39,18 +39,28 @@ type matrix = (int * int * float) list
     requirement for indices to be sorted. *)
 type block_diag_matrix = (int * matrix) list
 
-(** [solve obj constraints] solves the SDP problem: max\{ tr(obj X) |
-    tr(A_1 X) = a_1,..., tr(A_n X) = a_n, X psd \} with [\[(A_1,
-    a_1);...; (A_n, a_n)\]] the [constraints] list. It returns both
-    the primal and dual objective values and a witness for X (primal)
-    and y and Z (dual, see {{:./Sdp.html}Sdp}). The block diagonal
-    matrices returned for X and Z contain exactly the indices, sorted
-    by increasing order, that appear in the objective or one of the
-    constraints. Size of each diagonal block in X or Z is the maximum
-    size appearing for that block in the objective or one of the
-    constraints. The array returned for y has the same size and same
-    order than the input list of constraints. *)
-val solve : block_diag_matrix -> (block_diag_matrix * float) list ->
+(** Options for calling CSDP. *)
+type options = {
+  verbose : int;  (** verbosity level, non negative integer, 0 (default)
+                      means no output *)
+}
+
+(** Default values above. *)
+val default : options
+
+(** [solve ?verbose obj constraints] solves the SDP problem: max\{
+    tr(obj X) | tr(A_1 X) = a_1,..., tr(A_n X) = a_n, X psd \} with
+    [\[(A_1, a_1);...; (A_n, a_n)\]] the [constraints] list. It
+    returns both the primal and dual objective values and a witness
+    for X (primal) and y and Z (dual, see {{:./Sdp.html}Sdp}). The
+    block diagonal matrices returned for X and Z contain exactly the
+    indices, sorted by increasing order, that appear in the objective
+    or one of the constraints. Size of each diagonal block in X or Z
+    is the maximum size appearing for that block in the objective or
+    one of the constraints. The array returned for y has the same size
+    and same order than the input list of constraints. *)
+val solve : ?options:options ->
+            block_diag_matrix -> (block_diag_matrix * float) list ->
             SdpRet.t * (float * float)
             * ((int * float array array) list
                * float array * (int * float array array) list)

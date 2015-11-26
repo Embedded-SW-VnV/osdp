@@ -267,7 +267,8 @@ static void solve(int dim_X, int nb_cstrs, struct blockmatrix *obj,
                   double *b, struct constraintmatrix *cstrs,
                   sdp_ret_t *sdp_ret, double *pobj, double *dobj,
                   struct blockmatrix *res_X,
-                  double **res_y, struct blockmatrix *res_Z)
+                  double **res_y, struct blockmatrix *res_Z,
+                  int printlevel)
 {
   struct blockmatrix X,Z;
   double *y;
@@ -276,8 +277,9 @@ static void solve(int dim_X, int nb_cstrs, struct blockmatrix *obj,
   /* write_prob("prob.prob", dim_X, nb_cstrs, *obj, b, cstrs); */
 
   initsoln(dim_X, nb_cstrs, *obj, b, cstrs, &X, &y, &Z);
-  ret = easy_sdp(dim_X, nb_cstrs, *obj, b, cstrs, 0.0,
-                 &X, &y, &Z, pobj, dobj);
+  ret = easy_sdp_params(dim_X, nb_cstrs, *obj, b, cstrs, 0.0,
+                        &X, &y, &Z, pobj, dobj,
+                        NULL, printlevel);
   switch (ret) {
   case 0:
     *sdp_ret = SDP_RET_SUCCESS;
@@ -374,9 +376,9 @@ static void build_res_y(int nb_cstrs, double *res_y, value *ml_res_y)
   }
 }
 
-value csdp_solve(value ml_obj, value ml_cstrs)
+value csdp_solve(value ml_printlevel, value ml_obj, value ml_cstrs)
 {
-  CAMLparam2(ml_obj, ml_cstrs);
+  CAMLparam3(ml_printlevel, ml_obj, ml_cstrs);
 
   CAMLlocal2(ml_res, ml_res_obj);
   CAMLlocal4(ml_res_XyZ, ml_res_X, ml_res_y, ml_res_Z);
@@ -396,7 +398,8 @@ value csdp_solve(value ml_obj, value ml_cstrs)
 
   build_cstrs(ml_cstrs, idx_offset, dimvar, nb_cstrs, &cstrs, &b);
   solve(dim_X, nb_cstrs, obj, b, cstrs,
-        &sdp_ret, &pobj, &dobj, &res_X, &res_y, &res_Z);
+        &sdp_ret, &pobj, &dobj, &res_X, &res_y, &res_Z,
+        Int_val(ml_printlevel));
   build_res_X(&res_X, &ml_res_X, &cons, &matrix, &line);
   build_res_y(nb_cstrs, res_y, &ml_res_y);
   build_res_X(&res_Z, &ml_res_Z, &cons, &matrix, &line);
@@ -423,9 +426,9 @@ value csdp_solve(value ml_obj, value ml_cstrs)
 
 #else
 
-value csdp_solve(value ml_obj, value ml_cstrs)
+value csdp_solve(value ml_printlevel, value ml_obj, value ml_cstrs)
 {
-  CAMLparam2(ml_obj, ml_cstrs);
+  CAMLparam3(ml_printlevel, ml_obj, ml_cstrs);
 
   CAMLlocal1(ml_res);
 

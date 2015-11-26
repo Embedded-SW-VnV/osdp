@@ -20,7 +20,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([OSDP], [0.4.1], [ploc@garoche.net])
+AC_INIT([OSDP], [0.4.2], [ploc@garoche.net])
 AC_CONFIG_SRCDIR([src/sdp.ml])
 
 # default prefix is /usr/local
@@ -307,8 +307,8 @@ AC_SUBST(MOSEK_LIBPATH)
 AC_SUBST(MOSEK_LIB)
 
 if test "x$with_csdp" = xno -a "x$with_mosek" = xno -a "x$with_sdpa" = xno -a "x$with_sdpa_gmp" = xno; then
-  AC_MSG_WARN($PACKAGE_NAME will be compiled without any SDP solver)
-  AC_MSG_WARN(this is quite useless. You should at least install either CSDP or MOSEK or SDPA or SDPA-GMP.)
+  AC_MSG_WARN($PACKAGE_NAME will be compiled without any SDP solver which is quite useless.)
+  AC_MSG_WARN(You should at least install either CSDP (from sources, c.f., INSTALL) or MOSEK or SDPA or SDPA-GMP.)
 fi
 
 if test "x$with_glpk" != xno; then
@@ -387,6 +387,6 @@ echo "  then 'make install' to install."
 echo ""
 
 if test "x$with_csdp" = xno -a "x$with_mosek" = xno -a "x$with_sdpa" = xno -a "x$with_sdpa_gmp" = xno; then
-  AC_MSG_WARN($PACKAGE_NAME will be compiled without any SDP solver)
-  AC_MSG_WARN(this is quite useless. You should at least install either CSDP or MOSEK or SDPA or SDPA-GMP.)
+  AC_MSG_WARN($PACKAGE_NAME will be compiled without any SDP solver which is quite useless.)
+  AC_MSG_WARN(You should at least install either CSDP (from sources, c.f., INSTALL) or MOSEK or SDPA or SDPA-GMP.)
 fi

@@ -102,6 +102,8 @@ let check_prog f obj constraints =
 
 let solve_sparse ?options ?solver ?init obj constraints =
   check_prog check_sparse obj constraints;
+  let solver = get_solver options solver in
+  let options = match options with Some o -> o | None -> default in
   let max_idx =
     let f = List.fold_left (fun m (i, _) -> max m i) in
     List.fold_left
@@ -115,14 +117,14 @@ let solve_sparse ?options ?solver ?init obj constraints =
        | Le (bd, f) -> ((i, [0, 0, 1.]) :: bd, f) :: cstrs, i + 1
        | Ge (bd, f) -> ((i, [0, 0, -1.]) :: bd, f) :: cstrs, i + 1)
       ([], max_idx + 1) (List.rev constraints) in
-  let ret, res, (res_X, res_y, res_Z) = match get_solver options solver with
-    | Csdp -> Csdp.solve obj constraints
+  let ret, res, (res_X, res_y, res_Z) = match solver with
+    | Csdp ->
+       let options = { Csdp.verbose = options.verbose } in
+       Csdp.solve ~options obj constraints
     | Mosek ->
-       let options = match options with Some o -> o | None -> default in
        let options = { Moseksdp.verbose = options.verbose } in
        Moseksdp.solve ~options obj constraints
     | (Sdpa | SdpaGmp | SdpaDd) as s ->
-       let options = match options with Some o -> o | None -> default in
        let solver =
          match s with
          | Sdpa -> Sdpa.Sdpa | SdpaGmp -> Sdpa.SdpaGmp | SdpaDd -> Sdpa.SdpaDd

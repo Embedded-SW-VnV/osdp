@@ -21,7 +21,15 @@
 type matrix = (int * int * float) list
 type block_diag_matrix = (int * matrix) list
 
-external solve : block_diag_matrix -> (block_diag_matrix * float) list ->
+type options = {
+  verbose : int;
+}
+
+let default = {
+  verbose = 0;
+}
+
+external solve : int -> block_diag_matrix -> (block_diag_matrix * float) list ->
                  SdpRet.t
                  * (float * float) * (float array array list
                                       * float array * float array array list) =
@@ -32,8 +40,9 @@ external solve : block_diag_matrix -> (block_diag_matrix * float) list ->
    block index appearing in the input (obj and constraints). We have
    to clean that to keep only indices actually appearing in the
    input. *)
-let solve obj constraints =
-  let ret, res, (res_X, res_y, res_Z) = solve obj constraints in
+let solve ?options obj constraints =
+  let verbose = match options with None -> 0 | Some o -> o.verbose in
+  let ret, res, (res_X, res_y, res_Z) = solve verbose obj constraints in
   let res_X, res_Z =
     let min_idx, max_idx =
       let range_idx_block_diag =

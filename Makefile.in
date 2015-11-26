@@ -40,12 +40,6 @@ doc:
 	rm -rf $(LOCAL_DOCDIR)
 	cp -rf src/_build/osdp.docdir $(LOCAL_DOCDIR)
 
-/usr/local/share/csdp/param.csdp:
-	mkdir -p /usr/local/share/csdp/
-	cp external/param.csdp /usr/local/share/csdp/
-
-install-deps: /usr/local/share/csdp/param.csdp
-
 install:
 	make -C src install
 
