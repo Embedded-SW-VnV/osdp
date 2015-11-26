@@ -38,10 +38,16 @@ val pp_matrix :
 (** [itv_float_of_q q] returns two floats [l, u] such that, when q is
     [Q.undef], [l] and [u] are both [nan], otherwise l <= q <= u and
     there is no float (either normal or subnormal) such that l < f <
-    u. *)
+    u.
+
+    @raise Z.Overflow to indicate an error (typically when the
+    numerator or denominator doesn't fit in a float). *)
 val itv_float_of_q : Q.t -> float * float
 
-(** [float_of_q q] returns a float closest to [q]. *)
+(** [float_of_q q] returns a float closest to [q].
+
+    @raise Z.Overflow to indicate an error (typically when the
+    numerator or denominator doesn't fit in a float). *)
 val float_of_q : Q.t -> float
 
 (** [profile f] executes the function [f] and returns both its result
