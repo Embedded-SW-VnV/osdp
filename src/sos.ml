@@ -113,9 +113,14 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     let l =
       let mons = (if homogen then Monomial.list_eq else Monomial.list_le) n d in
       let s = (*"__SOS__" ^*) Format.asprintf "%a" Ident.pp name ^ "_" in
-      List.mapi (fun i m -> m, Ident.create (s ^ string_of_int i)) mons in
-    Var (Vpoly { name = name; poly = l }),
-    List.map (fun (m, id) -> m, Var (Vscalar id)) l
+      let l, _ = 
+        List.fold_left
+          (fun (l, i) m -> (m, Ident.create (s ^ string_of_int i)) :: l, i + 1)
+          ([], 0) mons in
+      List.rev l in
+    let e = Var (Vpoly { name = name; poly = l }) in
+    let le = List.rev_map (fun (m, id) -> m, Var (Vscalar id)) (List.rev l) in
+    e, le
 
   let const p = Const p
   let scalar c = Const (Poly.const c)
@@ -184,17 +189,15 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          |> LEPoly.of_list
       | Var (Vscalar id) -> LEPoly.mult_scalar (LinExprSC.var id) LEPoly.one
       | Var (Vpoly p) ->
-         List.map (fun (m, id) -> m, LinExprSC.var id) p.poly
+         List.rev_map (fun (m, id) -> m, LinExprSC.var id) p.poly
          |> LEPoly.of_list
       | Mult_scalar (n, e) ->
-         let le = LinExprSC.const n in
-         LEPoly.mult_scalar le (scalarize e)
+         LEPoly.mult_scalar (LinExprSC.const n) (scalarize e)
       | Add (e1, e2) -> LEPoly.add (scalarize e1) (scalarize e2)
       | Sub (e1, e2) -> LEPoly.sub (scalarize e1) (scalarize e2)
       | Mult (e1, e2) -> LEPoly.mult (scalarize e1) (scalarize e2)
       | Power (e, d) -> LEPoly.power (scalarize e) d
-      | Compose (e, el) ->
-         LEPoly.compose (scalarize e) (List.map scalarize el)
+      | Compose (e, el) -> LEPoly.compose (scalarize e) (List.map scalarize el)
       | Derive (e, i) -> LEPoly.derive (scalarize e) i in
 
     try scalarize e

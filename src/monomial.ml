@@ -80,11 +80,12 @@ let rec is_var = function
   | _ -> None
                             
 let rec list_eq n d =
-  if n <= 0 then [[]] else
-    List.map (fun m -> (List.fold_left ( - ) d m) :: m) (list_le (n - 1) d)
+  let add_diff m = (List.fold_left ( - ) d m) :: m in
+  if n <= 0 then [[]] else List.rev_map add_diff (List.rev (list_le (n - 1) d))
 
 and list_le n d =
-  if n <= 0 || d <= 0 then [[]] else list_le n (d - 1) @ list_eq n d
+  if n <= 0 || d <= 0 then [[]] else
+    List.rev_append (List.rev (list_le n (d - 1))) (list_eq n d)
 
 let pp_names names fmt m =
   let rec name_vars i names = function

@@ -68,14 +68,15 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let of_list l =
     let l = List.filter (fun (_, s) -> Coeff.compare s Coeff.zero <> 0) l in
     let l = List.sort (fun (m1, _) (m2, _) -> Monomial.compare m1 m2) l in
-    let rec remove_duplicates = function
+    let remove_duplicates l =
+      let rec aux acc ((m, c) as last) l = match l with
+        | [] -> last :: acc
+        | ((m', c') as cur) :: l ->
+           if Monomial.compare m m' = 0 then aux acc (m, Coeff.add c c') l
+           else aux (last :: acc) cur l in
+      match l with
       | [] -> []
-      | ((m, c) as mc) :: t ->
-         match remove_duplicates t with
-         | [] -> [mc]
-         | ((m', c') :: t) as t' ->
-            if Monomial.compare m m' = 0 then (m, Coeff.add c c') :: t
-            else mc :: t' in
+      | h :: t -> List.rev (aux [] h t) in
     remove_duplicates l
 
   let to_list p = p
@@ -95,20 +96,20 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
     if Coeff.compare s Coeff.zero = 0 then []
     else List.map (fun (m, s') -> m, Coeff.mult s s') p
 
-  let rec map2 f l1 l2 = match l1, l2 with
-    | [], [] -> []
-    | [], (m2, c2) :: t2 -> (m2, f Coeff.zero c2) :: map2 f [] t2
-    | (m1, c1) :: t1, [] -> (m1, f c1 Coeff.zero) :: map2 f t1 []
-    | (m1, c1) :: t1, (m2, c2) :: t2 ->
-       let cmp = Monomial.compare m1 m2 in
-       if cmp < 0 then
-         (m1, f c1 Coeff.zero) :: map2 f t1 l2
-       else if cmp > 0 then
-         (m2, f Coeff.zero c2) :: map2 f l1 t2
-       else  (* cmp = 0 *)
-         let c = f c1 c2 in
-         if Coeff.compare c Coeff.zero = 0 then map2 f t1 t2
-         else (m1, f c1 c2) :: map2 f t1 t2
+  let map2 f l1 l2 =
+    let rec aux acc l1 l2 = match l1, l2 with
+      | [], [] -> acc
+      | [], (m2, c2) :: t2 -> aux ((m2, f Coeff.zero c2) :: acc) [] t2
+      | (m1, c1) :: t1, [] -> aux ((m1, f c1 Coeff.zero) :: acc) t1 []
+      | (m1, c1) :: t1, (m2, c2) :: t2 ->
+         let cmp = Monomial.compare m1 m2 in
+         if cmp < 0 then aux ((m1, f c1 Coeff.zero) :: acc) t1 l2
+         else if cmp > 0 then aux ((m2, f Coeff.zero c2) :: acc) l1 t2
+         else  (* cmp = 0 *)
+           let c = f c1 c2 in
+           if Coeff.compare c Coeff.zero = 0 then aux acc t1 t2
+           else aux ((m1, c) :: acc) t1 t2 in
+    List.rev (aux [] l1 l2)
   let add = map2 Coeff.add
   let sub = map2 Coeff.sub
 
