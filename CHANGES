@@ -1,3 +1,7 @@
+version 0.4.4, Jan 4th, 2016
+----------------------------
+ o fix a bug in configure.ac preventing installation without ocaml-glpk
+
 version 0.4.3, Dec 2nd, 2015
 ----------------------------
  o rewrite some functions in a recursive terminal way to avoid some

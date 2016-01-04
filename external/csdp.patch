@@ -129,7 +129,7 @@ diff -Naur Csdp-6.1.1/Makefile Csdp-6.1.1_osdp/Makefile
  all:
  	cd lib; make libsdp.a
  	cd solver; make csdp
-@@ -24,12 +26,25 @@
+@@ -24,12 +26,26 @@
  # Install the executables in /usr/local/bin.
  #
  
@@ -140,6 +140,7 @@ diff -Naur Csdp-6.1.1/Makefile Csdp-6.1.1_osdp/Makefile
 -	cp -f theta/complement /usr/local/bin
 -	cp -f theta/rand_graph /usr/local/bin
 +install-bin: all
++	mkdir -p ${PREFIX}/bin
 +	cp -f solver/csdp ${PREFIX}/bin
 +	cp -f theta/theta ${PREFIX}/bin
 +	cp -f theta/graphtoprob ${PREFIX}/bin

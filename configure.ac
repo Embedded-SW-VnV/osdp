@@ -208,13 +208,6 @@ if test "x$with_sdpa_dd" != xno; then with_sdpa_dd=yes ; fi
 AC_SUBST(SDPA_DD_PATH)
 
 # Check for libraries
-AC_MSG_CHECKING(for ocaml-glpk)
-GLPK_PATH=`ocamlfind query glpk`
-if test $? -ne 0 ; then
-  AC_MSG_ERROR([Unable to find OCaml library ocaml-glpk.])
-fi
-AC_MSG_RESULT($GLPK_PATH)
-
 if test "x$with_csdp" != xno; then
   AC_MSG_CHECKING(for CSDP headers)
   if test "x$CSDP_INCPATH" = xno; then
