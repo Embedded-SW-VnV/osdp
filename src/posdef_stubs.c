@@ -172,8 +172,6 @@ static int check(value mll)
   for (i = 0; i < m->s; ++i)
     if (SEL(m, i, i) <= 0) goto out_no;
 
-  if (m->s == 1) goto out_yes;
-
   gamma_np1 = m->s * eps - 1;
   gamma_np1 = -gamma_np1;  /* 1-n*eps rounded downward */
   gamma_np1 = m->s * eps / gamma_np1;  /* \gamma_{n+1} = n*eps/(1-n*eps) */
