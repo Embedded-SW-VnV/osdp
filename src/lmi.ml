@@ -36,7 +36,7 @@ module type S = sig
     | Sub of matrix_expr * matrix_expr
     | Mult of matrix_expr * matrix_expr
     | Power of matrix_expr * int
-  val var : string -> int -> matrix_expr
+  val var : string -> int -> var * matrix_expr
   val const : Mat.t -> matrix_expr
   val scalar : Mat.Coeff.t -> matrix_expr
   val zeros : int -> int -> matrix_expr
@@ -81,8 +81,10 @@ module type S = sig
               SdpRet.t * (float * float) * values
   val value : matrix_expr -> values -> Mat.Coeff.t
   val value_mat : matrix_expr -> values -> Mat.t
+  val register_value: var -> Mat.Coeff.t -> values -> values
   val check : ?options:options -> ?values:values -> matrix_expr -> bool
   val pp : Format.formatter -> matrix_expr -> unit
+  val pp_values : Format.formatter -> values -> unit
 end
 
 module Make (M : Matrix.S) : S with module Mat = M = struct
@@ -119,7 +121,8 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
         done
       done;
       a in
-    Var { name = name; mat = a }
+    let v = { name = name; mat = a } in 
+    v, Var v
                               
   let const m = Const m
   let scalar s = Const (Mat.of_list_list [[s]])
@@ -255,6 +258,16 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
 
   type values = Mat.Coeff.t Ident.Map.t
 
+  let pp_values fmt values =
+    Format.fprintf fmt "@[<v>";
+    let _ = Ident.Map.fold (fun key value first ->
+      if not first then
+	Format.fprintf fmt ", @ ";
+      Format.fprintf fmt "%a -> %a" Ident.pp key Mat.Coeff.pp value;
+      false
+    ) values true in
+  Format.fprintf fmt "@ @]"
+    
   exception Not_symmetric
 
   let solve ?options ?solver obj el =
@@ -352,11 +365,13 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       ret, res, vars
 
   let rec value_mat e m =
+    let find id = Ident.Map.find id m in
     let rec aux = function
       | Const mat -> mat
-      | Var v ->
-         Array.map (Array.map (fun id -> Ident.Map.find id m)) v.mat
-         |> Mat.of_array_array
+      | Var v -> (
+          Array.map (Array.map find) v.mat
+		|> Mat.of_array_array
+      )
       | Zeros (n, m) -> Mat.zeros n m
       | Eye n -> Mat.eye n
       | Kron (n, i, j) -> Mat.kron n i j
@@ -382,6 +397,11 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
     | [[s]] -> s
     | _ -> raise (Dimension_error "value (scalar expected)")
 
+  let register_value v vval e =
+    match v.mat with
+    | [|[|vid|]|] -> Ident.Map.add vid vval e
+    | _ -> raise (Dimension_error "register_value (scalar expected)")
+       
   let check ?options:options ?values:values e =
     let values = match values with Some v -> v | None -> Ident.Map.empty in
     let module MQ = Matrix.Q in

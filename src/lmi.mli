@@ -54,7 +54,7 @@ module type S = sig
   (** [var s n] creates a new variable ([Var v]). [n] is the size of
       the variable (scalars and matrices of size 1 are considered the
       same). It must be positive. *)
-  val var : string -> int -> matrix_expr
+  val var : string -> int -> var * matrix_expr
 
   (** Functions for above constructors. *)
 
@@ -191,6 +191,9 @@ M.(m1 * m2 + eye 3)]} *)
       corresponding value in [values]. *)
   val value_mat : matrix_expr -> values -> Mat.t
 
+  (** Register a scalar value in value environement *)
+  val register_value: var -> Mat.Coeff.t -> values -> values
+    
   (** If [check ?options e ?values] returns [true], then [e] is
       positive semi-definite (PSD). Otherwise, either [e] is not PSD
       or it is not positive definite enough for the proof to
@@ -205,6 +208,9 @@ M.(m1 * m2 + eye 3)]} *)
 
   (** Printer for LMI. *)
   val pp : Format.formatter -> matrix_expr -> unit
+
+  (** Printer for environment values computed by solver. *)
+  val pp_values : Format.formatter -> values -> unit
 end
 
 module Make (M : Matrix.S) : S with module Mat = M
