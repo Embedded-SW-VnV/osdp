@@ -36,6 +36,7 @@ module type S = sig
   (** {2 Conversion functions.} *)
 
   val of_float : float -> t
+  val of_int: int -> t
   val to_float : t -> float
   val to_q : t -> Q.t
                         
@@ -45,6 +46,9 @@ module type S = sig
   val sub : t -> t -> t
   val mult : t -> t -> t
   val div : t -> t -> t
+
+  val lt: t  -> t -> bool
+  val gt: t  -> t -> bool
 
   (** {2 Printing.} *)
 

@@ -24,13 +24,17 @@ module type S = sig
   val zero : t
   val one : t
   val of_float : float -> t
+  val of_int: int -> t
   val to_float : t -> float
   val to_q : t -> Q.t
   val add : t -> t -> t
   val sub : t -> t -> t
   val mult : t -> t -> t
   val div : t -> t -> t
+  val lt: t  -> t -> bool
+  val gt: t  -> t -> bool
   val pp : Format.formatter -> t -> unit
+   
 end
 
 module Q : S with type t = Q.t = struct 
@@ -46,6 +50,9 @@ module Q : S with type t = Q.t = struct
   let mult = Q.mul
   let div = Q.div
   let pp = Q.pp_print
+  let of_int x = of_float (float_of_int x)
+  let lt = (<)
+  let gt = (>)
 end
 
 module Float : S with type t = float = struct
@@ -61,4 +68,8 @@ module Float : S with type t = float = struct
   let mult = ( *. )
   let div = ( /. )
   let pp = Format.pp_print_float
+  let of_int x = of_float (float_of_int x)
+  let lt = (<)
+  let gt = (>)
+ 
 end
