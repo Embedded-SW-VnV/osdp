@@ -1,5 +1,6 @@
-version 0.4.4, Jan 4th, 2016
-----------------------------
+version 0.4.4, Jan 11th, 2016
+-----------------------------
+ o fix a small soundness bug (some 1x1 matrices were incorrectly proved psd)
  o fix a bug in configure.ac preventing installation without ocaml-glpk
 
 version 0.4.3, Dec 2nd, 2015

@@ -1,11 +1,31 @@
-Requires OCaml (>= 4.01), Zarith (Debian package libzarith-ocaml-dev),
-Camlp4 (optional but highly recommended, Debian package camlp4), CSDP
-(no Debian package, see below), MOSEK (no Debian package, optional),
-SDPA{,-GMP,-DD} (optional) and Ocaml-glpk (no Debian package,
-optional).
+Requirements
+============
+
+Compilation of the OSDP libraries requires:
+
+* OCaml (>= 4.01)
+* ocamlfind
+* Zarith (Debian package libzarith-ocaml-dev),
+
+and optionally:
+
+* Ocaml-glpk (no Debian package).
+* Camlp4 (Debian package camlp4)
+* CSDP (no Debian package, see below)
+* MOSEK (no Debian package)
+* SDPA{,-GMP,-DD}
+
+Please note however that the OSDP library is mostly an interface to
+SDP solvers and is quite useless if none of them (CSDP, MOSEK or SDPA)
+is installed.
+
+CSDP
+----
 
 To install Csdp:
 * install dependencies:
+  * liblapack-dev
+  * libopenblas-dev
   * libatlas-base-dev
   * libatlas-dev
   * libblas-dev
@@ -21,14 +41,26 @@ To install Csdp:
   % make
   % make install  # or sudo make install
 
+MOSEK
+-----
+
 If you use MOSEK: Don't forget to set both PATH *and* LD_LIBRARY_PATH
 to the directory containing the mosek binaries and libraries.
 
-If you use SDPA-GMP: apply the patch external/sdpa_gmp.patch
-before compiling SDPA-GMP.
+SDPA-GMP
+--------
+
+If you use SDPA-GMP: you may have to apply the patch
+external/sdpa_gmp.patch before compiling SDPA-GMP.
+
+SDPA-DD
+-------
 
 If you use SDPA-DD: install the QD library from
 http://crd-legacy.lbl.gov/~dhbailey/mpdist before compiling SDPA-DD.
+
+Compilation and installation
+============================
 
 Configure:
 % ./configure
@@ -38,3 +70,7 @@ Compile:
 
 Install:
 # make install
+
+This will install the library in ocamlfind default installation
+directory which may require root privileges depending on ocamlfind
+configuration.
