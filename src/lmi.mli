@@ -54,7 +54,10 @@ module type S = sig
   (** [var s n] creates a new variable ([Var v]). [n] is the size of
       the variable (scalars and matrices of size 1 are considered the
       same). It must be positive. *)
-  val var : string -> int -> var * matrix_expr
+  val var : string -> int -> matrix_expr
+
+  (** TODO: renamed (to discuss: this breaks the interface) *)
+  val var_var : string -> int -> var * matrix_expr
 
   (** Functions for above constructors. *)
 

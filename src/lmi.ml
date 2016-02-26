@@ -36,7 +36,8 @@ module type S = sig
     | Sub of matrix_expr * matrix_expr
     | Mult of matrix_expr * matrix_expr
     | Power of matrix_expr * int
-  val var : string -> int -> var * matrix_expr
+  val var : string -> int -> matrix_expr
+  val var_var : string -> int -> var * matrix_expr
   val const : Mat.t -> matrix_expr
   val scalar : Mat.Coeff.t -> matrix_expr
   val zeros : int -> int -> matrix_expr
@@ -108,7 +109,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
     | Mult of matrix_expr * matrix_expr
     | Power of matrix_expr * int
 
-  let var s dim =
+  let var_var s dim =
     let name = Ident.create s in
     let a =
       let new_id i j =
@@ -123,6 +124,8 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       a in
     let v = { name = name; mat = a } in 
     v, Var v
+
+  let var s dim = snd (var_var s dim)
                               
   let const m = Const m
   let scalar s = Const (Mat.of_list_list [[s]])
