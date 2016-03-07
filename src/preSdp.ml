@@ -53,30 +53,30 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
     let replace i (bi, vi) (v, m, bl, bu) =
       try
         let c, v = List.assoc i v, List.remove_assoc i v in
-        let bi, vi = S.mult c bi, List.map (fun (j, c') -> j, S.mult c c') vi in
-        let bl, bu = S.sub bl bi, S.sub bu bi in
+        let bi, vi = S.(c * bi), List.map (fun (j, c') -> j, S.(c * c')) vi in
+        let bl, bu = S.(bl - bi, bu - bi) in
         let rec merge vi v = match vi, v with
           | [], _ -> v
           | _, [] -> vi
           | (hi, hci) :: vi', (h, hc) :: v' ->
              if hi < h then (hi, hci) :: merge vi' v
              else if hi > h then (h, hc) :: merge vi v'
-             else (* hi = h *) (hi, S.add hci hc) :: merge vi' v' in
+             else (* hi = h *) (hi, S.(hci + hc)) :: merge vi' v' in
         merge vi v, m, bl, bu
       with Not_found -> v, m, bl, bu in
     let replace_repl i bvi (b, v) =
       let v, _, mbi, _ = replace i bvi (v, [], S.zero, S.zero) in
-      S.sub b mbi, v in
+      S.(b - mbi), v in
 
     let rec find_repl = function
       | [] -> None
       | ((i, c) :: v, ([] | [_, []]), bl, bu) :: cstrs
-           when (S.compare bu bl = 0) && (S.compare c S.zero <> 0)
+           when S.(bu = bl) && S.(c <> zero)
                 && List.for_all (fun (j, _, _) -> j <> i) bounds ->
          let v =
-           let c = S.sub S.zero c in
-           List.map (fun (j, c') -> j, S.div c' c) v in
-         Some ((i, (S.div bl c, v)), cstrs)
+           let c = S.neg c in
+           List.map (fun (j, c') -> j, S.(c' / c)) v in
+         Some ((i, (S.(bl / c), v)), cstrs)
       | c :: cstrs ->
          match find_repl cstrs with
          | None -> None
@@ -144,7 +144,7 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
         IntMap.map
           (fun (b, v) ->
            List.fold_left
-             (fun b (i, c) -> S.add b (S.mult c (IntMap.find i res_x)))
+             (fun b (i, c) -> S.(b + c * (IntMap.find i res_x)))
              b v)
           to_replace in
       IntMap.bindings

@@ -241,10 +241,7 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
     done;
     { line = m.col; col = m.line; content = c }
 
-  let minus m =
-    { m with content = Array.map
-                         (Array.map (fun x -> ET.sub ET.zero x))
-                         m.content }
+  let minus m = { m with content = Array.map (Array.map ET.neg) m.content }
 
   let mult_scalar s m =
     { m with content = Array.map (Array.map (ET.mult s)) m.content }
@@ -277,8 +274,8 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
       for i = 0 to m1.line - 1 do
         for j = 0 to m2.col - 1 do
           for k = 0 to m1.col - 1 do
-            c.(i).(j) <- ET.add c.(i).(j)
-                                (ET.mult m1.content.(i).(k) m2.content.(k).(j))
+            c.(i).(j) <- ET.(c.(i).(j)
+                             + m1.content.(i).(k) * m2.content.(k).(j))
           done
         done
       done;
@@ -299,7 +296,7 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
       try
         for i = 1 to m.line - 1 do
           for j = 0 to i - 1 do
-            if ET.compare m.content.(i).(j) m.content.(j).(i) <> 0 then
+            if ET.(m.content.(i).(j) <> m.content.(j).(i)) then
               raise Exit
           done
         done;
@@ -311,7 +308,7 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
     let empty_c = Array.make m.col true in
     for i = 0 to m.line -1 do
       for j = 0 to m.col - 1 do
-        if ET.compare m.content.(i).(j) ET.zero <> 0 then begin
+        if ET.(m.content.(i).(j) <> zero) then begin
           empty_r.(i) <- false;
           empty_c.(j) <- false;
         end
@@ -359,9 +356,8 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
        Inplace modif *)
     let rewrite_lin m c r1 r2 =
       for i = 0 to m.col - 1 do 
-        m.content.(r2).(i) <- ET.add
-                                m.content.(r2).(i)
-                                (ET.mult c m.content.(r1).(i)) 
+        m.content.(r2).(i) <- ET.(m.content.(r2).(i)
+                                  + (c * m.content.(r1).(i)))
       done in
 
     let find_non_nul col line m =
@@ -370,7 +366,7 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
           (* we reached the end of the matrix without finding a non null value for
 	     column i *)
           -1
-        else if ET.compare m.content.(cpt).(col) ET.zero <> 0 then
+        else if ET.(m.content.(cpt).(col) <> zero) then
           cpt
         else
           aux (cpt+1) in
@@ -395,10 +391,9 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
         switch_lines base_change !current_line pivot_line;
         (* Make sure that we have 0 for idx i for all lines j > i *)
         for j = !current_line+1 to m.line -1 do
-  	  if ET.compare m.content.(j).(col) ET.zero <> 0 then
-  	    let coeff = ET.sub ET.zero
-                               (ET.div m.content.(j).(col)
-                                       m.content.(!current_line).(col)) in
+  	  if ET.(m.content.(j).(col) <> zero) then
+  	    let coeff = ET.(~- (m.content.(j).(col))
+                            / m.content.(!current_line).(col)) in
   	    rewrite_lin m coeff !current_line j;
   	    rewrite_lin base_change coeff !current_line j
         done;
@@ -412,7 +407,7 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
     let rank, filtered =
       List.fold_right
         (fun (row, row2) (rank, reduced) -> 
-           if List.exists (fun el -> ET.compare el ET.zero <> 0) row then
+           if List.exists ET.(( <> ) zero) row then
              (* We keep the line *)
              rank, (row, row2)::reduced
            else (* We remove it, the rank decreases *)

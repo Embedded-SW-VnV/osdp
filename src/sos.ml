@@ -236,7 +236,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       match options with None -> default, None | Some o -> o, Some o.sdp in
 
     let obj, obj_sign = match obj with
-      | Minimize obj -> Mult_scalar (Poly.Coeff.of_float (-1.), obj), -1.
+      | Minimize obj -> Mult_scalar (Poly.Coeff.minus_one, obj), -1.
       | Maximize obj -> obj, 1.
       | Purefeas -> Const (Poly.zero), 0. in
 
@@ -349,7 +349,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            let vect =
              List.map
                (fun (id, c) ->
-                Ident.Map.find id var_idx, Poly.Coeff.(sub zero c))
+                Ident.Map.find id var_idx, Poly.Coeff.neg c)
                le in
            let mat = [ei, List.map (fun (i, j) -> i, j, 1.) lij] in
            (vect, mat), b)
@@ -381,7 +381,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           (fun ((vect, mat), b) ->
            (* there is at most one diagonal coefficient in mat *)
            let b =
-             if has_diag mat then Poly.Coeff.(sub b (of_float pad)) else b in
+             if has_diag mat then Poly.Coeff.(b - of_float pad) else b in
            vect, mat, b, b)
           constraints in
       List.split (List.map pad_cstrs monoms_cstrs) in
@@ -563,7 +563,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   let ( + ) = add
   let ( - ) = sub
   let ( * ) = mult
-  let ( / ) e c = Mult_scalar (Poly.Coeff.(div one c), e)
+  let ( / ) e c = Mult_scalar (Poly.Coeff.inv c, e)
   let ( /. ) c1 c2 = const (Poly.( /. ) c1 c2)
   let ( ** ) = power
   let ( >= ) e1 e2 = e1 - e2

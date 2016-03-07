@@ -66,13 +66,13 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   type t = (Monomial.t * Coeff.t) list
 
   let of_list l =
-    let l = List.filter (fun (_, s) -> Coeff.compare s Coeff.zero <> 0) l in
+    let l = List.filter (fun (_, s) -> Coeff.(s <> zero)) l in
     let l = List.sort (fun (m1, _) (m2, _) -> Monomial.compare m1 m2) l in
     let remove_duplicates l =
       let rec aux acc ((m, c) as last) l = match l with
         | [] -> last :: acc
         | ((m', c') as cur) :: l ->
-           if Monomial.compare m m' = 0 then aux acc (m, Coeff.add c c') l
+           if Monomial.compare m m' = 0 then aux acc (m, Coeff.(c + c')) l
            else aux (last :: acc) cur l in
       match l with
       | [] -> []
@@ -93,8 +93,8 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let monomial m = [m, Coeff.one]
                     
   let mult_scalar s p =
-    if Coeff.compare s Coeff.zero = 0 then []
-    else List.map (fun (m, s') -> m, Coeff.mult s s') p
+    if Coeff.(s = zero) then []
+    else List.map (fun (m, s') -> m, Coeff.(s * s')) p
 
   let map2 f l1 l2 =
     let rec aux acc l1 l2 = match l1, l2 with
@@ -107,7 +107,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
          else if cmp > 0 then aux ((m2, f Coeff.zero c2) :: acc) l1 t2
          else  (* cmp = 0 *)
            let c = f c1 c2 in
-           if Coeff.compare c Coeff.zero = 0 then aux acc t1 t2
+           if Coeff.(c = zero) then aux acc t1 t2
            else aux ((m1, c) :: acc) t1 t2 in
     List.rev (aux [] l1 l2)
   let add = map2 Coeff.add
@@ -115,7 +115,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
 
   let mult p1 p2 =
     let mult_monomial (m, s) =
-      List.map (fun (m', s') -> Monomial.mult m m', Coeff.mult s s') in
+      List.map (fun (m', s') -> Monomial.mult m m', Coeff.(s * s')) in
     List.fold_left (fun l ms -> add l (mult_monomial ms p2)) zero p1
 
   let rec power p n =
@@ -144,7 +144,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
       List.map
         (fun (m, c) ->
          let j, m = Monomial.derive m i in
-         m, Coeff.mult c (Coeff.of_float (float_of_int j)))
+         m, Coeff.(c * of_int j))
         p in
     of_list p
 
@@ -153,8 +153,8 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
       if n <= 0 then Coeff.one
       else
         let c' = pow c (n / 2) in
-        if n mod 2 = 0 then Coeff.mult c' c'
-        else Coeff.mult c (Coeff.mult c' c') in
+        if n mod 2 = 0 then Coeff.(c' * c')
+        else Coeff.(c * c' * c') in
     let eval_monomial m =
       let rec aux lc ld = match lc, ld with
         | _, [] -> Coeff.one
@@ -162,17 +162,17 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
         | c :: tc, d :: td -> Coeff.mult (pow c d) (aux tc td) in
       aux l (Monomial.to_list m) in
     List.fold_left
-      (fun r (m, c) -> Coeff.add r (Coeff.mult c (eval_monomial m)))
+      (fun r (m, c) -> Coeff.(r + c * eval_monomial m))
       Coeff.zero p
 
   let rec compare p1 p2 = match p1, p2 with
     | [], [] -> 0
-    | [], (_, c) :: _ -> Coeff.compare Coeff.zero c
-    | (_, c) :: _, [] -> Coeff.compare c Coeff.zero
+    | [], (_, c) :: _ -> Coeff.(compare zero c)
+    | (_, c) :: _, [] -> Coeff.(compare c zero)
     | (m1, c1) :: t1, (m2, c2) :: t2 ->
        let cmpm = Monomial.compare m1 m2 in
-       if cmpm < 0 then Coeff.compare c1 Coeff.zero
-       else if cmpm > 0 then Coeff.compare Coeff.zero c2
+       if cmpm < 0 then Coeff.(compare c1 zero)
+       else if cmpm > 0 then Coeff.(compare zero c2)
        else (* cmpm = 0 *)
          let cmpc = Coeff.compare c1 c2 in
          if cmpc <> 0 then cmpc else compare t1 t2
@@ -202,16 +202,16 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
        | _ -> None
 
   let is_monomial = function
-    | [m, c] -> if Coeff.compare c Coeff.one = 0 then Some m else None
+    | [m, c] -> if Coeff.(c = one) then Some m else None
     | _ -> None
                 
   let pp_names names fmt = function
     | [] -> Format.fprintf fmt "0"
     | l ->
        let pp_coeff fmt (m, s) =
-         if Coeff.compare s Coeff.one = 0 then
+         if Coeff.(s = one) then
            Format.fprintf fmt "%a" (Monomial.pp_names names) m
-         else if Coeff.compare s (Coeff.sub Coeff.zero Coeff.one) = 0 then
+         else if Coeff.(s = minus_one) then
            Format.fprintf fmt "-%a" (Monomial.pp_names names) m
          else if Monomial.compare m (Monomial.of_list []) = 0 then
            Format.fprintf fmt "%a" Coeff.pp s
@@ -230,7 +230,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let ( + ) = add
   let ( - ) = sub
   let ( * ) = mult
-  let ( / ) p c = mult_scalar (Coeff.div Coeff.one c) p
+  let ( / ) p c = mult_scalar (Coeff.inv c) p
   let ( /. ) c1 c2 = !c1 / c2
   let ( ** ) = power
 end

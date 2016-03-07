@@ -41,7 +41,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   type t = { const : Coeff.t; lin : (Ident.t * Coeff.t) list }
 
   let of_list l c =
-    let l = List.filter (fun (_, s) -> Coeff.compare s Coeff.zero <> 0) l in
+    let l = List.filter (fun (_, s) -> Coeff.(s <> zero)) l in
     let l = List.sort (fun (i1, _) (i2, _) -> Ident.compare i1 i2) l in
     let rec remove_duplicates = function
       | [] -> []
@@ -49,7 +49,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
          match remove_duplicates t with
          | [] -> [ic]
          | ((i', c') :: t) as t' ->
-            if Ident.compare i i' = 0 then (i, Coeff.add c c') :: t
+            if Ident.compare i i' = 0 then (i, Coeff.(c + c')) :: t
             else ic :: t' in
     let l = remove_duplicates l in
     { const = c; lin = l }
@@ -61,11 +61,9 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let var id = { const = Coeff.zero; lin = [id, Coeff.one] }
 
   let mult_scalar s a =
-    if Coeff.compare s Coeff.zero = 0 then
-      const Coeff.zero
-    else
-      { const = Coeff.mult s a.const;
-        lin = List.map (fun (i, c) -> i, Coeff.mult s c) a.lin }
+    if Coeff.(s = zero) then const Coeff.zero else
+      { const = Coeff.(s * a.const);
+        lin = List.map (fun (i, c) -> i, Coeff.(s * c)) a.lin }
 
   let rec map2 f l1 l2 = match l1, l2 with
     | [], [] -> []
@@ -79,7 +77,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
          (i2, f Coeff.zero c2) :: map2 f l1 t2
        else  (* cmp = 0 *)
          let c = f c1 c2 in
-         if Coeff.compare c Coeff.zero = 0 then map2 f t1 t2
+         if Coeff.(c = zero) then map2 f t1 t2
          else (i1, f c1 c2) :: map2 f t1 t2
   let map2 f a1 a2 =
     { const = f a1.const a2.const; lin = map2 f a1.lin a2.lin }
@@ -89,12 +87,12 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let compare a1 a2 =
     let rec compare l1 l2 = match l1, l2 with
       | [], [] -> 0
-      | [], (_, c) :: _ -> Coeff.compare Coeff.zero c
-      | (_, c) :: _, [] -> Coeff.compare c Coeff.zero
+      | [], (_, c) :: _ -> Coeff.(compare zero c)
+      | (_, c) :: _, [] -> Coeff.(compare c zero)
       | (i1, c1) :: t1, (i2, c2) :: t2 ->
          let cmpi = Ident.compare i1 i2 in
-         if cmpi < 0 then Coeff.compare c1 Coeff.zero
-         else if cmpi > 0 then Coeff.compare Coeff.zero c2
+         if cmpi < 0 then Coeff.(compare c1 zero)
+         else if cmpi > 0 then Coeff.(compare zero c2)
          else (* cmpi = 0 *)
            let cmpc = Coeff.compare c1 c2 in
            if cmpc <> 0 then cmpc else compare t1 t2 in
@@ -105,15 +103,15 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
 
   let pp fmt a =
     let pp_coeff fmt (x, a) =
-      if Coeff.compare a Coeff.one = 0 then
+      if Coeff.(a = one) then
         Format.fprintf fmt "%a" Ident.pp x
-      else if Coeff.compare a (Coeff.sub Coeff.zero Coeff.one) = 0 then
+      else if Coeff.(a = minus_one) then
         Format.fprintf fmt "-%a" Ident.pp x
       else
         Format.fprintf fmt "%a %a" Coeff.pp a Ident.pp x in
     if is_const a <> None then
       Format.fprintf fmt "%a" Coeff.pp a.const
-    else if Coeff.compare a.const Coeff.zero = 0 then
+    else if Coeff.(a.const = zero) then
       Format.fprintf fmt "@[%a@]"
                      (Utils.pp_list ~sep:"@ + " pp_coeff)
                      a.lin
@@ -149,7 +147,7 @@ module MakeScalar (L : S) : Scalar.S with type t = L.t = Scalar.Make (struct
   let pp fmt a =
     let lin, const = L.to_list a in
     let l, l' =
-      (if L.Coeff.compare const L.Coeff.zero = 0 then 0 else 1),
+      (if L.Coeff.(const = zero) then 0 else 1),
       List.length lin in
     if l + l' <= 1 then Format.fprintf fmt "%a" L.pp a
     else Format.fprintf fmt "(%a)" L.pp a

@@ -51,6 +51,7 @@ module type S = sig
   val ( * ) : t -> t -> t
   val ( / ) : t -> t -> t
   val ( = ) : t -> t -> bool
+  val ( <> ) : t -> t -> bool
   val ( <= ) : t -> t -> bool
   val ( >= ) : t -> t -> bool
   val ( < ) : t -> t -> bool
@@ -83,6 +84,7 @@ module Make (M : M) = struct
   let ( * ) = mult
   let ( / ) = div
   let ( = ) = equal
+  let ( <> ) x y = not (equal x y)
   let ( <= ) = leq
   let ( >= ) = geq
   let ( < ) = lt
