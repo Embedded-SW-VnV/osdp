@@ -18,26 +18,78 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *)
 
-module type S = sig
+module type M = sig
   type t
   val compare : t -> t -> int
   val zero : t
   val one : t
   val of_float : float -> t
-  val of_int: int -> t
   val to_float : t -> float
   val to_q : t -> Q.t
   val add : t -> t -> t
   val sub : t -> t -> t
   val mult : t -> t -> t
   val div : t -> t -> t
-  val lt: t  -> t -> bool
-  val gt: t  -> t -> bool
   val pp : Format.formatter -> t -> unit
-   
 end
 
-module Q : S with type t = Q.t = struct 
+module type S = sig
+  include M
+  val minus_one : t
+  val of_int : int -> t
+  val neg : t -> t
+  val inv : t -> t
+  val equal : t -> t -> bool
+  val leq : t -> t -> bool
+  val geq : t -> t -> bool
+  val lt : t -> t -> bool
+  val gt : t -> t -> bool
+  val sign : t -> int
+  val ( ~- ) : t -> t
+  val ( + ) : t -> t -> t
+  val ( - ) : t -> t -> t
+  val ( * ) : t -> t -> t
+  val ( / ) : t -> t -> t
+  val ( = ) : t -> t -> bool
+  val ( <= ) : t -> t -> bool
+  val ( >= ) : t -> t -> bool
+  val ( < ) : t -> t -> bool
+  val ( > ) : t -> t -> bool
+end
+
+module Make (M : M) = struct
+  include M
+
+  let minus_one = sub zero one
+
+  let of_int n = of_float (float_of_int n)
+
+  let neg x = sub zero x
+  let inv x = div one x
+
+  let equal x y = compare x y = 0
+  let leq x y = compare x y <= 0
+  let geq x y = compare x y >= 0
+  let lt x y = compare x y < 0
+  let gt x y = compare x y > 0
+
+  let sign x =
+    let c = compare x zero in
+    if c < 0 then -1 else if c > 0 then 1 else 0
+
+  let ( ~- ) = neg
+  let ( + ) = add
+  let ( - ) = sub
+  let ( * ) = mult
+  let ( / ) = div
+  let ( = ) = equal
+  let ( <= ) = leq
+  let ( >= ) = geq
+  let ( < ) = lt
+  let ( > ) = gt
+end
+
+module Q : S with type t = Q.t = Make (struct 
   type t = Q.t
   let compare = Q.compare
   let zero = Q.zero
@@ -50,12 +102,9 @@ module Q : S with type t = Q.t = struct
   let mult = Q.mul
   let div = Q.div
   let pp = Q.pp_print
-  let of_int x = of_float (float_of_int x)
-  let lt = (<)
-  let gt = (>)
-end
+end)
 
-module Float : S with type t = float = struct
+module Float : S with type t = float = Make (struct
   type t = float
   let compare = compare
   let zero = 0.
@@ -68,8 +117,4 @@ module Float : S with type t = float = struct
   let mult = ( *. )
   let div = ( /. )
   let pp = Format.pp_print_float
-  let of_int x = of_float (float_of_int x)
-  let lt = (<)
-  let gt = (>)
- 
-end
+end)

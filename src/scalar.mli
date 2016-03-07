@@ -20,10 +20,12 @@
 
 (** Type of scalars along with basic scalar operations.
 
-    Useful to build matrices over it (see module
-    {{:./Matrix.html}Matrix}). *)
+    Useful to build matrices or polynomials (for instance) over it
+    (see modules {{:./Matrix.html}Matrix} and
+    {{:./Polynomial.html}Polynomial}). *)
 
-module type S = sig
+(** A minimalistic module type. *)
+module type M = sig
   type t 
 
   val compare : t -> t -> int
@@ -36,7 +38,6 @@ module type S = sig
   (** {2 Conversion functions.} *)
 
   val of_float : float -> t
-  val of_int: int -> t
   val to_float : t -> float
   val to_q : t -> Q.t
                         
@@ -47,14 +48,65 @@ module type S = sig
   val mult : t -> t -> t
   val div : t -> t -> t
 
-  val lt: t  -> t -> bool
-  val gt: t  -> t -> bool
-
   (** {2 Printing.} *)
 
   val pp : Format.formatter -> t -> unit
 end
 
+(** An extended module type. *)
+module type S = sig
+  include M
+
+  val minus_one : t
+            
+  (** {2 More conversion functions.} *)
+
+  val of_int : int -> t
+
+  (** {2 More arithmetic operations.} *)
+
+  val neg : t -> t
+  val inv : t -> t
+                   
+  val equal : t -> t -> bool
+  val leq : t -> t -> bool
+  val geq : t -> t -> bool
+  val lt : t -> t -> bool
+  val gt : t -> t -> bool
+
+  (** Returns -1, 0 or 1 when its argument is respectively < 0, 0 or >
+      0. *)
+  val sign : t -> int
+
+  (** {2 Prefix and infix operators.} *)
+
+  val ( ~- ) : t -> t
+  val ( + ) : t -> t -> t
+  val ( - ) : t -> t -> t
+  val ( * ) : t -> t -> t
+  val ( / ) : t -> t -> t
+
+  val ( = ) : t -> t -> bool
+  val ( <= ) : t -> t -> bool
+  val ( >= ) : t -> t -> bool
+  val ( < ) : t -> t -> bool
+  val ( > ) : t -> t -> bool
+end
+
+(** Adds extended operations.
+
+    [minus_one] is defined as [M.sub M.zero M.one].
+
+    [of_int n] is defined as [M.of_float (float_of_int n)]. Beware
+    that this may overflow for large 63 bits integers.
+
+    [neg x] is defined as [M.sub M.zero x].
+
+    [inv x] is defined as [M.div M.one x].
+
+    Additional comparison operations are defined based on [M.compare]. *)
+module Make (M : M) : S with type t = M.t
+                  
 module Q : S with type t = Q.t
 
 module Float : S with type t = float

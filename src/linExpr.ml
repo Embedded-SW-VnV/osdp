@@ -130,13 +130,12 @@ module Float = Make (Scalar.Float)
 
 exception Not_linear
 
-module MakeScalar (L : S) : Scalar.S with type t = L.t = struct
+module MakeScalar (L : S) : Scalar.S with type t = L.t = Scalar.Make (struct
   type t = L.t
   let compare = L.compare
   let zero = L.const L.Coeff.zero
   let one = L.const L.Coeff.one
   let of_float f = L.const (L.Coeff.of_float f)
-  let of_int i = L.const (L.Coeff.of_int i)
   let to_float _ = assert false  (* should never happen *)
   let to_q _ = assert false  (* should never happen *)
   let add = L.add
@@ -147,8 +146,6 @@ module MakeScalar (L : S) : Scalar.S with type t = L.t = struct
     | Some s, _ -> L.mult_scalar s e2
     | None, Some s -> L.mult_scalar s e1
   let div _ _ = assert false  (* should never happen *)
-  let lt _ _ = assert false
-  let gt _ _ = assert false
   let pp fmt a =
     let lin, const = L.to_list a in
     let l, l' =
@@ -156,4 +153,4 @@ module MakeScalar (L : S) : Scalar.S with type t = L.t = struct
       List.length lin in
     if l + l' <= 1 then Format.fprintf fmt "%a" L.pp a
     else Format.fprintf fmt "(%a)" L.pp a
-end
+end)
