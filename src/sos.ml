@@ -360,13 +360,20 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     let () =
       let fl = Poly.Coeff.to_float in
-      let cv = List.map (fun (i, f) -> i, fl f) in
-      let cm =
-        List.map (fun (i, m) -> i, List.map (fun (i, j, f) -> i, j, fl f) m) in
+      let cv v = List.rev (List.rev_map (fun (i, f) -> i, fl f) v) in
+      let cm  m =
+        List.rev
+          (List.rev_map
+             (fun (i, m) ->
+              i, List.rev (List.rev_map (fun (i, j, f) -> i, j, fl f) m))
+             m) in
       let obj = cv (fst obj), cm (snd obj) in
       let cstrs = List.flatten (snd (List.split monoms_cstrs)) in
       let cstrs =
-        List.map (fun ((v, m), b) -> let b = fl b in cv v, m, b, b) cstrs in
+        List.rev
+          (List.rev_map
+             (fun ((v, m), b) -> let b = fl b in cv v, m, b, b)
+             cstrs) in
       Format.printf "%a@." Sdp.pp_ext_sparse_sedumi (obj, cstrs, []) in
 
     (* pad constraints *)
@@ -414,6 +421,14 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     (* rebuild variables *)
     if not (SdpRet.is_success ret) then
+      let () =
+        let v = List.map (fun (i, s) -> i, Poly.Coeff.to_float s) res_x in
+        let m = List.mapi (fun i (_, m) -> i, m) res_X in
+        Format.printf "sA = A; sc = c; sb = b; sK = K;@.";
+        Format.printf "%a@." Sdp.pp_ext_sedumi ((v, m), [], []);
+        Format.printf "xt = c; A = sA; c = sc; b = sb; K = sK;@.";
+        Format.printf "[fU x lb] = vsdpup(A, b, c, K, xt)@.";
+        Format.printf "%% SDP solver (MOSEK) did not answer success nor partial success@." in
       ret, obj, Ident.Map.empty, []
     else
       let vars =
@@ -428,9 +443,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          for i = 0 to sz - 1 do q.(i).(i) <- q.(i).(i) +. pad done)
         paddings witnesses;
       let () =
-        let v = List.map (fun (i, s) -> i, Poly.Coeff.to_float s) res_x in
+        let v = List.rev (List.rev_map (fun (i, s) -> i, Poly.Coeff.to_float s) res_x) in
         let m = List.mapi (fun i (_, m) -> i, m) witnesses in
-        Format.printf "sA = A; sc = c; sb = b: sK = K;@.";
+        Format.printf "sA = A; sc = c; sb = b; sK = K;@.";
         Format.printf "%a@." Sdp.pp_ext_sedumi ((v, m), [], []);
         Format.printf "xt = c; A = sA; c = sc; b = sb; K = sK;@.";
         Format.printf "[fU x lb] = vsdpup(A, b, c, K, xt)@." in
@@ -561,8 +576,10 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     let options = match options with Some o -> o | None -> default in
     if options.verbose > 2 then
       Format.printf "time for solve: %.3fs@." tsolve;
-    Format.printf "%% proved: %B@." (SdpRet.is_success ret);
-    if not (SdpRet.is_success ret) then ret, obj, vals, wits else
+    if not (SdpRet.is_success ret) then
+      let () = Format.printf "%% proved: false@." in
+      ret, obj, vals, wits
+    else
       let res, tcheck =
         Utils.profile (fun () ->
       let check_repl e wit = check ~options ~values:vals e wit in
@@ -571,6 +588,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
                       ) in
       if options.verbose > 2 then
         Format.printf "time for check: %.3fs@." tcheck;
+      let () =
+        let ret, _, _, _ = res in
+        Format.printf "%% proved: %B@." (ret = SdpRet.Success) in
       res
 
   let ( !! ) = const

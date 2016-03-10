@@ -389,93 +389,67 @@ let pp_ext_sparse_sedumi fmt (obj, cstrs, bounds) =
     |> List.fold_left
          (fun (s, b) (i, si) -> s + si * si, M.add i s b)
          (0, M.empty) in
-  let pp_0 n =
-    Utils.pp_array
-      ~sep:",@ " (fun fmt _ -> Format.fprintf fmt "0") fmt (Array.make n 0) in
-  let pp_v fmt v =
-    let v = List.sort (fun (i, _) (j, _) -> compare i j) v in
-    let printed =
-      List.fold_left
-        (fun printed (i, f) ->
-         if printed > 0 then Format.fprintf fmt ",@ ";
-         let b = M.find i before_v in
-         pp_0 (b - printed);
-         if b > printed then Format.fprintf fmt ",@ ";
-         let printed = b in
-         Format.fprintf fmt "%.17e" f;
-         printed + 1)
-        0 v in
-    if printed > 0 && size_v > printed then Format.fprintf fmt ",@ ";
-    pp_0 (size_v - printed) in
-  let pp_m fmt m =
-    let pp_block fmt (sz, m) =
-      let m =
-        List.fold_left
-          (fun m (i, j, f) ->
-           if i = j then (i, j, f) :: m
-           else (i, j, f) :: (j, i, f) :: m)
-          [] m in
-      let m =
-        List.sort
-          (fun (i1, j1, _) (i2, j2, _) -> compare (i1, j1) (i2, j2))
-          m in
-      let printed =
-        List.fold_left
-          (fun printed (i, j, f) ->
-           if printed > 0 then Format.fprintf fmt ",@ ";
-           let b = i * sz + j in
-           pp_0 (b - printed);
-           if b > printed then Format.fprintf fmt ",@ ";
-           let printed = b in
-           Format.fprintf fmt "%.17e" f;
-           printed + 1)
-          0 m in
-      if printed > 0 && sz * sz > printed then Format.fprintf fmt ",@ ";
-      pp_0 (sz * sz - printed) in
-    let m = List.sort (fun (i, _) (j, _) -> compare i j) m in
-    let printed =
-      List.fold_left
-        (fun printed (i, bl) ->
-         if printed > 0 then Format.fprintf fmt ",@ ";
-         let b = M.find i before_m in
-         pp_0 (b - printed);
-         if b > printed then Format.fprintf fmt ",@ ";
-         let printed = b in
+  let tr_v_m v m =
+    let tr_v v = List.map (fun (i, f) -> M.find i before_v + 1, f) v in
+    let tr_m m =
+      let tr_block (sz, m) =
+        let m =
+          List.fold_left
+            (fun m (i, j, f) ->
+             if i = j then (i, j, f) :: m
+             else (i, j, f) :: (j, i, f) :: m)
+            [] m in
+        List.map (fun (i, j, f) -> i * sz + j + 1, f) m in
+      List.map
+        (fun (i, m) ->
          let sz = M.find i blocks_m in
-         Format.fprintf fmt "%a" pp_block (sz, bl);
-         printed + sz * sz)
-        0 m in
-    if printed > 0 && size_m > printed then Format.fprintf fmt ",@ ";
-    pp_0 (size_m - printed) in
-  let pp_cstr_A fmt (v, m, _, _) =
-    let () = if size_m = 0 then assert false  (* not implemented *) in
-    if size_v = 0 then
-      Format.fprintf fmt "@[%a@]" pp_m m
-    else
-      Format.fprintf fmt "@[%a,@ %a@]" pp_v v pp_m m in
-  let pp_cstr_b fmt (_, _, b, b') =
-    let () = if b' <> b' then assert false  (* not implemented *) in
-    Format.fprintf fmt "%.17e" b in
-  let pp_obj fmt (v, m) =
-    let () = if size_m = 0 then assert false  (* not implemented *) in
-    if size_v = 0 then
-      Format.fprintf fmt "@[%a@]" pp_m m
-    else
-      Format.fprintf fmt "@[%a,@ %a@]" pp_v v pp_m m in
+         let m = tr_block (sz, m) in
+         let offset = M.find i before_m in
+         List.map (fun (i, f) -> i + offset, f) m)
+        m
+      |> List.flatten in
+    List.fold_left (fun l (i, f) -> (i + size_v, f) :: l) (tr_v v) (tr_m m) in
+  let mA =
+    List.mapi
+      (fun i (v, m, _, _) -> List.map (fun (j, f) -> i + 1, j, f) (tr_v_m v m))
+      cstrs
+    |> List.flatten in
+  let mc = List.map (fun (j, f) -> j, 1, f) (tr_v_m (fst obj) (snd obj)) in
+  let mb =
+    List.mapi
+      (fun i (_, _, b, b') ->
+       let () = if b' <> b' then assert false  (* not implemented *) in
+       i + 1, 1, b)
+      cstrs in
+  let pp_sparse fmt m =
+    let vi = List.map (fun (i, _, _) -> i) m in
+    let vj = List.map (fun (_, j, _) -> j) m in
+    let vv = List.map (fun (_, _, v) -> v) m in
+    Format.fprintf
+      fmt "@[<v>i = [@[%a@]];@ \
+           j = [@[%a@]];@ \
+           v = [@[%a@]];@]"
+      (Utils.pp_list ~sep:",@ " Format.pp_print_int) vi
+      (Utils.pp_list ~sep:",@ " Format.pp_print_int) vj
+      (Utils.pp_list ~sep:",@ " (fun fmt -> Format.fprintf fmt "%.17e")) vv in
   let old_fmt = Format.pp_get_formatter_out_functions fmt () in
   let () =
     let out_newline () = old_fmt.Format.out_string "...\n" 0 4 in
     Format.pp_set_formatter_out_functions
       fmt { old_fmt with Format.out_newline = out_newline } in
   let () =
+    let nb_cstrs = List.length cstrs in
     Format.fprintf
-      fmt "@[<v>A = [@[%a@]];@ \
-           c = [@[%a@]]';@ \
-           b = [@[%a@]];@ \
+      fmt "@[<v>%a@ \
+           A = sparse(i, j, v, %d, %d);@ \
+           %a@ \
+           c = sparse(i, j, v, %d, 1);@ \
+           %a@ \
+           b = sparse(i, j, v, %d, 1);@ \
            K = struct('f', %d, 's', [@[%a@]]);@]"
-      (Utils.pp_list ~sep:";@ " pp_cstr_A) cstrs
-      pp_obj obj
-      (Utils.pp_list ~sep:";@ " pp_cstr_b) cstrs
+      pp_sparse mA nb_cstrs (size_v + size_m)
+      pp_sparse mc (size_v + size_m)
+      pp_sparse mb nb_cstrs
       size_v
       (Utils.pp_list ~sep:";@ " Format.pp_print_int)
       (List.map snd (M.bindings blocks_m)) in
