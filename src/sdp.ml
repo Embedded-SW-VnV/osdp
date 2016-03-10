@@ -364,6 +364,135 @@ let pp_ext_sparse = pp_ext pp_sparse_matrix
 
 let pp_ext = pp_ext pp_matrix
 
+let pp_ext_sparse_sedumi fmt (obj, cstrs, bounds) =
+  let () = if bounds <> [] then assert false  (* not implemented *) in
+  let v, m =
+    let vm = obj :: List.map (fun (v, m, _, _) -> v, m) cstrs in
+    List.split vm in
+  let module S = Set.Make (struct type t = int let compare = compare end) in
+  let module M = Map.Make (struct type t = int let compare = compare end) in
+  let size_v, before_v =
+    List.flatten v
+    |> List.fold_left (fun sv (i, _) -> S.add i sv) S.empty
+    |> S.elements |> List.sort compare
+    |> List.fold_left (fun (s, b) i -> s + 1, M.add i s b) (0, M.empty) in
+  let blocks_m =
+    List.fold_left
+      (fun mm (i, m) ->
+       let sz =
+         List.fold_left (fun d (i, j, _) -> max d (max i j + 1)) 0 m in
+       let szi = try M.find i mm with Not_found -> 0 in
+       M.add i (max sz szi) mm)
+      M.empty (List.flatten m) in
+  let size_m, before_m =
+    M.bindings blocks_m |> List.sort (fun (i, _) (j, _) -> compare i j)
+    |> List.fold_left
+         (fun (s, b) (i, si) -> s + si * si, M.add i s b)
+         (0, M.empty) in
+  let pp_0 n =
+    Utils.pp_array
+      ~sep:",@ " (fun fmt _ -> Format.fprintf fmt "0") fmt (Array.make n 0) in
+  let pp_v fmt v =
+    let v = List.sort (fun (i, _) (j, _) -> compare i j) v in
+    let printed =
+      List.fold_left
+        (fun printed (i, f) ->
+         if printed > 0 then Format.fprintf fmt ",@ ";
+         let b = M.find i before_v in
+         pp_0 (b - printed);
+         if b > printed then Format.fprintf fmt ",@ ";
+         let printed = b in
+         Format.fprintf fmt "%.17e" f;
+         printed + 1)
+        0 v in
+    if printed > 0 && size_v > printed then Format.fprintf fmt ",@ ";
+    pp_0 (size_v - printed) in
+  let pp_m fmt m =
+    let pp_block fmt (sz, m) =
+      let m =
+        List.fold_left
+          (fun m (i, j, f) ->
+           if i = j then (i, j, f) :: m
+           else (i, j, f) :: (j, i, f) :: m)
+          [] m in
+      let m =
+        List.sort
+          (fun (i1, j1, _) (i2, j2, _) -> compare (i1, j1) (i2, j2))
+          m in
+      let printed =
+        List.fold_left
+          (fun printed (i, j, f) ->
+           if printed > 0 then Format.fprintf fmt ",@ ";
+           let b = i * sz + j in
+           pp_0 (b - printed);
+           if b > printed then Format.fprintf fmt ",@ ";
+           let printed = b in
+           Format.fprintf fmt "%.17e" f;
+           printed + 1)
+          0 m in
+      if printed > 0 && sz * sz > printed then Format.fprintf fmt ",@ ";
+      pp_0 (sz * sz - printed) in
+    let m = List.sort (fun (i, _) (j, _) -> compare i j) m in
+    let printed =
+      List.fold_left
+        (fun printed (i, bl) ->
+         if printed > 0 then Format.fprintf fmt ",@ ";
+         let b = M.find i before_m in
+         pp_0 (b - printed);
+         if b > printed then Format.fprintf fmt ",@ ";
+         let printed = b in
+         let sz = M.find i blocks_m in
+         Format.fprintf fmt "%a" pp_block (sz, bl);
+         printed + sz * sz)
+        0 m in
+    if printed > 0 && size_m > printed then Format.fprintf fmt ",@ ";
+    pp_0 (size_m - printed) in
+  let pp_cstr_A fmt (v, m, _, _) =
+    let () = if size_m = 0 then assert false  (* not implemented *) in
+    if size_v = 0 then
+      Format.fprintf fmt "@[%a@]" pp_m m
+    else
+      Format.fprintf fmt "@[%a,@ %a@]" pp_v v pp_m m in
+  let pp_cstr_b fmt (_, _, b, b') =
+    let () = if b' <> b' then assert false  (* not implemented *) in
+    Format.fprintf fmt "%.17e" b in
+  let pp_obj fmt (v, m) =
+    let () = if size_m = 0 then assert false  (* not implemented *) in
+    if size_v = 0 then
+      Format.fprintf fmt "@[%a@]" pp_m m
+    else
+      Format.fprintf fmt "@[%a,@ %a@]" pp_v v pp_m m in
+  let old_fmt = Format.pp_get_formatter_out_functions fmt () in
+  let () =
+    let out_newline () = old_fmt.Format.out_string "...\n" 0 4 in
+    Format.pp_set_formatter_out_functions
+      fmt { old_fmt with Format.out_newline = out_newline } in
+  let () =
+    Format.fprintf
+      fmt "@[<v>A = [@[%a@]];@ \
+           c = [@[%a@]]';@ \
+           b = [@[%a@]];@ \
+           K = struct('f', %d, 's', [@[%a@]]);@]"
+      (Utils.pp_list ~sep:";@ " pp_cstr_A) cstrs
+      pp_obj obj
+      (Utils.pp_list ~sep:";@ " pp_cstr_b) cstrs
+      size_v
+      (Utils.pp_list ~sep:";@ " Format.pp_print_int)
+      (List.map snd (M.bindings blocks_m)) in
+  Format.pp_set_formatter_out_functions fmt old_fmt
+
+let pp_ext_sedumi fmt (obj, cstrs, bounds) =
+  let obj = fst obj, block_diag_to_sparse (snd obj) in
+  let cstrs =
+    List.map
+      (fun (v, m, lb, ub) -> v, block_diag_to_sparse m, lb, ub)
+      cstrs in
+  pp_ext_sparse_sedumi fmt (obj, cstrs, bounds)
+
+(****************************)
+(* Miscellaneous functions. *)
+(****************************)
+  
 let pfeas_stop_crit ?options ?solver bl =
   match get_solver options solver with
   | Csdp ->

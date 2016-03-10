@@ -358,6 +358,17 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     let monoms_cstrs = List.mapi build_cstr monoms_scalarized in
 
+    let () =
+      let fl = Poly.Coeff.to_float in
+      let cv = List.map (fun (i, f) -> i, fl f) in
+      let cm =
+        List.map (fun (i, m) -> i, List.map (fun (i, j, f) -> i, j, fl f) m) in
+      let obj = cv (fst obj), cm (snd obj) in
+      let cstrs = List.flatten (snd (List.split monoms_cstrs)) in
+      let cstrs =
+        List.map (fun ((v, m), b) -> let b = fl b in cv v, m, b, b) cstrs in
+      Format.printf "%a@." Sdp.pp_ext_sparse_sedumi (obj, cstrs, []) in
+
     (* pad constraints *)
     (* The solver will return X >= 0 such that tr(A_i X) = b_i + perr
        where perr is bounded by the primal feasibility error stop
@@ -380,8 +391,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         List.map
           (fun ((vect, mat), b) ->
            (* there is at most one diagonal coefficient in mat *)
-           let b =
-             if has_diag mat then Poly.Coeff.(b - of_float pad) else b in
+           let b = if has_diag mat then Poly.Coeff.(b - of_float pad) else b in
            vect, mat, b, b)
           constraints in
       List.split (List.map pad_cstrs monoms_cstrs) in
@@ -417,6 +427,13 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
          let sz = Array.length q in
          for i = 0 to sz - 1 do q.(i).(i) <- q.(i).(i) +. pad done)
         paddings witnesses;
+      let () =
+        let v = List.map (fun (i, s) -> i, Poly.Coeff.to_float s) res_x in
+        let m = List.mapi (fun i (_, m) -> i, m) witnesses in
+        Format.printf "sA = A; sc = c; sb = b: sK = K;@.";
+        Format.printf "%a@." Sdp.pp_ext_sedumi ((v, m), [], []);
+        Format.printf "xt = c; A = sA; c = sc; b = sb; K = sK;@.";
+        Format.printf "[fU x lb] = vsdpup(A, b, c, K, xt)@." in
       (* unscale result *)
       List.iter2
         (fun s (_, q) ->
@@ -544,6 +561,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     let options = match options with Some o -> o | None -> default in
     if options.verbose > 2 then
       Format.printf "time for solve: %.3fs@." tsolve;
+    Format.printf "%% proved: %B@." (SdpRet.is_success ret);
     if not (SdpRet.is_success ret) then ret, obj, vals, wits else
       let res, tcheck =
         Utils.profile (fun () ->

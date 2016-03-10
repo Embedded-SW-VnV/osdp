@@ -259,6 +259,13 @@ val pp_ext_sparse : Format.formatter ->
 val pp_ext : Format.formatter ->
              (matrix obj_ext * matrix constr_ext list * bounds) -> unit
 
+val pp_ext_sparse_sedumi : Format.formatter ->
+                           (sparse_matrix obj_ext *
+                              sparse_matrix constr_ext list * bounds) -> unit
+
+val pp_ext_sedumi : Format.formatter ->
+                    (matrix obj_ext * matrix constr_ext list * bounds) -> unit
+
 (** {2 Miscellaneous functions.} *)
 
 (** [pfeas_stop_crit (b_1,..., b_m)] returns [eps] used as primal
