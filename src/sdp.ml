@@ -414,7 +414,7 @@ let pp_ext_sparse_sedumi fmt (obj, cstrs, bounds) =
       (fun i (v, m, _, _) -> List.map (fun (j, f) -> i + 1, j, f) (tr_v_m v m))
       cstrs
     |> List.flatten in
-  let mc = List.map (fun (j, f) -> j, 1, f) (tr_v_m (fst obj) (snd obj)) in
+  let mc = List.map (fun (j, f) -> j, 1, ~-. f) (tr_v_m (fst obj) (snd obj)) in
   let mb =
     List.mapi
       (fun i (_, _, b, b') ->
