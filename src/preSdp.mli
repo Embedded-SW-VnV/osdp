@@ -35,7 +35,7 @@ module type S = sig
   type 'a obj_ext = vector * 'a Sdp.block_diag
 
   (** C.f. {{:./Sdp.html#TYPEconstr_ext}Sdp.constr_ext} *)
-  type 'a constr_ext = vector * 'a Sdp.block_diag * Scalar.t (* b *) * Scalar.t (* b *) * float (* padding (original bound was b + padding) *)
+  type 'a constr_ext = vector * 'a Sdp.block_diag * Scalar.t * Scalar.t
 
   (** See {{:./Sdp.html#VALsolve_ext_sparse}Sdp.solve_ext_sparse} for
       details. The only difference is that redundant free variables
@@ -46,7 +46,6 @@ module type S = sig
   val solve_ext_sparse : ?options:Sdp.options -> ?solver:Sdp.solver ->
                          Sdp.sparse_matrix obj_ext ->
                          Sdp.sparse_matrix constr_ext list -> Sdp.bounds ->
-                         float list ->
                          SdpRet.t * (float * float)
                          * (vector * Sdp.matrix Sdp.block_diag
                             * float array * Sdp.matrix Sdp.block_diag)
