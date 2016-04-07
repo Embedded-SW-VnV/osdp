@@ -22,10 +22,11 @@ module type S = sig
   module Scalar : Scalar.S
   type vector = (int * Scalar.t) list
   type 'a obj_ext = vector * 'a Sdp.block_diag
-  type 'a constr_ext = vector * 'a Sdp.block_diag * Scalar.t * Scalar.t
+  type 'a constr_ext = vector * 'a Sdp.block_diag * Scalar.t (* b *) * Scalar.t (* b *) * float (* padding (original bound was b + padding) *)
   val solve_ext_sparse : ?options:Sdp.options -> ?solver:Sdp.solver ->
                          Sdp.sparse_matrix obj_ext ->
                          Sdp.sparse_matrix constr_ext list -> Sdp.bounds ->
+                         float list ->
                          SdpRet.t * (float * float)
                          * (vector * Sdp.matrix Sdp.block_diag
                             * float array * Sdp.matrix Sdp.block_diag)
@@ -38,19 +39,19 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
 
   type 'a obj_ext = vector * 'a Sdp.block_diag
 
-  type 'a constr_ext = vector * 'a Sdp.block_diag * Scalar.t * Scalar.t
+  type 'a constr_ext = vector * 'a Sdp.block_diag * Scalar.t (* b *) * Scalar.t (* b *) * float (* padding (original bound was b + padding) *)
 
   module IntMap = Map.Make (struct type t = int let compare = compare end)
                                     
-  let solve_ext_sparse ?options ?solver obj constraints bounds =
+  let solve_ext_sparse ?options ?solver obj constraints bounds paddings =
     let obj = List.sort (fun (i, _) (j, _) -> compare i j) (fst obj), snd obj in
     let constraints =
       List.map
-        (fun (v, m, bl, bu) ->
-         List.sort (fun (i, _) (j, _) -> compare i j) v, m, bl, bu)
+        (fun (v, m, bl, bu, pad) ->
+         List.sort (fun (i, _) (j, _) -> compare i j) v, m, bl, bu, pad)
         constraints in
 
-    let replace i (bi, vi) (v, m, bl, bu) =
+    let replace i (bi, vi) (v, m, bl, bu, pad) =
       try
         let c, v = List.assoc i v, List.remove_assoc i v in
         let bi, vi = S.(c * bi), List.map (fun (j, c') -> j, S.(c * c')) vi in
@@ -62,17 +63,18 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
              if hi < h then (hi, hci) :: merge vi' v
              else if hi > h then (h, hc) :: merge vi v'
              else (* hi = h *) (hi, S.(hci + hc)) :: merge vi' v' in
-        merge vi v, m, bl, bu
-      with Not_found -> v, m, bl, bu in
+        merge vi v, m, bl, bu, pad
+      with Not_found -> v, m, bl, bu, pad in
     let replace_repl i bvi (b, v) =
-      let v, _, mbi, _ = replace i bvi (v, [], S.zero, S.zero) in
+      let v, _, mbi, _, _ = replace i bvi (v, [], S.zero, S.zero, 0.) in
       S.(b - mbi), v in
 
     let rec find_repl = function
       | [] -> None
-      | ((i, c) :: v, ([] | [_, []]), bl, bu) :: cstrs
+      | ((i, c) :: v, ([] | [_, []]), bl, bu, pad) :: cstrs
            when S.(bu = bl) && S.(c <> zero)
                 && List.for_all (fun (j, _, _) -> j <> i) bounds ->
+         let () = if pad <> 0. then assert false in
          let v =
            let c = S.neg c in
            List.map (fun (j, c') -> j, S.(c' / c)) v in
@@ -109,9 +111,15 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
     (*      v) *)
     (*   to_replace; *)
 
+    let unpadded_constraints =
+      List.map
+        (fun (v, m, bl, bu, pad) ->
+         let v = List.map (fun (i, s) -> i, S.to_float s) v in
+         v, m, S.to_float bl +. pad, S.to_float bu +. pad)
+        constraints in
     let constraints =
       List.map
-        (fun (v, m, bl, bu) ->
+        (fun (v, m, bl, bu, pad) ->
          let v = List.map (fun (i, s) -> i, S.to_float s) v in
          v, m, S.to_float bl, S.to_float bu)
         constraints in
@@ -121,6 +129,8 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
          let offset, v = replace_repl i bvi (offset, v) in (offset, (v, m)))
         to_replace (S.zero, obj) in
     let obj = List.map (fun (i, s) -> i, S.to_float s) (fst obj), snd obj in
+
+    Format.printf "%a@." Sdp.pp_ext_sparse_sedumi (obj, unpadded_constraints, bounds);
 
     (* Format.printf "new constraints:@."; *)
     (* List.iter *)
@@ -135,6 +145,32 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
     let ret, obj, (res_x, res_X, res_y, res_Z) =
       Sdp.solve_ext_sparse ?options ?solver obj constraints bounds in
 
+    let () =
+      let unpadded_res_X =
+        let pX = try List.combine paddings res_X with Invalid_argument _ -> [] in
+        List.map
+          (fun (pad, (i, q)) ->
+           let sz = Array.length q in
+           let q =
+             let q' = Array.make_matrix sz sz 0. in
+             for i = 0 to sz - 1 do
+               for j = 0 to sz - 1 do
+                 q'.(i).(j) <- q.(i).(j)
+               done
+             done;
+             q' in
+           for i = 0 to sz - 1 do q.(i).(i) <- q.(i).(i) +. pad done;
+           i, q)
+          pX in
+      let v = res_x in
+      let m = List.mapi (fun i (_, m) -> i, m) unpadded_res_X in
+      Format.printf "sA = A; sc = c; sb = b; sK = K;@.";
+      Format.printf "%a@." Sdp.pp_ext_sedumi ((v, m), [], []);
+      Format.printf "xt = -c; A = sA; c = sc; b = sb; K = sK;@.";
+      Format.printf "[fU x lb] = vsdpup(A, b, c, K, xt)@.";
+      if not (SdpRet.is_success ret) then
+        Format.printf "%% SDP solver (MOSEK) did not answer success nor partial success@." in
+    
     let res_x =
       let res_x =
         List.fold_left

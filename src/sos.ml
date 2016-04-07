@@ -119,7 +119,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           ([], 0) mons in
       List.rev l in
     let e = Var (Vpoly { name = name; poly = l }) in
-    let le = List.rev_map (fun (m, id) -> m, Var (Vscalar id)) (List.rev l) in
+    let le = Utils.map (fun (m, id) -> m, Var (Vscalar id)) l in
     e, le
 
   let const p = Const p
@@ -380,8 +380,10 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         List.map
           (fun ((vect, mat), b) ->
            (* there is at most one diagonal coefficient in mat *)
-           let b = if has_diag mat then Poly.Coeff.(b - of_float pad) else b in
-           vect, mat, b, b)
+           (* let b = if has_diag mat then Poly.Coeff.(b - of_float pad) else b in *)
+           let pad' = if has_diag mat then pad else 0. in
+           let b = Poly.Coeff.(b - of_float pad') in
+           vect, mat, b, b, pad')
           constraints in
       List.split (List.map pad_cstrs monoms_cstrs) in
     let cstrs = List.flatten cstrs in
@@ -394,7 +396,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     let module PreSdp = PreSdp.Make (Poly.Coeff) in
     let (ret, (pobj, dobj), (res_x, res_X, _, _)), tsolver =
       Utils.profile (fun () ->
-                     PreSdp.solve_ext_sparse ?options:sdp_options ?solver obj cstrs []
+                     PreSdp.solve_ext_sparse ?options:sdp_options ?solver obj cstrs [] paddings
                     ) in
     if options.verbose > 2 then
       Format.printf "time for solver: %.3fs@." tsolver;
@@ -541,7 +543,10 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     let options = match options with Some o -> o | None -> default in
     if options.verbose > 2 then
       Format.printf "time for solve: %.3fs@." tsolve;
-    if not (SdpRet.is_success ret) then ret, obj, vals, wits else
+    if not (SdpRet.is_success ret) then
+      let () = Format.printf "%% proved: false@." in
+      ret, obj, vals, wits
+    else
       let res, tcheck =
         Utils.profile (fun () ->
       let check_repl e wit = check ~options ~values:vals e wit in
