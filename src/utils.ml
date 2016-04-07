@@ -22,7 +22,7 @@ let pp_list ~sep f fmt l =
   let rec aux fmt = function
     | []   -> ()
     | [e]  -> f fmt e
-    | x::r -> Format.fprintf fmt "%a%(%)%a" f x sep aux r in
+    | x::r -> Format.fprintf fmt "%a%(%)" f x sep; aux fmt r in
   aux fmt l
 
 let pp_array ~sep f fmt a =
@@ -117,3 +117,5 @@ let profile f =
     Sys.remove fn;
     t in
   r, t fnend -. t fnbeg
+
+let map f l = List.rev (List.rev_map f l)

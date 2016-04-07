@@ -81,7 +81,7 @@ let rec is_var = function
                             
 let rec list_eq n d =
   let add_diff m = (List.fold_left ( - ) d m) :: m in
-  if n <= 0 then [[]] else List.rev_map add_diff (List.rev (list_le (n - 1) d))
+  if n <= 0 then [[]] else Utils.map add_diff (list_le (n - 1) d)
 
 and list_le n d =
   if n <= 0 || d <= 0 then [[]] else

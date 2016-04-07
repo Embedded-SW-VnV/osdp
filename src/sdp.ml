@@ -414,7 +414,7 @@ let pp_ext_sparse_sedumi fmt (obj, cstrs, bounds) =
       (fun i (v, m, _, _) -> List.map (fun (j, f) -> i + 1, j, f) (tr_v_m v m))
       cstrs
     |> List.flatten in
-  let mc = List.map (fun (j, f) -> j, 1, ~-. f) (tr_v_m (fst obj) (snd obj)) in
+  let mc = Utils.map (fun (j, f) -> j, 1, ~-. f) (tr_v_m (fst obj) (snd obj)) in
   let mb =
     List.mapi
       (fun i (_, _, b, b') ->
@@ -422,9 +422,9 @@ let pp_ext_sparse_sedumi fmt (obj, cstrs, bounds) =
        i + 1, 1, b)
       cstrs in
   let pp_sparse fmt m =
-    let vi = List.map (fun (i, _, _) -> i) m in
-    let vj = List.map (fun (_, j, _) -> j) m in
-    let vv = List.map (fun (_, _, v) -> v) m in
+    let vi = Utils.map (fun (i, _, _) -> i) m in
+    let vj = Utils.map (fun (_, j, _) -> j) m in
+    let vv = Utils.map (fun (_, _, v) -> v) m in
     Format.fprintf
       fmt "@[<v>i = [@[%a@]];@ \
            j = [@[%a@]];@ \

@@ -53,3 +53,7 @@ val float_of_q : Q.t -> float
 (** [profile f] executes the function [f] and returns both its result
     and the execution time in second. *)
 val profile : (unit -> 'a) -> 'a * float
+
+(** tail-recursive version of [List.map] (implemented using
+    List.rev_map and List.rev) *)
+val map : ('a -> 'b) -> 'a list -> 'b list
