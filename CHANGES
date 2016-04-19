@@ -1,3 +1,7 @@
+version 0.4.5, Apr 19th, 2016
+-----------------------------
+ o make camlp4 deprecated
+
 version 0.4.4, Jan 11th, 2016
 -----------------------------
  o fix a small soundness bug (some 1x1 matrices were incorrectly proved psd)

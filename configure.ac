@@ -20,7 +20,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([OSDP], [0.4.4], [ploc@garoche.net])
+AC_INIT([OSDP], [0.4.5], [ploc@garoche.net])
 AC_CONFIG_SRCDIR([src/sdp.ml])
 
 # default prefix is /usr/local
@@ -91,7 +91,7 @@ AC_ARG_WITH([sdpa-dd-path],
 AC_ARG_WITH([camlp4],
   [AS_HELP_STRING([--without-camlp4], [disable support for Camlp4 parsers])],
   [],
-  [with_camlp4=check])
+  [with_camlp4=no])
 
 AC_ARG_WITH([glpk],
   [AS_HELP_STRING([--without-glpk], [disable support for GLPK])],

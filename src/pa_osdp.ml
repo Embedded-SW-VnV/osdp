@@ -21,10 +21,14 @@
 (** Camlp4 quotation for
     {{:./Lmi.Float.html#TYPEmatrix_expr}Lmi.Float.matrix_expr},
     {{:./Sos.Float.html#TYPEpolynomial_expr}Sos.Float.matrix_expr} and
-    {{:./Polynomial.Float.html#TYPEt}Polynomial.Float.t}. *)
+    {{:./Polynomial.Float.html#TYPEt}Polynomial.Float.t}.
 
-(** See file {{:../example/demo.ml}example/demo.ml} for examples of use.
-    Syntax:
+    @deprecated Should be removed in a future release. The use of
+    pre/infix operators (as described for instance in the
+    {{:./Sos.S.html#3_Prefixandinfixoperators}Sos} module) is now
+    preferred. *)
+
+(** Syntax:
     {[
 n ::= 0 | [1-9][0-9]*
 
