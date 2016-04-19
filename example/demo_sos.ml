@@ -34,9 +34,11 @@ let _ =
 
 (* Using SOS module from OSDP. *)
 let _ =
-  let lower = Osdp.Sos.Float.var "lower" in
-  let p = <:sos< (1 + x0 x1)^2 - x0 x1 + (1 - x1)^2 >> in
-  let e = <:sos< p - lower >> in
+  let module Sos = Osdp.Sos.Float in
+  let lower = Sos.var "lower" in
+  let x0, x1 = Sos.(??0, ??1) in
+  let p = Sos.((!1. + x0 * x1)**2 - x0 * x1 + (!1. - x1)**2) in
+  let e = Sos.(p - lower) in
   let () = Format.printf "e = %a@." Osdp.Sos.Float.pp e in
   let ret, (pobj, dobj), vars, _ =
     Osdp.Sos.Float.solve ~solver (Osdp.Sos.Float.Maximize lower) [e] in
