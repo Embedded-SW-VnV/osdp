@@ -195,7 +195,8 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
        | None -> None
 
   let is_const = function
-    | [] | _ :: _ :: _ -> None
+    | [] -> Some Coeff.zero
+    | _ :: _ :: _ -> None
     | [m, c] ->
        match Monomial.to_list m with
        | [] -> Some c
