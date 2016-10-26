@@ -22,6 +22,45 @@
 
 (* let pp = pp_names [] *)
 
+module Var = struct
+  type t = string
+  let print = Format.pp_print_string
+  let compare = String.compare
+  let is_int _ = false
+end
+
+module Float = struct
+  type t = float
+  let add = ( +. )
+  let mult = ( *. )
+  let compare = compare
+  let equal = ( = )
+  let zero = 0.
+  let one = 1.
+  let m_one = -1.
+  let is_zero n = n = zero
+  let to_string = string_of_float
+  let print fmt t = Format.fprintf fmt "%g" t
+  let is_int _ = false
+  let div = ( /. )
+  let sub = ( -. )
+  let is_one v = v = 1.
+  let is_m_one v = v = -1.
+  let sign x = if x > 0. then 1 else if x < 0. then -1 else 0
+  let min = min
+  let abs = abs_float
+  let minus = ( ~-. )
+end
+
+module Ex = struct
+  type t = unit
+  let empty = ()
+  let union _ _ = ()
+  let print _ _ = ()
+end
+
+module Sim = OcplibSimplex.Basic.Make (Var) (Float) (Ex)
+
 let filter_newton_polytope s p =
   (* keep monomials s_i of s such that 2 s_i is in p *)
   let skeep, sfilter =
@@ -73,6 +112,36 @@ let filter_newton_polytope s p =
       Glpk.simplex lp;
       if Glpk.get_obj_val lp < 1.0001 then None
       else Some (Glpk.get_col_primals lp) in
+    let find_separating_plane' si =
+      let p_of_list l =
+        l |> List.mapi (fun n c -> "x" ^ string_of_int n, c)
+        |> Sim.Core.P.from_list in
+      let nb = ref 0 in
+      let add_cstr sim c =
+        let s = "s" ^ string_of_int !nb in
+        incr nb;
+        Sim.Assert.poly sim c s None () (Some (1., 0.)) () in
+      let center' x = Array.to_list (center x) in
+      let z = si |> List.map (( * ) 2) |> center' |> p_of_list in
+      let cstrs = p |> List.map center' |> List.map p_of_list in
+      let sim = Sim.Core.empty ~is_int:false ~check_invs:true ~debug:0 in
+      let sim = List.fold_left add_cstr sim cstrs in
+      let sim, opt = Sim.Solve.maximize sim z in
+      match Sim.Result.get opt sim with
+      | (Sim.Core.Unknown | Sim.Core.Sat _ | Sim.Core.Unsat _
+         | Sim.Core.Unbounded _) -> None
+      | Sim.Core.Max (mx, sol) ->
+         let { Sim.Core.max_v; is_le; _ } = Lazy.force mx in
+         if max_v < 1.0001 then None else
+           let a = Array.make n 0. in
+           let { Sim.Core.main_vars; _ } = Lazy.force sol in
+           List.iter
+             (fun (v, c) ->
+              let i = int_of_string (String.sub v 1 (String.length v - 1)) in
+              a.(i) <- c)
+             main_vars;
+           Some a
+    in
     let rec filter s = function
       | [] -> s
       | si :: sfilter ->

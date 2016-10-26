@@ -1,5 +1,5 @@
 true: debug
-<*>: package(zarith)@TAGS_GLPK@
+<*>: package(zarith), package(ocplib-simplex)@TAGS_GLPK@
 <osdp.cm{x,}a>: use_libosdp
 <osdp.cmxs>: link_libosdp
 <*.cmx> and not "osdp.cmx": for-pack(Osdp)
