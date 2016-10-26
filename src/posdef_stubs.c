@@ -33,6 +33,7 @@
 #include <caml/fail.h>
 
 #include <stdlib.h>
+#include <string.h>
 #include <fenv.h>
 #include <math.h>
 
@@ -231,4 +232,15 @@ value posdef_check(value mll)
   res = check(mll);
 
   CAMLreturn(Val_int(res));
+}
+
+static char str[1024];
+
+value string_of_float_bin(value f)
+{
+  CAMLparam1(f);
+
+  sprintf(str, "%a", Double_val(f));
+
+  CAMLreturn(caml_copy_string(str));
 }

@@ -103,7 +103,9 @@ module Q : S with type t = Q.t = Make (struct
   let sub = Q.sub
   let mult = Q.mul
   let div = Q.div
-  let pp = Q.pp_print
+  let pp fmt q =
+    Format.fprintf fmt "%a/%a" Z.pp_print q.Q.num Z.pp_print q.Q.den
+    (* Format.fprintf fmt "\"%a\"/\"%a\"" Z.pp_print q.Q.num Z.pp_print q.Q.den *)
 end)
 
 module Float : S with type t = float = Make (struct
@@ -118,5 +120,5 @@ module Float : S with type t = float = Make (struct
   let sub = ( -. )
   let mult = ( *. )
   let div = ( /. )
-  let pp = Format.pp_print_float
+  let pp fmt f = Format.fprintf fmt "%s" (Posdef.string_of_float_bin f)
 end)

@@ -38,3 +38,5 @@ val check : Q.t array array -> bool
     positive definite). This is however implemented with rational
     arithmetic and may be dramatically slower. *)
 val check_complete : Q.t array array -> bool
+
+val string_of_float_bin : float -> string

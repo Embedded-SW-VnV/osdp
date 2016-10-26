@@ -46,3 +46,5 @@ let check_complete m =
     done;
     true
   with Exit -> false
+
+external string_of_float_bin : float -> string = "string_of_float_bin"
