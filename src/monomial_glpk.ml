@@ -178,35 +178,28 @@ let filter_newton_polytope_ocplib_simplex s p =
       let a = Array.of_list (sub x o) in
       Array.append a (Array.make (n - Array.length a) 0.) in
     let find_separating_plane si =
-      let p_of_list l =
-        l |> List.mapi (fun n c -> "x" ^ string_of_int n, c)
-        |> Sim.Core.P.from_list in
+      let p_of_list l = List.mapi (fun n c -> "x" ^ string_of_int n, c) l in
       let nb = ref 0 in
-      let add_cstr sim c =
-        let () = Format.printf "%a <= 1@." Sim.Core.P.print c in
-        (* let () = Format.printf "c is_polynomial: %B@." (Sim.Core.P.is_polynomial c) in *)
-        match Sim.Core.P.bindings c with
+      let add_cstr b sim c = match List.filter (fun (_, c) -> c <> 0.) c with
         | [] -> sim
         | [v, c] ->
-           (* Format.printf "c = %g@." c; *)
-           if c > 0. then Sim.Assert.var sim v None () (Some (1. /. c, 0.)) ()
-           else Sim.Assert.var sim v (Some (1. /. c, 0.)) () None ()
+           if c > 0. then Sim.Assert.var sim v None () (Some (b /. c, 0.)) ()
+           else Sim.Assert.var sim v (Some (b /. c, 0.)) () None ()
         | _ ->
            let s = "s" ^ string_of_int !nb in
            incr nb;
-           (* let () = Format.printf "avant@." in *)
-           let sim = Sim.Assert.poly sim c s None () (Some (1., 0.)) () in
-           (* let () = Format.printf "apres@." in *)
-           sim in
+           let c = Sim.Core.P.from_list c in
+           Sim.Assert.poly sim c s None () (Some (b, 0.)) () in
       let center' x = Array.to_list (center x) in
       let z = si |> List.map (( * ) 2) |> center' |> p_of_list in
       let cstrs = p |> List.map center' |> List.map p_of_list in
       let sim = Sim.Core.empty ~is_int:false ~check_invs:true ~debug:0 in
-      let sim = List.fold_left add_cstr sim cstrs in
-      let sim, opt = Sim.Solve.maximize sim z in
+      let sim = add_cstr (-1.0001) sim (List.map (fun (v, c) -> v, -.c) z) in
+      let sim = List.fold_left (add_cstr 1.) sim cstrs in
+      let sim, opt = Sim.Solve.maximize sim (Sim.Core.P.from_list z) in
       match Sim.Result.get opt sim with
-      | (Sim.Core.Unknown | Sim.Core.Sat _ | Sim.Core.Unsat _) -> None
-      | Sim.Core.Unbounded sol ->
+      | (Sim.Core.Unknown | Sim.Core.Unsat _) -> None
+      | (Sim.Core.Sat sol | Sim.Core.Unbounded sol | Sim.Core.Max (_, sol)) ->
          let a = Array.make n 0. in
          let { Sim.Core.main_vars; _ } = Lazy.force sol in
          List.iter
@@ -214,18 +207,7 @@ let filter_newton_polytope_ocplib_simplex s p =
             let i = int_of_string (String.sub v 1 (String.length v - 1)) in
             a.(i) <- c)
            main_vars;
-         Some a
-      | Sim.Core.Max (mx, sol) ->
-         let { Sim.Core.max_v; is_le; _ } = Lazy.force mx in
-         if max_v < 1.0001 then None else
-           let a = Array.make n 0. in
-           let { Sim.Core.main_vars; _ } = Lazy.force sol in
-           List.iter
-             (fun (v, c) ->
-              let i = int_of_string (String.sub v 1 (String.length v - 1)) in
-              a.(i) <- c)
-             main_vars;
-           Some a in
+         Some a in
     let rec filter s = function
       | [] -> s
       | si :: sfilter ->
