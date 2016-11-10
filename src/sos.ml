@@ -305,7 +305,12 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           let n = LEPoly.nb_vars e in
           let d = (LEPoly.degree e + 1) / 2 in
           (if h then Monomial.list_eq else Monomial.list_le) n d in
-        Monomial.filter_newton_polytope l monoms_e in
+        let res = Monomial.filter_newton_polytope l monoms_e in
+        (* Format.printf *)
+        (*   "@[Monoms for expr %a: @ @[%a@]@]@." *)
+        (*   LEPoly.pp e *)
+        (*   (Utils.pp_list ~sep:",@ " Monomial.pp) res; *)
+        res in
       List.map (fun e -> Array.of_list (build_monoms e), e) scalarized in
 
     (* build the a_i, A_i and b_i (see sdp.mli) *)
@@ -393,9 +398,12 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     (* call SDP solver *)
     let module PreSdp = PreSdp.Make (Poly.Coeff) in
     let (ret, (pobj, dobj), (res_x, res_X, _, _)), tsolver =
+      (* let obj = List.map (fun (i, s) -> i, Poly.Coeff.to_float s) (fst obj), snd obj in *)
+      (* let cstrs = List.map (fun (v, m, a, b) -> List.map (fun (i, s) -> i, Poly.Coeff.to_float s) v, m, Poly.Coeff.to_float a, Poly.Coeff.to_float b) cstrs in *)
       Utils.profile (fun () ->
                      PreSdp.solve_ext_sparse ?options:sdp_options ?solver obj cstrs []
                     ) in
+    (* let res_x = List.map (fun (i, s) -> i, Poly.Coeff.of_float s) res_x in *)
     if options.verbose > 2 then
       Format.printf "time for solver: %.3fs@." tsolver;
 
@@ -478,6 +486,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | Compose (e, el) ->
          PQ.compose (scalarize e) (List.map scalarize el)
       | Derive (e, i) -> PQ.derive (scalarize e) i in
+    let (b, r), time = Utils.profile (fun () ->
     let p = scalarize e in
     (* then check that p can be expressed in monomial base v *)
     let check_base =
@@ -489,7 +498,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         done
       done;
       List.for_all (fun (m, _) -> M.Set.mem m !s) (PQ.to_list p) in
-    if not check_base then false else
+    if not check_base then false, Q.zero else
       (* compute polynomial v^T q v *)
       let p' =
         let p' = ref [] in
@@ -502,27 +511,41 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         PQ.of_list !p' in
       (* compute the maximum difference between corresponding
          coefficients *)
-      let rec cpt_diff p p' = match p, p' with
-        | [], [] -> Scalar.Q.zero
-        | [], (_, c) :: l | (_, c) :: l, [] -> Q.max (Q.abs c) (cpt_diff [] l)
-        | (m, c) :: l, (m', c') :: l' ->
-           let cmp = M.compare m m' in
-           if cmp = 0 then Q.max (Q.abs (Q.sub c' c)) (cpt_diff l l')
-           else if cmp < 0 then Q.max (Q.abs c) (cpt_diff l p')
-           else (* cmp > 0 *) Q.max (Q.abs c') (cpt_diff p l') in
-      let r = cpt_diff (PQ.to_list p) (PQ.to_list p') in
-      if options.verbose > 0 then Format.printf "r = %g@." (Utils.float_of_q r);
+      let r =
+        let p'' =
+          PQ.merge
+            (fun _ c c' ->
+             match c, c' with
+             | None, None -> None
+             | Some c, None | None, Some c -> Some (Q.abs c)
+             | Some c, Some c' -> Some (Q.(abs (sub c c')))) p p' in
+        PQ.fold (fun _ c m -> Q.max c m) p'' Q.zero in
+      (* let rec cpt_diff p p' = match p, p' with *)
+      (*   | [], [] -> Scalar.Q.zero *)
+      (*   | [], (_, c) :: l | (_, c) :: l, [] -> Q.max (Q.abs c) (cpt_diff [] l) *)
+      (*   | (m, c) :: l, (m', c') :: l' -> *)
+      (*      let cmp = M.compare m m' in *)
+      (*      if cmp = 0 then Q.max (Q.abs (Q.sub c' c)) (cpt_diff l l') *)
+      (*      else if cmp < 0 then Q.max (Q.abs c) (cpt_diff l p') *)
+      (*      else (\* cmp > 0 *\) Q.max (Q.abs c') (cpt_diff p l') in *)
+      (* let r = cpt_diff (PQ.to_list p) (PQ.to_list p') in *)
+      true, r) in
+    (* Format.printf "time for scalarize+cpt_diff: %.3fs@." time; *)
+    if not b then false else
+      let () = if options.verbose > 0 then Format.printf "r = %g@." (Utils.float_of_q r) in
       (* Format.printf "Q = %a@." Matrix.Float.pp (Matrix.Float.of_array_array q); *)
       (* form the interval matrix q +/- r *)
-      let qpmr =
+      let qpmr, time = Utils.profile (fun () ->
         let itv f =
           let q = Q.of_float f in
           let l, _ = Utils.itv_float_of_q (Q.sub q r) in
           let _, u = Utils.itv_float_of_q (Q.add q r) in
           l, u in
-        Array.map (Array.map itv) q in
+        Array.map (Array.map itv) q) in
+      (* Format.printf "time for qpmr: %.3fs@." time; *)
       (* and check its positive definiteness *)
-      let res = Posdef.check_itv qpmr in
+      let res, time = Utils.profile (fun () -> Posdef.check_itv qpmr) in
+      (* Format.printf "time for posdef_check: %.3fs@." time; *)
       (* let qmnr = *)
       (*   let nr = Q.((of_int (Array.length q)) * r) in *)
       (*   let mdiag i j c = *)
