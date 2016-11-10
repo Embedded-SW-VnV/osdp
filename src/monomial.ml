@@ -111,10 +111,124 @@ let pp_names names fmt m =
 
 let pp = pp_names []
 
-(* filter_newton_polytope is the actual function (using Glpk) or the
-   identity depending on whether the compilation was done with or
-   without Glpk. *)
-include Monomial_glpk_opt
+type monomial = t
+
+module Set = Set.Make (struct type t = monomial let compare = compare end)
+
+module Map = Map.Make (struct type t = monomial let compare = compare end)
+
+module Var = struct
+  type t = string
+  let print = Format.pp_print_string
+  let compare = String.compare
+  let is_int _ = false
+end
+
+module Float = struct
+  type t = float
+  let add = ( +. )
+  let mult = ( *. )
+  let compare = Pervasives.compare
+  let equal = ( = )
+  let zero = 0.
+  let one = 1.
+  let m_one = -1.
+  let is_zero n = n = zero
+  let to_string = string_of_float
+  let print fmt t = Format.fprintf fmt "%g" t
+  let is_int _ = false
+  let div = ( /. )
+  let sub = ( -. )
+  let is_one v = v = 1.
+  let is_m_one v = v = -1.
+  let sign x = if x > 0. then 1 else if x < 0. then -1 else 0
+  let min = min
+  let abs = abs_float
+  let minus = ( ~-. )
+end
+
+module Ex = struct
+  type t = unit
+  let empty = ()
+  let union _ _ = ()
+  let print _ _ = ()
+end
+
+module Sim = OcplibSimplex.Basic.Make (Var) (Float) (Ex)
+
+let filter_newton_polytope_ocplib_simplex s p =
+  (* keep monomials s_i of s such that 2 s_i is in p *)
+  let skeep, sfilter =
+    let rec inter x y = match x, y with
+      | [], _ | _, [] -> [], x
+      | hx :: tx, hy :: ty ->
+         let c = compare (List.map (( * ) 2) hx) hy in
+         if c = 0 then let k, f = inter tx ty in hx :: k, f
+         else if c < 0 then let k, f = inter tx y in k, hx :: f
+         else (* c > 0 *) let k, f = inter x ty in k, f in
+    inter (List.sort compare s) (List.sort compare p) in
+  (* look for separating hyperplane to rule out monomials not in the
+     Newton polynomial *)
+  let s =
+    let n =
+      let f n l = max n (List.length l) in
+      List.fold_left f (List.fold_left f 0 s) p in
+    let center =
+      let rec sub x y = match x, y with
+        | _, [] -> List.map float_of_int x
+        | [], _ -> sub [0] y
+        | hx :: tx, hy :: ty -> float_of_int (hx - hy) :: sub tx ty in
+      let o = match p with [] -> [] | h :: _ -> h in
+      fun x ->
+      let a = Array.of_list (sub x o) in
+      Array.append a (Array.make (n - Array.length a) 0.) in
+    let find_separating_plane si =
+      let p_of_list l = List.mapi (fun n c -> "x" ^ string_of_int n, c) l in
+      let nb = ref 0 in
+      let add_cstr b sim c = match List.filter (fun (_, c) -> c <> 0.) c with
+        | [] -> sim
+        | [v, c] ->
+           if c > 0. then Sim.Assert.var sim v None () (Some (b /. c, 0.)) ()
+           else Sim.Assert.var sim v (Some (b /. c, 0.)) () None ()
+        | _ ->
+           let s = "s" ^ string_of_int !nb in
+           incr nb;
+           let c = Sim.Core.P.from_list c in
+           Sim.Assert.poly sim c s None () (Some (b, 0.)) () in
+      let center' x = Array.to_list (center x) in
+      let z = si |> List.map (( * ) 2) |> center' |> p_of_list in
+      let cstrs = p |> List.map center' |> List.map p_of_list in
+      let sim = Sim.Core.empty ~is_int:false ~check_invs:true ~debug:0 in
+      let sim = add_cstr (-1.0001) sim (List.map (fun (v, c) -> v, -.c) z) in
+      let sim = List.fold_left (add_cstr 1.) sim cstrs in
+      let sim, opt = Sim.Solve.maximize sim (Sim.Core.P.from_list z) in
+      match Sim.Result.get opt sim with
+      | (Sim.Core.Unknown | Sim.Core.Unsat _) -> None
+      | (Sim.Core.Sat sol | Sim.Core.Unbounded sol | Sim.Core.Max (_, sol)) ->
+         let a = Array.make n 0. in
+         let { Sim.Core.main_vars; _ } = Lazy.force sol in
+         List.iter
+           (fun (v, c) ->
+            let i = int_of_string (String.sub v 1 (String.length v - 1)) in
+            a.(i) <- c)
+           main_vars;
+         Some a in
+    let rec filter s = function
+      | [] -> s
+      | si :: sfilter ->
+         match find_separating_plane si with
+         | None -> filter (si :: s) sfilter
+         | Some a ->
+            let test sj =
+              let sj = center sj in
+              let obj = ref 0. in
+              for i = 0 to n - 1 do
+                obj := !obj +. a.(i) *. sj.(i)
+              done;
+              !obj < 1.0001 in
+            filter s (List.filter test sfilter) in
+    filter skeep sfilter in
+  s
 
 let filter_newton_polytope s p =
   (* Format.printf *)
@@ -142,10 +256,4 @@ let filter_newton_polytope s p =
       (fun m ->
        let m = List.map (( * ) 2) m in
        pw_le mi m && pw_le m ma) s in
-  filter_newton_polytope s p
-
-type monomial = t
-
-module Set = Set.Make (struct type t = monomial let compare = compare end)
-
-module Map = Map.Make (struct type t = monomial let compare = compare end)
+  filter_newton_polytope_ocplib_simplex s p

@@ -4,7 +4,6 @@ LinExpr
 Lmi
 Matrix
 Monomial
-Monomial_glpk_opt
 Moseksdp
 Polynomial
 Posdef
@@ -18,4 +17,3 @@ Sdpa_paths
 SdpRet
 Sos
 Utils
-@MLPACK_GLPK@

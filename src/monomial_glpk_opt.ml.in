@@ -1,3 +1,0 @@
-let filter_newton_polytope s p = s
-
-@INCLUDE_MONOMIAL_GLPK@

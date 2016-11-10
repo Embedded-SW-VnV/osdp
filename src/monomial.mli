@@ -90,7 +90,7 @@ val list_eq : int -> int -> t list
 val list_le : int -> int -> t list
 
 (** [filter_newton_polytope s p] returns the list of the s_i in [s]
-    such that 2s_i is in the convew hull of the p_1,..., p_n in
+    such that 2s_i is in the convex hull of the p_1,..., p_n in
     [p]. C.f., Johan Löfberg, Pre- and Post-Processing Sum-of-Squares
     Programs in Practice, IEEE Transactions on Automatic Control,
     2009. *)
