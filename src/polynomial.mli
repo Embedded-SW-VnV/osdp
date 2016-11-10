@@ -160,6 +160,10 @@ P.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
   (** See {{:./Monomial.html#VALpp}Monomial.pp} for details about
       [names]. *)
   val pp_names : string list -> Format.formatter -> t -> unit
+
+  val merge : (Monomial.t -> Coeff.t option -> Coeff.t option -> Coeff.t option)
+              -> t -> t -> t
+  val fold : (Monomial.t -> Coeff.t -> 'a -> 'a) -> t -> 'a -> 'a
 end
 
 module Make (SC : Scalar.S) : S with module Coeff = SC
