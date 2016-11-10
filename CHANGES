@@ -1,3 +1,6 @@
+version 0.5.0, Nov 10th, 2016
+-----------------------------
+ o change license from GPL to LGPL
  o replace ocaml-glpk with ocplib-simplex
 
 version 0.4.5, Apr 19th, 2016

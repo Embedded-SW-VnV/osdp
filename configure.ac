@@ -20,7 +20,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([OSDP], [0.4.5], [ploc@garoche.net])
+AC_INIT([OSDP], [0.5.0], [ploc@garoche.net])
 AC_CONFIG_SRCDIR([src/sdp.ml])
 
 # default prefix is /usr/local
