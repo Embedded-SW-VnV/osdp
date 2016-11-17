@@ -24,6 +24,7 @@ DIST_FILES_DIR= \
   configure \
   configure.ac \
   COPYING \
+  COPYING.LESSER \
   doc \
   example \
   external \
