@@ -6,7 +6,7 @@ Compilation of the OSDP libraries requires:
 * OCaml (>= 4.01)
 * ocamlfind
 * Zarith (Debian package libzarith-ocaml-dev, Opam package zarith),
-* ocplib-simplex (>= 0.2, Opam package ocplib-simplex)
+* ocplib-simplex (>= 0.3, Opam package ocplib-simplex)
 
 and optionally:
 
