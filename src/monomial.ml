@@ -124,6 +124,7 @@ module Var = struct
   let is_int _ = false
 end
 
+(*
 module Float = struct
   type t = float
   let add = ( +. )
@@ -146,6 +147,30 @@ module Float = struct
   let abs = abs_float
   let minus = ( ~-. )
 end
+*)
+
+module Rat = struct
+  type t = Q.t
+  let add = Q.add
+  let mult = Q.mul
+  let compare = Q.compare
+  let equal = Q.equal
+  let zero = Q.zero
+  let one = Q.one
+  let m_one = Q.minus_one
+  let is_zero n = equal n zero
+  let to_string = Q.to_string
+  let print = Q.pp_print
+  let is_int _ = false
+  let div = Q.div
+  let sub = Q.sub
+  let is_one v = equal v one
+  let is_m_one v = equal v m_one
+  let sign = Q.sign
+  let min = Q.min
+  let abs = Q.abs
+  let minus = Q.neg
+end
 
 module Ex = struct
   type t = unit
@@ -154,7 +179,7 @@ module Ex = struct
   let print _ _ = ()
 end
 
-module Sim = OcplibSimplex.Basic.Make (Var) (Float) (Ex)
+module Sim = OcplibSimplex.Basic.Make (Var) (Rat) (Ex)
 
 let filter_newton_polytope_ocplib_simplex s p =
   (* keep monomials s_i of s such that 2 s_i is in p *)
@@ -183,29 +208,35 @@ let filter_newton_polytope_ocplib_simplex s p =
       let a = Array.of_list (sub x o) in
       Array.append a (Array.make (n - Array.length a) 0.) in
     let find_separating_plane si =
-      let p_of_list l = List.mapi (fun n c -> "x" ^ string_of_int n, c) l in
+      let p_of_list l =
+        List.mapi (fun n c -> "x" ^ string_of_int n, Q.of_float c) l in
       let nb = ref 0 in
-      let add_cstr b sim c = match List.filter (fun (_, c) -> c <> 0.) c with
+      let add_cstr b large sim c =
+        let large = if large then Rat.m_one else Rat.zero in
+        match List.filter (fun (_, c) -> not Rat.(equal c zero)) c with
         | [] -> sim
         | [v, c] ->
-           if c > 0. then Sim.Assert.var sim v None () (Some (b /. c, 0.)) ()
-           else Sim.Assert.var sim v (Some (b /. c, 0.)) () None ()
+           let l, u =
+             if Rat.sign c > 0 then None, Some (Rat.div b c, large)
+             else Some (Rat.div b c, Rat.minus large), None in
+           Sim.Assert.var sim v l () u ()
         | _ ->
            let s = "s" ^ string_of_int !nb in
            incr nb;
            let c = Sim.Core.P.from_list c in
-           Sim.Assert.poly sim c s None () (Some (b, 0.)) () in
+           Sim.Assert.poly sim c s None () (Some (b, large)) () in
       let center' x = Array.to_list (center x) in
       let z = si |> List.map (( * ) 2) |> center' |> p_of_list in
+      let m_z = List.map (fun (v, c) -> v, Rat.minus c) z in
       let cstrs = p |> List.map center' |> List.map p_of_list in
-      let sim = Sim.Core.empty ~is_int:false ~check_invs:true ~debug:0 in
-      let sim = add_cstr (-1.0001) sim (List.map (fun (v, c) -> v, -.c) z) in
-      let sim = List.fold_left (add_cstr 1.) sim cstrs in
+      let sim = Sim.Core.empty ~is_int:false ~check_invs:false ~debug:0 in
+      let sim = add_cstr Rat.m_one false sim m_z in
+      let sim = List.fold_left (add_cstr Rat.one true) sim cstrs in
       let sim, opt = Sim.Solve.maximize sim (Sim.Core.P.from_list z) in
       match Sim.Result.get opt sim with
       | (Sim.Core.Unknown | Sim.Core.Unsat _) -> None
       | (Sim.Core.Sat sol | Sim.Core.Unbounded sol | Sim.Core.Max (_, sol)) ->
-         let a = Array.make n 0. in
+         let a = Array.make n Rat.zero in
          let { Sim.Core.main_vars; _ } = Lazy.force sol in
          List.iter
            (fun (v, c) ->
@@ -221,22 +252,22 @@ let filter_newton_polytope_ocplib_simplex s p =
          | Some a ->
             let test sj =
               let sj = center sj in
-              let obj = ref 0. in
+              let obj = ref Rat.zero in
               for i = 0 to n - 1 do
-                obj := !obj +. a.(i) *. sj.(i)
+                obj := Rat.(add !obj (mult a.(i) (Q.of_float sj.(i))))
               done;
-              !obj < 1.0001 in
+              Rat.(compare !obj one) <= 0 in
             filter s (List.filter test sfilter) in
     filter skeep sfilter in
   s
 
 let filter_newton_polytope s p =
-  (* Format.printf *)
-  (*   "@[<2>%d monomials before filtering:@ @[%a@]@]@." *)
-  (*   (List.length s) (Utils.pp_list ~sep:",@ " pp) s; *)
-  (* Format.printf *)
-  (*   "@[<2>filtering by:@ @[%a@]@]@." *)
-  (*   (Utils.pp_list ~sep:",@ " pp) p; *)
+  Format.printf
+    "@[<2>%d monomials before filtering:@ @[%a@]@]@."
+    (List.length s) (Utils.pp_list ~sep:",@ " pp) s;
+  Format.printf
+    "@[<2>filtering by:@ @[%a@]@]@."
+    (Utils.pp_list ~sep:",@ " pp) p;
   (* bounding box of the Newton polytope: min_i p_ji <= 2 s_j <= max_i p_ji *)
   let s =
     let rec pw_le x y = match x, y with
@@ -256,4 +287,8 @@ let filter_newton_polytope s p =
       (fun m ->
        let m = List.map (( * ) 2) m in
        pw_le mi m && pw_le m ma) s in
-  filter_newton_polytope_ocplib_simplex s p
+  let res = filter_newton_polytope_ocplib_simplex s p in
+  Format.printf
+    "@[<2>%d monomials after filtering:@ @[%a@]@]@."
+    (List.length s) (Utils.pp_list ~sep:",@ " pp) res;
+  res
