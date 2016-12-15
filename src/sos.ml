@@ -434,11 +434,6 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         scaling_factors witnesses;
       ret, obj, vars, witnesses
 
-  (* Utils.float_of_q may fail, raising Z.Overflow. *)
-  let solve ?options ?solver obj el =
-    try solve ?options ?solver obj el
-    with Z.Overflow -> SdpRet.Unknown, (0., 0.), Ident.Map.empty, []
-
   let value_poly e m =
     let rec aux = function
       | Const p -> p

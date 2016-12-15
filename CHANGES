@@ -1,3 +1,12 @@
+version 0.5.2, Dec 9th, 2016
+----------------------------
+ o add small functions to polynomial (degree_list)
+   and monomial (gcd, lcm, divide, div)
+
+version 0.5.1, Nov 30th, 2016
+-----------------------------
+ o improve functions float_of_q and itv_float_of_q
+
 version 0.5.0, Nov 10th, 2016
 -----------------------------
  o change license from GPL to LGPL

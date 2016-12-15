@@ -53,6 +53,26 @@ val var : ?d:int -> int -> t
     \[3; 4; 5\])] returns [m] such that [to_list m = \[4; 6; 5\]]). *)
 val mult : t -> t -> t
 
+(** [lcm m1 m2] returns the Least Common Multiple of [m1] and [m2]
+    (i.e., the maximum of degrees for each variable). *)
+val lcm : t -> t -> t
+
+(** [gcd m1 m2] returns the Greatest Common Divisor of [m1] and [m2]
+    (i.e., the minimum of degrees for each variable). *)
+val gcd : t -> t -> t
+
+(** [divide m1 m2] returns true iff [m1] divides [m2] (i.e., when [lcm
+    m1 m2 = m2] or equivalently [gcd m1 m2 = m1]). This can be seen as
+    a pointwise less or equal on degrees. *)
+val divide : t -> t -> bool
+
+exception Not_divisible
+
+(** [div m1 m2] divides [m1] by [m2].
+
+    @raise Not_divisible if [divide m2 m1] is [false]. *)
+val div : t -> t -> t
+
 (** [derive m i] returns [j_i, x_0^{j_0} ... x_i^{j_i - 1}
     ... x_n^{j_n})] if the degree [j_i] of variable [i] is positive in
     the monomial [m] and [0, one] otherwise. [i] must be non
@@ -91,9 +111,10 @@ val list_le : int -> int -> t list
 
 (** [filter_newton_polytope s p] returns the list of the s_i in [s]
     such that 2s_i is in the convex hull of the p_1,..., p_n in
-    [p]. C.f., Johan Löfberg, Pre- and Post-Processing Sum-of-Squares
-    Programs in Practice, IEEE Transactions on Automatic Control,
-    2009. *)
+    [p]. The returned list is sorted according to [compare]
+    above. C.f., Johan Löfberg, Pre- and Post-Processing
+    Sum-of-Squares Programs in Practice, IEEE Transactions on
+    Automatic Control, 2009. *)
 val filter_newton_polytope : t list -> t list -> t list
 
 (** {2 Printing.} *)

@@ -40,6 +40,7 @@ module type S = sig
   val compare : t -> t -> int
   val nb_vars : t -> int
   val degree : t -> int
+  val degree_list : t -> int list
   val is_homogeneous : t -> bool
   val is_var : t -> (Coeff.t * int * int) option
   val is_const : t -> Coeff.t option
@@ -176,6 +177,9 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let nb_vars p = MM.fold (fun m _ n -> max n (Monomial.nb_vars m)) p 0
 
   let degree p = MM.fold (fun m _ d -> max d (Monomial.degree m)) p (-1)
+
+  let degree_list p =
+    Monomial.to_list (MM.fold (fun m _ d -> Monomial.lcm d m) p Monomial.one)
 
   let is_homogeneous p =
     try

@@ -100,6 +100,10 @@ module type S = sig
   (** -1 for the null polynomial. *)
   val degree : t -> int
 
+  (** [degree_list p] returns a list of length [nb_vars p] with the
+      maximal degree for each variable in [p]. *)
+  val degree_list : t -> int list
+
   val is_homogeneous : t -> bool
 
   (** [is_var p] returns [Some (c, d, i)] if [p] is a polynomial of

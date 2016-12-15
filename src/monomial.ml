@@ -43,6 +43,33 @@ let rec mult m1 m2 = match m1, m2 with
   | _, [] -> m1
   | h1 :: t1, h2 :: t2 -> (h1 + h2) :: mult t1 t2
 
+let rec lcm m1 m2 = match m1, m2 with
+  | [], _ -> m2
+  | _, [] -> m1
+  | h1 :: t1, h2 :: t2 -> max h1 h2 :: lcm t1 t2
+
+let gcd m1 m2 =
+  let rec aux m1 m2 = match m1, m2 with
+    | ([], _ | _, []) -> []
+    | h1 :: t1, h2 :: t2 -> min h1 h2 :: aux t1 t2 in
+  of_list (aux m1 m2)
+
+let rec divide m1 m2 = match m1, m2 with
+  | [], _ -> true
+  | _, [] -> false
+  | h1 :: t1, h2 :: t2 -> h1 <= h2 && divide t1 t2
+
+exception Not_divisible
+
+let div m1 m2 =
+  let rec aux m1 m2 = match m1, m2 with
+    | _, [] -> m1
+    | [], _ -> raise Not_divisible
+    | h1 :: t1, h2 :: t2 ->
+       if h1 < h2 then raise Not_divisible
+       else h1 - h2 :: aux t1 t2 in
+  of_list (aux m1 m2)
+
 let rec derive m i = match m with
   | [] -> 0, []
   | h :: t ->
@@ -258,7 +285,7 @@ let filter_newton_polytope_ocplib_simplex s p =
               done;
               Rat.(compare !obj one) <= 0 in
             filter s (List.filter test sfilter) in
-    filter skeep sfilter in
+    List.sort compare (filter skeep sfilter) in
   s
 
 let filter_newton_polytope s p =
@@ -270,23 +297,14 @@ let filter_newton_polytope s p =
     (Utils.pp_list ~sep:",@ " pp) p;
   (* bounding box of the Newton polytope: min_i p_ji <= 2 s_j <= max_i p_ji *)
   let s =
-    let rec pw_le x y = match x, y with
-      | [], _ -> true
-      | _, [] -> false
-      | hx :: tx, hy :: ty -> hx <= hy && pw_le tx ty in
-    let mi, ma = match p with [] -> [], [] | m :: p ->
-      let rec pw f x y = match x, y with
-        | [], [] -> []
-        | [], _ -> pw f [0] y
-        | _, [] -> pw f x [0]
-        | hx :: tx, hy :: ty -> f hx hy :: pw f tx ty in
-      let mi, ma =
-        List.fold_left (fun (mi, ma) m -> pw min mi m, pw max ma m) (m, m) p in
-      of_list mi, of_list ma in
+    let mi, ma = match p with
+      | [] -> [], []
+      | m :: p ->
+         List.fold_left (fun (mi, ma) m -> gcd mi m, lcm ma m) (m, m) p in
     List.filter
       (fun m ->
        let m = List.map (( * ) 2) m in
-       pw_le mi m && pw_le m ma) s in
+       divide mi m && divide m ma) s in
   let res = filter_newton_polytope_ocplib_simplex s p in
   Format.printf
     "@[<2>%d monomials after filtering:@ @[%a@]@]@."

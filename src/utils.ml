@@ -42,8 +42,11 @@ let pp_matrix ~begl ~endl ~sepl ~sepc f =
 let epsilon_under_float = min_float *. epsilon_float  (* 0x1p-1074 *)
 (* largest subnormal *)
 let max_subnormal = min_float -. epsilon_under_float
+
+let q_max_float = Q.of_float max_float
+let q_neg_max_float = Q.of_float ( -. max_float)
                                          
-(* Assuming f1 <= f2, [consecutive_float f1 F2] returns true iff there
+(* Assuming f1 <= f2, [consecutive_float f1 f2] returns true iff there
    is no float f (normal or subnormal) such that f1 < f < f2. *)
 let consecutive_float f1 f2 =
   (* Same assuming also 0 <= f1 <= f2. *)
@@ -72,17 +75,27 @@ let itv_float_of_q q = match Q.classify q with
   | Q.MINF -> neg_infinity, neg_infinity
   | Q.UNDEF -> nan, nan
   | Q.NZERO ->
-     if Q.lt q (Q.of_float ( -. max_float)) then neg_infinity, -. max_float
-     else if Q.gt q (Q.of_float max_float) then max_float, infinity
+     if Q.lt q q_neg_max_float then neg_infinity, -. max_float
+     else if Q.gt q q_max_float then max_float, infinity
      else
        let l, u =
-         let a = Z.to_float q.Q.num /. Z.to_float q.Q.den in
+         let a =
+           let f = Z.to_float q.Q.num /. Z.to_float q.Q.den in
+           match classify_float f with
+           | (FP_normal | FP_subnormal | FP_zero) -> f
+           | (FP_infinite | FP_nan) ->
+              let nn, nd = Z.numbits q.Q.num, Z.numbits q.Q.den in
+              let k = max 0 (nd - nn + 53) in
+              let n = Z.div (Z.shift_left q.Q.num k) q.Q.den in
+              ldexp (Z.to_float n) (- k) in
          if a >= 0. then
            (1. -. 2. *. epsilon_float) *. a -. 2. *. epsilon_under_float,
            (1. +. 2. *. epsilon_float) *. a +. 2. *. epsilon_under_float
          else
            (1. +. 2. *. epsilon_float) *. a -. 2. *. epsilon_under_float,
            (1. -. 2. *. epsilon_float) *. a +. 2. *. epsilon_under_float in
+       (* above computation may overflow *)
+       let l, u = max (-. max_float) l, min u max_float in
        (* Check that we have l <= q <= u. *)
        let l = if Q.geq q (Q.of_float l) then l else -. max_float in
        let u = if Q.leq q (Q.of_float u) then u else max_float in
@@ -95,9 +108,11 @@ let itv_float_of_q q = match Q.classify q with
        dicho l u
      
 let float_of_q q =
-  let n = Z.to_float q.Q.num in
-  let d = Z.to_float q.Q.den in
-  if Z.equal q.Q.num (Z.of_float n) && Z.equal q.Q.den (Z.of_float d) then
+  let n, d = Z.to_float q.Q.num, Z.to_float q.Q.den in
+  if
+    try Z.equal q.Q.num (Z.of_float n) && Z.equal q.Q.den (Z.of_float d)
+    with Z.Overflow -> false
+  then
     n /. d  (* if division is good, we get a closest float *)
   else
     let l, u = itv_float_of_q q in
