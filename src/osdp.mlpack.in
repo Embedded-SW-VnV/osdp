@@ -5,6 +5,7 @@ Lmi
 Matrix
 Monomial
 Moseksdp
+NewtonPolytope
 Polynomial
 Posdef
 PreSdp

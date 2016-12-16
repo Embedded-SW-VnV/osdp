@@ -109,14 +109,6 @@ val list_eq : int -> int -> t list
     x2^2\]]). [n] and [d] must be non negative. *)
 val list_le : int -> int -> t list
 
-(** [filter_newton_polytope s p] returns the list of the s_i in [s]
-    such that 2s_i is in the convex hull of the p_1,..., p_n in
-    [p]. The returned list is sorted according to [compare]
-    above. C.f., Johan Löfberg, Pre- and Post-Processing
-    Sum-of-Squares Programs in Practice, IEEE Transactions on
-    Automatic Control, 2009. *)
-val filter_newton_polytope : t list -> t list -> t list
-
 (** {2 Printing.} *)
 
 (** Pretty printing. Variables will be printed as x0, x1,... *)

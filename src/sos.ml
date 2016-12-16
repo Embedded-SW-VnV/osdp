@@ -305,7 +305,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           let n = LEPoly.nb_vars e in
           let d = (LEPoly.degree e + 1) / 2 in
           (if h then Monomial.list_eq else Monomial.list_le) n d in
-        let res = Monomial.filter_newton_polytope l monoms_e in
+        let res = NewtonPolytope.filter l monoms_e in
         (* Format.printf *)
         (*   "@[Monoms for expr %a: @ @[%a@]@]@." *)
         (*   LEPoly.pp e *)
