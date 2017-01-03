@@ -30,7 +30,7 @@ module type S = sig
 
   module Poly : Polynomial.S
 
-  (** Scalar or polynomial variables. *)
+  (** Parametric variables. *)
   type var
 
   (** Constructors. See the module
@@ -46,7 +46,24 @@ module type S = sig
     | Compose of polynomial_expr * polynomial_expr list
     | Derive of polynomial_expr * int
 
-  (** [var s] creates a new scalar variable ([Var v]). *)
+  (** [make ~n ~d s] creates a new parametric variable named [s].
+      For instance, [make "lambda"] creates a new scalar parametric
+      variable and [make ~n:1 ~d:2 "p"] creates a new polynomial
+      parametric variable (p_0 + p_1 x0 + p_2 x0^2 with p_0, p_1 and
+      p_2 scalar parametric variables).
+
+      @param n number of variables (default: 0), must be non negative
+
+      @param d degree (default: 0), must be non negative
+
+      @param homogen creates an homogeneous polynomial (default:
+      false), i.e., all monomials of same degree (for instance x_0
+      x_1^3 + x_0^4 is homogeneous, x_0 x_1^3 + x_0^3 is not) *)
+  val make : ?n:int -> ?d:int -> ?homogen:bool -> string -> polynomial_expr
+
+  (** [var s] creates a new scalar variable ([Var v]).
+
+      @deprecated Use function {{:VALmake}make} above. *)
   val var : string -> polynomial_expr
 
   (** [var_poly s n ~homogen:h d] returns [Var v, l]. [Var v] is a new
@@ -60,7 +77,9 @@ module type S = sig
       [m, v'] where [m] is a monomial (a polynomial_expr can be
       obtained with function {{:#VALmonomial}monomial} below) and [v']
       a variable that could have been created by the above function
-      [var]. *)
+      [var].
+
+      @deprecated Use function {{:VALmake}make} above. *)
   val var_poly : string -> int -> ?homogen:bool -> int ->
                  polynomial_expr * (Monomial.t * polynomial_expr) list
 
@@ -76,8 +95,19 @@ module type S = sig
   val power : polynomial_expr -> int -> polynomial_expr
   val compose : polynomial_expr -> polynomial_expr list -> polynomial_expr
   val derive : polynomial_expr -> int -> polynomial_expr
-                                                            
-  (** {3 Various operations.} *)
+
+  (** {3 Conversion functions.} *)
+
+  val of_list : (Monomial.t * polynomial_expr) list -> polynomial_expr
+
+  (** Returns a list sorted in increasing order of
+      {{:./Monomial.html#VALcompare}Monomial.compare} without
+      duplicates. All polynomial_expr in the returned list are scalars
+      (i.e., functions {{:VALnb_vars}nb_vars} and {{:VALdegree}degree}
+      below both return 0). *)
+  val to_list : polynomial_expr -> (Monomial.t * polynomial_expr) list
+                                                                  
+  (** {3 Various functions.} *)
 
   (** See the module {{:./Polynomial.S.html}Polynomial.S} for
       details. Beware that the returned values correspond to the
@@ -91,6 +121,15 @@ module type S = sig
   val nb_vars : polynomial_expr -> int
   val degree : polynomial_expr -> int
   val is_homogeneous : polynomial_expr -> bool
+
+  (** [param_vars e] returns the list of all parametric variables
+      appearing in [e].
+
+      @param compact if true (default) returns polynomial variables as
+      a single variable (for instance p in the description of
+      {{:VALmake}make} above), otherwise returns only scalar variables
+      (p_0, p_1 and p_2) *)
+  val param_vars : ?compact:bool -> polynomial_expr -> polynomial_expr list
 
   (** {3 Prefix and infix operators.} *)
 

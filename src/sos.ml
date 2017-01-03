@@ -31,6 +31,7 @@ module type S = sig
     | Power of polynomial_expr * int
     | Compose of polynomial_expr * polynomial_expr list
     | Derive of polynomial_expr * int
+  val make : ?n:int -> ?d:int -> ?homogen:bool -> string -> polynomial_expr
   val var : string -> polynomial_expr
   val var_poly : string -> int -> ?homogen:bool -> int ->
                  polynomial_expr * (Monomial.t * polynomial_expr) list
@@ -44,9 +45,12 @@ module type S = sig
   val power : polynomial_expr -> int -> polynomial_expr
   val compose : polynomial_expr -> polynomial_expr list -> polynomial_expr
   val derive : polynomial_expr -> int -> polynomial_expr
+  val of_list : (Monomial.t * polynomial_expr) list -> polynomial_expr
+  val to_list : polynomial_expr -> (Monomial.t * polynomial_expr) list
   val nb_vars : polynomial_expr -> int
   val degree : polynomial_expr -> int
   val is_homogeneous : polynomial_expr -> bool
+  val param_vars : ?compact:bool -> polynomial_expr -> polynomial_expr list
   val ( !! ) : Poly.t -> polynomial_expr
   val ( ?? ) : int -> polynomial_expr
   val ( ! ) : Poly.Coeff.t -> polynomial_expr
@@ -105,6 +109,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     | Compose of polynomial_expr * polynomial_expr list
     | Derive of polynomial_expr * int
 
+  let make ?n ?d ?homogen s = assert false
+
   let var s = Var (Vscalar (Ident.create s))
 
   let var_poly s n ?homogen d =
@@ -132,6 +138,10 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   let power e d = Power (e, d)
   let compose e l = Compose (e, l)
   let derive e i = Derive (e, i)
+
+  let of_list l = assert false
+
+  let to_list e = assert false
         
   let pp_names names fmt e =
     let rec pp_prior prior fmt = function
@@ -210,6 +220,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
   let nb_vars e = scalarize e |> LEPoly.nb_vars
   let degree e = scalarize e |> LEPoly.degree
   let is_homogeneous e = scalarize e |> LEPoly.is_homogeneous
+
+  let param_vars ?compact e = assert false
 
   (*********)
   (* Solve *)
