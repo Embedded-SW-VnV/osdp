@@ -174,12 +174,12 @@ let filter_newton_polytope_ocplib_simplex s p =
   s
 
 let filter s p =
-  Format.printf
-    "@[<2>%d monomials before filtering:@ @[%a@]@]@."
-    (List.length s) (Utils.pp_list ~sep:",@ " Monomial.pp) s;
-  Format.printf
-    "@[<2>filtering by:@ @[%a@]@]@."
-    (Utils.pp_list ~sep:",@ " Monomial.pp) p;
+  (* Format.printf *)
+  (*   "@[<2>%d monomials before filtering:@ @[%a@]@]@." *)
+  (*   (List.length s) (Utils.pp_list ~sep:",@ " Monomial.pp) s; *)
+  (* Format.printf *)
+  (*   "@[<2>filtering by:@ @[%a@]@]@." *)
+  (*   (Utils.pp_list ~sep:",@ " Monomial.pp) p; *)
   (* bounding box of the Newton polytope: min_i p_ji <= 2 s_j <= max_i p_ji *)
   let s =
     let mi, ma = match p with
@@ -194,7 +194,8 @@ let filter s p =
        Monomial.divide mi m && Monomial.divide m ma) s in
   let res = filter_newton_polytope_ocplib_simplex s p in
   let res = List.map Monomial.of_list res in
-  Format.printf
-    "@[<2>%d monomials after filtering:@ @[%a@]@]@."
-    (List.length s) (Utils.pp_list ~sep:",@ " Monomial.pp) res;
+  let res = List.sort Monomial.compare res in
+  (* Format.printf *)
+  (*   "@[<2>%d monomials after filtering:@ @[%a@]@]@." *)
+  (*   (List.length s) (Utils.pp_list ~sep:",@ " Monomial.pp) res; *)
   res

@@ -35,7 +35,7 @@ let _ =
 (* Using SOS module from OSDP. *)
 let _ =
   let module Sos = Osdp.Sos.Float in
-  let lower = Sos.var "lower" in
+  let lower = Sos.make "lower" in
   let x0, x1 = Sos.(??0, ??1) in
   let p = Sos.((!1. + x0 * x1)**2 - x0 * x1 + (!1. - x1)**2) in
   let e = Sos.(p - lower) in

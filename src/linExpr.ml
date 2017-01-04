@@ -29,6 +29,7 @@ module type S = sig
   val add : t -> t -> t
   val sub : t -> t -> t
   val compare : t -> t -> int
+  val is_var : t -> (Ident.t * Coeff.t) option
   val is_const : t -> Coeff.t option
   val pp : Format.formatter -> t -> unit
 end
@@ -98,6 +99,13 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
            if cmpc <> 0 then cmpc else compare t1 t2 in
     let cmpc = Coeff.compare a1.const a2.const in
     if cmpc <> 0 then cmpc else compare a1.lin a2.lin
+
+  let is_var a =
+    if Coeff.(equal a.const zero) then
+      match a.lin with
+        | [id_c] -> Some id_c
+        | _ -> None
+    else None
 
   let is_const a = if a.lin = [] then Some a.const else None
 

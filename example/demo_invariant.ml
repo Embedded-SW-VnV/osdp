@@ -55,8 +55,8 @@ let check_inv p =
   let check_init =
     (* p - \sigma1 pI1 - \sigma2 pI2 >= 0, \sigma{1,2} >= 0 *)
     let init, sigmas =
-      let sigma1, _ = Sos.var_poly "s1" 2 (rnd (deg - Sos.degree pI1)) in
-      let sigma2, _ = Sos.var_poly "s2" 2 (rnd (deg - Sos.degree pI2)) in
+      let sigma1 = Sos.make ~n:2 ~d:(rnd (deg - Sos.degree pI1)) "s1" in
+      let sigma2 = Sos.make ~n:2 ~d:(rnd (deg - Sos.degree pI2)) "s2" in
       Sos.(!!p - sigma1 * pI1 - sigma2 * pI2), [sigma1; sigma2] in
     let ret, _, _, _ = Sos.solve ~options Sos.Purefeas (init :: sigmas) in
     ret = Osdp.SdpRet.Success in
@@ -65,8 +65,8 @@ let check_inv p =
     (* p \circ t0 - \sigma p - \sigma_0 g0 >= 0, \sigma >= 0, \sigma_0 >=0 *)
     let ind0, sigmas =
       let deg0 = List.fold_left max 0 (List.map Sos.degree t0) in
-      let sigma, _ = Sos.var_poly "s" 2 (rnd ((deg0 - 1) * deg)) in
-      let sigma0, _ = Sos.var_poly "s0" 2 (rnd (deg * deg0 - Sos.degree g0)) in
+      let sigma = Sos.make ~n:2 ~d:(rnd ((deg0 - 1) * deg)) "s" in
+      let sigma0 = Sos.make ~n:2 ~d:(rnd (deg * deg0 - Sos.degree g0)) "s0" in
       Sos.(compose !!p t0 - sigma * !!p - sigma0 * g0), [sigma; sigma0] in
     let ret, _, _, _ = Sos.solve ~options Sos.Purefeas (ind0 :: sigmas) in
     ret = Osdp.SdpRet.Success in
@@ -75,8 +75,8 @@ let check_inv p =
     (* p \circ t1 - \sigma p - \sigma_1 g1 >= 0, \sigma >= 0, \sigma_1 >=0 *)
     let ind1, sigmas =
       let deg1 = List.fold_left max 0 (List.map Sos.degree t1) in
-      let sigma, _ = Sos.var_poly "s" 2 (rnd ((deg1 - 1) * deg)) in
-      let sigma1, _ = Sos.var_poly "s1" 2 (rnd (deg * deg1 - Sos.degree g1)) in
+      let sigma = Sos.make ~n:2 ~d:(rnd ((deg1 - 1) * deg)) "s" in
+      let sigma1 = Sos.make ~n:2 ~d:(rnd (deg * deg1 - Sos.degree g1)) "s1" in
       Sos.(compose !!p t1 - sigma * !!p - sigma1 * g1), [sigma; sigma1] in
     let ret, _, _, _ = Sos.solve ~options Sos.Purefeas (ind1 :: sigmas) in
     ret = Osdp.SdpRet.Success in
@@ -89,7 +89,7 @@ let check_cond p =
   let check_cond0 =
     (* \sigma (4 - x1^2) - p >= 0, \sigma > 0 *)
     let cond0, sigmas =
-      let sigma, _ = Sos.var_poly "s" 2 (rnd (deg - 2)) in
+      let sigma = Sos.make ~n:2 ~d:(rnd (deg - 2)) "s" in
       Sos.(sigma * (4 / 1 - ??0**2) - !!p), [sigma] in
     let ret, _, _, _ = Sos.solve ~options Sos.Purefeas (cond0 :: sigmas) in
     ret = Osdp.SdpRet.Success in
@@ -97,7 +97,7 @@ let check_cond p =
   let check_cond1 =
     (* \sigma (4 - x2^2) - p >= 0, \sigma > 0 *)
     let cond1, sigmas =
-      let sigma, _ = Sos.var_poly "s" 2 (rnd (deg - 2)) in
+      let sigma = Sos.make ~n:2 ~d:(rnd (deg - 2)) "s" in
       Sos.(sigma * (4 / 1 - ??1**2) - !!p), [sigma] in
     let ret, _, _, _ = Sos.solve ~options Sos.Purefeas (cond1 :: sigmas) in
     ret = Osdp.SdpRet.Success in

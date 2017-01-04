@@ -46,7 +46,7 @@ module type S = sig
     | Compose of polynomial_expr * polynomial_expr list
     | Derive of polynomial_expr * int
 
-  (** [make ~n ~d s] creates a new parametric variable named [s].
+  (** [make s] creates a new parametric variable named [s].
       For instance, [make "lambda"] creates a new scalar parametric
       variable and [make ~n:1 ~d:2 "p"] creates a new polynomial
       parametric variable (p_0 + p_1 x0 + p_2 x0^2 with p_0, p_1 and
@@ -61,25 +61,10 @@ module type S = sig
       x_1^3 + x_0^4 is homogeneous, x_0 x_1^3 + x_0^3 is not) *)
   val make : ?n:int -> ?d:int -> ?homogen:bool -> string -> polynomial_expr
 
-  (** [var s] creates a new scalar variable ([Var v]).
-
-      @deprecated Use function {{:VALmake}make} above. *)
+  (** @deprecated {!val:var} is an alias for {!val:make}. *)
   val var : string -> polynomial_expr
 
-  (** [var_poly s n ~homogen:h d] returns [Var v, l]. [Var v] is a new
-      polynomial variable. [n] is the number of variables of the new
-      polynomial variable. It must be positive. [h] is [true] if the
-      polynomial is homogeneous (i.e., all monomials of same degree
-      (for instance x_0 x_1^3 + x_0^4 is homogeneous, x_0 x_1^3 +
-      x_0^3 is not)), [false] if the polynomial is fully
-      parameterized. [h] is [false] by default. [d] is the degree of
-      the polynomial. It must be non negative. [l] is a list of pairs
-      [m, v'] where [m] is a monomial (a polynomial_expr can be
-      obtained with function {{:#VALmonomial}monomial} below) and [v']
-      a variable that could have been created by the above function
-      [var].
-
-      @deprecated Use function {{:VALmake}make} above. *)
+  (** @deprecated {!val:var_poly} is replaced by {!val:make} and {!val:to_list}. *)
   val var_poly : string -> int -> ?homogen:bool -> int ->
                  polynomial_expr * (Monomial.t * polynomial_expr) list
 
@@ -100,11 +85,16 @@ module type S = sig
 
   val of_list : (Monomial.t * polynomial_expr) list -> polynomial_expr
 
+  exception Dimension_error
+
   (** Returns a list sorted in increasing order of
       {{:./Monomial.html#VALcompare}Monomial.compare} without
       duplicates. All polynomial_expr in the returned list are scalars
       (i.e., functions {{:VALnb_vars}nb_vars} and {{:VALdegree}degree}
-      below both return 0). *)
+      below both return 0).
+
+      @raise Dimension_error in case {!val:compose} is used with not
+      enough arguments. *)
   val to_list : polynomial_expr -> (Monomial.t * polynomial_expr) list
                                                                   
   (** {3 Various functions.} *)
@@ -118,18 +108,21 @@ module type S = sig
       expression to be SOS, v will be 0 and then nb_vars and degree
       will become respectively 1 and 2 in the result. *)
 
+  (** @raise Dimension_error in case {!val:compose} is used with not
+      enough arguments. *)
   val nb_vars : polynomial_expr -> int
+
+  (** @raise Dimension_error in case {!val:compose} is used with not
+      enough arguments. *)
   val degree : polynomial_expr -> int
+
+  (** @raise Dimension_error in case {!val:compose} is used with not
+      enough arguments. *)
   val is_homogeneous : polynomial_expr -> bool
 
   (** [param_vars e] returns the list of all parametric variables
-      appearing in [e].
-
-      @param compact if true (default) returns polynomial variables as
-      a single variable (for instance p in the description of
-      {{:VALmake}make} above), otherwise returns only scalar variables
-      (p_0, p_1 and p_2) *)
-  val param_vars : ?compact:bool -> polynomial_expr -> polynomial_expr list
+      appearing in [e]. *)
+  val param_vars : polynomial_expr -> var list
 
   (** {3 Prefix and infix operators.} *)
 
@@ -171,7 +164,16 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
                                            
   (** [e1 <= e2] is just syntactic sugar for [e2 - e1]. *)
   val ( <= ) : polynomial_expr -> polynomial_expr -> polynomial_expr
-                                           
+
+  (** {3 Printing.} *)
+
+  (** Printer for polynomial expressions. *)
+  val pp : Format.formatter -> polynomial_expr -> unit
+
+  (** See {{:./Monomial.html#VALpp_names}Monomial.pp_names} for details about
+      [names]. *)
+  val pp_names : string list -> Format.formatter -> polynomial_expr -> unit
+
   (** {2 SOS.} *)
 
   type options = {
@@ -195,8 +197,6 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
 
   type witness = Monomial.t array * float array array
          
-  exception Dimension_error
-
   exception Not_linear
 
   (** [solve obj l] tries to optimise the objective [obj] under the
@@ -269,15 +269,6 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
       [values]. *)
   val check : ?options:options -> ?values:values -> polynomial_expr ->
               witness -> bool
-                                                  
-  (** {2 Printing functions.} *)
-
-  (** Printer for polynomial expressions. *)
-  val pp : Format.formatter -> polynomial_expr -> unit
-
-  (** See {{:./Monomial.html#VALpp_names}Monomial.pp_names} for details about
-      [names]. *)
-  val pp_names : string list -> Format.formatter -> polynomial_expr -> unit
 end
 
 module Make (P : Polynomial.S) : S with module Poly = P

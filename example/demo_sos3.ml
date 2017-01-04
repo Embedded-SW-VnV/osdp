@@ -6,7 +6,7 @@ let solver = Osdp.Sdp.Csdp
 module Sos = Osdp.Sos.Float
                
 let _ =
-  let q, _ = Sos.var_poly "q" 1 2 in
+  let q = Sos.make ~n:1 ~d:2 "q" in
   let p = Sos.(??0**2 + !1.) in
   let e = Sos.(p - q * (!1. - ??0)) in
   let () = Format.printf "e = %a@." Sos.pp e in

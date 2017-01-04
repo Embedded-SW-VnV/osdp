@@ -57,6 +57,8 @@ module type S = sig
 
   val compare : t -> t -> int
                                          
+  val is_var : t -> (Ident.t * Coeff.t) option
+
   val is_const : t -> Coeff.t option
 
   (** {2 Printing.} *)

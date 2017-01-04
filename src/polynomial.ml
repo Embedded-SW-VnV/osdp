@@ -240,7 +240,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let ( /. ) c1 c2 = !c1 / c2
   let ( ** ) = power
 
-  let merge = MM.merge
+  let merge = MM.merge  (* TODO: postprocessing to remove zeros *)
   let fold = MM.fold
 end
 
