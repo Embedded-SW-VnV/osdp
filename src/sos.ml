@@ -538,7 +538,14 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           (fun i -> try IntMap.find i res_x with Not_found -> P.Coeff.zero)
           var_idx in
       let witnesses =
-        List.combine (List.map fst monoms_cstrs) (List.map snd res_X) in
+        let rec combine monoms res_X = match monoms, res_X with
+          | [], [] -> []
+          | [], _ -> assert false
+          | m :: q, _ when Array.length m = 0 ->
+             (m, Array.make_matrix 0 0 0.) :: combine q res_X
+          | m :: q, m' :: q' -> (m, m') :: combine q q'
+          | _ -> assert false in
+        combine (List.map fst monoms_cstrs) (List.map snd res_X) in
       (* unpad result *)
       List.iter2
         (fun pad (_, q) ->

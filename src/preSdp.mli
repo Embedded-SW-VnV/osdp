@@ -28,6 +28,8 @@ module type S = sig
   (** The scalars used for preprocessing (the SDP solver uses floats anyway). *)
   module Scalar : Scalar.S
 
+  (** {2 Extended formulation.} *)
+                                                  
   (** C.f. {{:./Sdp.html#TYPEvector}Sdp.vector} *)
   type vector = (int * Scalar.t) list
 
@@ -49,6 +51,18 @@ module type S = sig
                          SdpRet.t * (float * float)
                          * (vector * Sdp.matrix Sdp.block_diag
                             * float array * Sdp.matrix Sdp.block_diag)
+
+  (** {2 Printing functions.} *)
+
+  val pp_obj_ext : (Format.formatter -> 'a -> unit) ->
+                   Format.formatter -> 'a obj_ext -> unit
+
+  val pp_constr_ext : (Format.formatter -> 'a -> unit) ->
+                      Format.formatter -> 'a constr_ext -> unit
+
+  val pp_ext_sparse : Format.formatter ->
+                      (Sdp.sparse_matrix obj_ext *
+                       Sdp.sparse_matrix constr_ext list * Sdp.bounds) -> unit
 end
 
 module Make (S : Scalar.S) : S with module Scalar = S

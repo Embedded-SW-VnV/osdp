@@ -29,6 +29,13 @@ module type S = sig
                          SdpRet.t * (float * float)
                          * (vector * Sdp.matrix Sdp.block_diag
                             * float array * Sdp.matrix Sdp.block_diag)
+  val pp_obj_ext : (Format.formatter -> 'a -> unit) ->
+                   Format.formatter -> 'a obj_ext -> unit
+  val pp_constr_ext : (Format.formatter -> 'a -> unit) ->
+                      Format.formatter -> 'a constr_ext -> unit
+  val pp_ext_sparse : Format.formatter ->
+                      (Sdp.sparse_matrix obj_ext *
+                       Sdp.sparse_matrix constr_ext list * Sdp.bounds) -> unit
 end
 
 module Make (S : Scalar.S) : S with module Scalar = S = struct
@@ -109,6 +116,12 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
     (*      v) *)
     (*   to_replace; *)
 
+    (* filter zero size matrices *)
+    let obj, constraints =
+      let filter_mx = List.filter (fun (_, b) -> b <> []) in
+      (fst obj, filter_mx (snd obj)),
+      List.map (fun (v, m, lb, ub) -> v, filter_mx m, lb, ub) constraints in
+
     let constraints =
       List.map
         (fun (v, m, bl, bu) ->
@@ -131,6 +144,10 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
     (*      bl bu *)
     (*   ) *)
     (*   constraints; *)
+
+    (* Format.printf *)
+    (*   "@[<v2>Problem sent to SDP:@ @[%a@]@]@." *)
+    (*   Sdp.pp_ext_sparse (obj, constraints, bounds); *)
 
     let ret, obj, (res_x, res_X, res_y, res_Z) =
       Sdp.solve_ext_sparse ?options ?solver obj constraints bounds in
@@ -158,6 +175,53 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
       let offset = S.to_float offset in
       fst obj +. offset, snd obj +. offset in
     ret, obj, (res_x, res_X, res_y, res_Z)
+
+  (***********************)
+  (* Printing functions. *)
+  (***********************)
+  
+  let pp_obj_ext f fmt (v, m) =
+    let pp_e_v fmt (i, s) = Format.fprintf fmt "%a x_%d" Scalar.pp s i in
+    let pp_e_m fmt (i, m) = Format.fprintf fmt "tr(%a X_%d)" f m i in
+    match v, m with
+    | [], [] -> Format.printf "0"
+    | [], _ ->
+       Format.fprintf fmt "@[%a@]" (Utils.pp_list ~sep:"@ + " pp_e_m) m
+    | _, [] ->
+       Format.fprintf fmt "@[%a@]" (Utils.pp_list ~sep:"@ + " pp_e_v) v
+    | _ ->
+       Format.fprintf
+         fmt "@[%a@ + %a@]"
+         (Utils.pp_list ~sep:"@ + " pp_e_v) v
+         (Utils.pp_list ~sep:"@ + " pp_e_m) m
+         
+  let pp_constr_ext f fmt (v, m, lb, ub) =
+    if Scalar.equal lb ub then
+      Format.fprintf fmt "%a = %a" (pp_obj_ext f) (v, m) Scalar.pp lb
+    else if Scalar.to_float lb = neg_infinity then
+      Format.fprintf fmt "%a <= %a" (pp_obj_ext f) (v, m) Scalar.pp ub
+    else if Scalar.to_float ub = infinity then
+      Format.fprintf fmt "%a >= %a" (pp_obj_ext f) (v, m) Scalar.pp lb
+    else
+      Format.fprintf
+        fmt "%a <= %a <= %a" Scalar.pp lb (pp_obj_ext f) (v, m) Scalar.pp ub
+
+  let pp_ext f fmt (obj, cstrs, bounds) =
+    match bounds with
+    | [] ->
+       Format.fprintf
+         fmt "@[<v>maximize   %a@ subject to @[<v>%a@],@            X psd@]"
+         (pp_obj_ext f) obj
+         (Utils.pp_list ~sep:",@ " (pp_constr_ext f)) cstrs
+    | _ ->
+       Format.fprintf
+         fmt "@[<v>maximize   %a@ \
+              subject to @[<v>%a@],@            %a,@            X psd@]"
+         (pp_obj_ext f) obj
+         (Utils.pp_list ~sep:",@ " (pp_constr_ext f)) cstrs
+         Sdp.pp_bounds bounds
+
+  let pp_ext_sparse = pp_ext Sdp.pp_sparse_matrix
 end
 
 module Q = Make (Scalar.Q)
