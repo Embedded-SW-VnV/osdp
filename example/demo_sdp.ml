@@ -3,7 +3,7 @@
    subject to tr([10, 4; 4, 0] X) = 48
               tr([0, 0; 0, -8] X) = -8
               tr([0, -8; -8, -2] X) = 20
-              X sdp *)
+              X psd *)
 
 let options = { Osdp.Sdp.default with
                 Osdp.Sdp.solver = Osdp.Sdp.Sdpa;

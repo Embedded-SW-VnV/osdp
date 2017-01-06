@@ -120,5 +120,6 @@ module Float : S with type t = float = Make (struct
   let sub = ( -. )
   let mult = ( *. )
   let div = ( /. )
-  let pp fmt f = Format.fprintf fmt "%s" (Posdef.string_of_float_bin f)
+  (* let pp fmt f = Format.fprintf fmt "%s" (Posdef.string_of_float_bin f) *)
+  let pp fmt f = Format.fprintf fmt "%g" f
 end)

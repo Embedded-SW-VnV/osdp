@@ -35,30 +35,31 @@ external solve : int -> block_diag_matrix -> (block_diag_matrix * float) list ->
                                       * float array * float array array list) =
   "csdp_solve"
 
-(* The C stub above returns a block diagonal matrix with (M-m+1)
+module IntSet = Set.Make (struct type t = int let compare = compare end)
+module IntMap = Map.Make (struct type t = int let compare = compare end)
+
+(* The C stub above requires matrix blocks to be numbered sequentially
+   (without holes) and returns a block diagonal matrix with (M-m+1)
    blocks where m and M are respectively the min and max diagonal
-   block index appearing in the input (obj and constraints). We have
-   to clean that to keep only indices actually appearing in the
-   input. *)
+   block index appearing in the input (obj and constraints). This
+   wrapper enforces that point. *)
 let solve ?options obj constraints =
   let verbose = match options with None -> 0 | Some o -> o.verbose in
+  let appear =
+    let collect_mx = List.fold_left (fun s (i, _) -> IntSet.add i s) in
+    List.fold_left
+      (fun s (m, _) -> collect_mx s m)
+      (collect_mx IntSet.empty obj) constraints in
+  let trans, rev_trans, _ =
+    IntSet.fold
+      (fun i (trans, rev_trans, j) ->
+        IntMap.add i j trans, IntMap.add j i rev_trans, j + 1)
+      appear (IntMap.empty, IntMap.empty, 0) in
+  let obj, constraints =
+    let tr_mx = List.map (fun (i, b) -> IntMap.find i trans, b) in
+    tr_mx obj, List.map (fun (m, f) -> tr_mx m, f) constraints in
   let ret, res, (res_X, res_y, res_Z) = solve verbose obj constraints in
   let res_X, res_Z =
-    let min_idx, max_idx =
-      let range_idx_block_diag =
-        List.fold_left (fun (mi, ma) (i, _) -> min mi i, max ma i) in
-      let range = range_idx_block_diag (max_int, min_int) obj in
-      List.fold_left
-        (fun range (m, _) -> range_idx_block_diag range m)
-        range constraints in
-    if min_idx > max_idx then [], []
-    else
-      let appear =
-        let a = Array.make (max_idx - min_idx + 1) false in
-        let mark = List.iter (fun (i, _) -> a.(i - min_idx) <- true) in
-        mark obj; List.iter (fun (m, _) -> mark m) constraints; a in
-      let tr l =
-        List.mapi (fun i m -> i + min_idx, m) l
-        |> List.filter (fun (i, _) -> appear.(i - min_idx)) in
-      tr res_X, tr res_Z in
+    let tr_mx = List.mapi (fun i b -> IntMap.find i rev_trans, b) in
+    tr_mx res_X, tr_mx res_Z in
   ret, res, (res_X, res_y, res_Z)
