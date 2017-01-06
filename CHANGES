@@ -1,3 +1,9 @@
+ o make Sos.var and Sos.var_poly deprecated
+ o replace them by Sos.make
+ o add Sos.{of,to}_list and Sos.param_vars
+ o add some facial reduction (iterate Newton Polytope and setting
+   variables to 0, enables to solve example/demo_sos3)
+
 version 0.5.2, Dec 9th, 2016
 ----------------------------
  o add small functions to polynomial (degree_list)
