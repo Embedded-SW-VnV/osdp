@@ -58,8 +58,11 @@ let solve ?options obj constraints =
   let obj, constraints =
     let tr_mx = List.map (fun (i, b) -> IntMap.find i trans, b) in
     tr_mx obj, List.map (fun (m, f) -> tr_mx m, f) constraints in
-  let ret, res, (res_X, res_y, res_Z) = solve verbose obj constraints in
-  let res_X, res_Z =
-    let tr_mx = List.mapi (fun i b -> IntMap.find i rev_trans, b) in
-    tr_mx res_X, tr_mx res_Z in
-  ret, res, (res_X, res_y, res_Z)
+  if constraints = [] then
+    SdpRet.Success, (0., 0.), ([], Array.make 0 0., [])
+  else
+    let ret, res, (res_X, res_y, res_Z) = solve verbose obj constraints in
+    let res_X, res_Z =
+      let tr_mx = List.mapi (fun i b -> IntMap.find i rev_trans, b) in
+      tr_mx res_X, tr_mx res_Z in
+    ret, res, (res_X, res_y, res_Z)

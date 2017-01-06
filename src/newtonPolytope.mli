@@ -22,7 +22,7 @@
 
 (** [filter s p] returns the list of the s_i in [s] such that 2s_i is
     in the convex hull of the p_1,..., p_n in [p]. The returned list
-    is sorted according to [compare] above. C.f., Johan Löfberg, Pre-
-    and Post-Processing Sum-of-Squares Programs in Practice, IEEE
-    Transactions on Automatic Control, 2009. *)
+    is sorted according to {!val:Monomial.compare}. C.f., Johan
+    Löfberg, Pre- and Post-Processing Sum-of-Squares Programs in
+    Practice, IEEE Transactions on Automatic Control, 2009. *)
 val filter : Monomial.t list -> Monomial.t list -> Monomial.t list
