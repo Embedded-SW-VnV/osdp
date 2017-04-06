@@ -120,7 +120,7 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
     let compute_widths table =
       (* we build with the largest length of each column of the
        * table and header *)
-      let widths = Array.create m.col 0 in
+      let widths = Array.make m.col 0 in
       Array.iteri (fun i row ->
 	Array.iteri (fun j cell ->
 	  Format.fprintf Format.str_formatter "%a%s" ET.pp cell (sep i j);
