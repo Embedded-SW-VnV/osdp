@@ -33,6 +33,7 @@
 #include <caml/fail.h>
 
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <fenv.h>
 #include <math.h>
@@ -243,4 +244,31 @@ value string_of_float_bin(value f)
   sprintf(str, "%a", Double_val(f));
 
   CAMLreturn(caml_copy_string(str));
+}
+
+/* value string_of_getround(value f) */
+/* { */
+/*   CAMLparam1(f); */
+
+/*   switch (fegetround()) { */
+/*   case FE_TONEAREST: */
+/*     CAMLreturn(caml_copy_string("FE_TONEAREST")); */
+/*   case FE_DOWNWARD: */
+/*     CAMLreturn(caml_copy_string("FE_DOWNWARD")); */
+/*   case FE_TOWARDZERO: */
+/*     CAMLreturn(caml_copy_string("FE_TOWARDZERO")); */
+/*   case FE_UPWARD: */
+/*     CAMLreturn(caml_copy_string("FE__UPWARD")); */
+/*   default: */
+/*     CAMLreturn(caml_copy_string("FE_unknown")); */
+/*   } */
+/* } */
+
+value setround_tonearest(value f)
+{
+  CAMLparam1(f);
+
+  fesetround(FE_TONEAREST);
+
+  CAMLreturn(Val_unit);
 }

@@ -102,11 +102,11 @@ let itv_float_of_q q = match Q.classify q with
        (* Refine the bounds q \in [l, u] by dichotomy. *)
        let rec dicho l u =
          let m =
-           if l > 1. && u < 1. then (l +. u) /. 2. else l /. 2. +. u /. 2. in
+           if l > -1. && u < 1. then (l +. u) /. 2. else l /. 2. +. u /. 2. in
          let l, u = if Q.leq (Q.of_float m) q then m, u else l, m in
          if consecutive_float l u then l, u else dicho l u in
        dicho l u
-     
+
 let float_of_q q =
   let n, d = Z.to_float q.Q.num, Z.to_float q.Q.den in
   if
@@ -119,6 +119,8 @@ let float_of_q q =
     (* Keep a closest one. *)
     if Q.leq (Q.sub (Q.of_float u) q) (Q.sub q (Q.of_float l)) then u else l
 
+external setround_tonearest : unit -> unit = "setround_tonearest"
+                                                                             
 let profile f =
   let fnbeg = Filename.temp_file "beg" "" in
   let fnend = Filename.temp_file "end" "" in
