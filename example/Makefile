@@ -1,4 +1,4 @@
-BINS=demo demo_sdp demo_sos demo_sos2 demo_sos3 demo_invariant
+BINS=demo demo_sdp demo_sos demo_sos2 demo_sos3 demo_sos4 demo_invariant
 
 all: $(BINS)
 
