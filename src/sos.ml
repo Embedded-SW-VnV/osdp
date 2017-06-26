@@ -71,7 +71,8 @@ module type S = sig
     sdp : Sdp.options;
     verbose : int;
     scale : bool;
-    pad : float
+    pad : float;
+    pad_list : float list
   }
   val default : options
   type obj =
@@ -172,9 +173,15 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            let of_float _ = assert false
            let to_float _ = assert false
            let to_q _ = assert false
-           let add = add
-           let sub = sub
-           let mult = mult
+           let add e1 e2 = match e1, e2 with
+             | Const p1, Const p2 -> Const (Poly.add p1 p2)
+             | _ -> Add (e1, e2)
+           let sub e1 e2 = match e1, e2 with
+             | Const p1, Const p2 -> Const (Poly.sub p1 p2)
+             | _ -> Sub (e1, e2)
+           let mult e1 e2 = match e1, e2 with
+             | Const p1, Const p2 -> Const (Poly.mult p1 p2)
+             | _ -> Mult (e1, e2)
            let div _ _ = assert false
            let pp = pp
          end))
@@ -202,10 +209,10 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     with PEPoly.Dimension_error -> raise Dimension_error
 
   let make ?n ?d ?homogen s =
-    let n = match n with Some n -> n | None -> 0 in
-    let d = match d with Some d -> d | None -> 0 in
+    let n = match n with Some n -> n | None -> 1 in
+    let d = match d with Some d -> d | None -> 1 in
     let homogen = match homogen with Some h -> h | None -> false in
-    if n <= 0 || d <= 0 then Var (Vscalar (Ident.create s)) else
+    if n <= 1 && d <= 1 then Var (Vscalar (Ident.create s)) else
       let name = Ident.create s in
       let l =
         let mons =
@@ -285,10 +292,12 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     sdp : Sdp.options;
     verbose : int;
     scale : bool;
-    pad : float
+    pad : float;
+    pad_list : float list
   }
 
-  let default = { sdp = Sdp.default; verbose = 0; scale = true; pad = 2. }
+  let default =
+    { sdp = Sdp.default; verbose = 0; scale = true; pad = 2.; pad_list = [] }
 
   type obj =
       Minimize of polynomial_expr | Maximize of polynomial_expr | Purefeas
@@ -491,10 +500,16 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       let perr = if false then 0. else
         let bl = List.map (fun (_, c) -> List.map snd c) monoms_cstrs
                  |> List.flatten |> List.map Poly.Coeff.to_float in
-        options.pad *. Sdp.pfeas_stop_crit ?options:sdp_options ?solver bl in
+        Sdp.pfeas_stop_crit ?options:sdp_options ?solver bl in
       if options.verbose > 0 then Format.printf "perr = %g@." perr;
-      let pad_cstrs (monoms, constraints) =
-        let pad = float_of_int (Array.length monoms) *. perr in
+      let monoms_cstrs_pad =
+        let rec aux mc p = match mc, p with
+          | [], _ -> []
+          | mc :: mcl, [] -> (mc, options.pad) :: aux mcl []
+          | mc :: mcl, p :: pl -> (mc, p) :: aux mcl pl in
+        aux monoms_cstrs options.pad_list in
+      let pad_cstrs ((monoms, constraints), pad) =
+        let pad = float_of_int (Array.length monoms) *. (pad *. perr) in
         if options.verbose > 1 then Format.printf "pad = %g@." pad;
         let has_diag mat =
           let diag (i, j, _) = i = j in
@@ -506,7 +521,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            let b = if has_diag mat then Poly.Coeff.(b - of_float pad) else b in
            vect, mat, b, b)
           constraints in
-      List.split (List.map pad_cstrs monoms_cstrs) in
+      List.split (List.map pad_cstrs monoms_cstrs_pad) in
     let cstrs = List.flatten cstrs in
 
     (* Format.printf "SDP solved <@."; *)

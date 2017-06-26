@@ -52,9 +52,9 @@ module type S = sig
       parametric variable (p_0 + p_1 x0 + p_2 x0^2 with p_0, p_1 and
       p_2 scalar parametric variables).
 
-      @param n number of variables (default: 0), must be non negative
+      @param n number of variables (default: 1), must be positive
 
-      @param d degree (default: 0), must be non negative
+      @param d degree (default: 1), must be positive
 
       @param homogen creates an homogeneous polynomial (default:
       false), i.e., all monomials of same degree (for instance x_0
@@ -181,7 +181,10 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
     verbose : int;  (** verbosity level, non negative integer, 0 (default)
                         means no output (but see sdp.verbose just above) *)
     scale : bool;  (** scale (default: true) *)
-    pad : float  (** padding factor (default: 2.), 0. means no padding *)
+    pad : float;  (** padding factor (default: 2.), 0. means no padding *)
+    pad_list : float list  (** padding factors (dafault: \[\]) for
+                               each constraint ([pad] used when list
+                               shorter than constraints list) *)
   }
 
   (** Default values above. *)
