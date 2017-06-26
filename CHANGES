@@ -1,3 +1,9 @@
+version 0.5.4, Jun 26th, 2017
+-----------------------------
+ o Opam package
+
+version 0.5.3, Apr 19th, 2017
+-----------------------------
  o make Sos.var and Sos.var_poly deprecated
  o replace them by Sos.make
  o add Sos.{of,to}_list and Sos.param_vars

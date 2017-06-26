@@ -1,0 +1,14 @@
+opam-version: "1.2"
+name: "@PACKAGE_TARNAME@"
+version: "@PACKAGE_VERSION@"
+maintainer: "Pierre Roux"
+author: "Pierre Roux"
+homepage: "https://cavale.enseeiht.fr/osdp/"
+license: "LGPL"
+build: [
+  ["./configure"]
+  [make]
+]
+install: [make "install"]
+remove: [make "uninstall"]
+depends: ["ocamlfind" "ocamlbuild" "zarith" "ocplib-simplex" {>= "0.3"} "conf-sdpa"]

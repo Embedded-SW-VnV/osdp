@@ -20,7 +20,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([OSDP], [0.5.2-svn], [ploc@garoche.net])
+AC_INIT([OSDP], [0.5.4-svn], [ploc@garoche.net])
 AC_CONFIG_SRCDIR([src/sdp.ml])
 
 # default prefix is /usr/local
@@ -203,6 +203,13 @@ if test "x$with_sdpa_dd" != xno; then with_sdpa_dd=yes ; fi
 AC_SUBST(SDPA_DD_PATH)
 
 # Check for libraries
+OCPLIBSIMPLEXLIB=$(ocamlfind query -i-format ocplib-simplex)
+if test -n "$OCPLIBSIMPLEXLIB";then
+  echo "ocamlfind found ocplib-simplex in $OCPLIBSIMPLEXLIB"
+else
+  AC_MSG_ERROR(Cannot find ocplib-simplex library.)
+fi
+
 if test "x$with_csdp" != xno; then
   AC_MSG_CHECKING(for CSDP headers)
   if test "x$CSDP_INCPATH" = xno; then
@@ -307,9 +314,9 @@ AC_HEADER_STDC
 AC_CHECK_HEADERS([math.h fenv.h])
 
 # Create files
-AC_CONFIG_FILES([Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/sdpa_paths.ml])
+AC_CONFIG_FILES([Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/sdpa_paths.ml])
 AC_OUTPUT
-chmod a-w Makefile src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/sdpa_paths.ml
+chmod a-w Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/sdpa_paths.ml
 
 echo ""
 echo "*** Configuration for $PACKAGE_NAME $PACKAGE_VERSION:"
