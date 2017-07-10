@@ -10,5 +10,11 @@ build: [
   [make]
 ]
 install: [make "install"]
-remove: [make "uninstall"]
-depends: ["ocamlfind" "ocamlbuild" "zarith" "ocplib-simplex" {>= "0.3"} "conf-sdpa"]
+remove: ["ocamlfind remove osdp"]
+depends: [
+  "ocamlfind"
+  "ocamlbuild"
+  "zarith"
+  "ocplib-simplex" {>= "0.3"}
+  "conf-sdpa"
+]

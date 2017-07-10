@@ -25,11 +25,14 @@ DIST_FILES_DIR= \
   configure.ac \
   COPYING \
   COPYING.LESSER \
+  descr \
   doc \
   example \
   external \
   INSTALL \
   Makefile.in \
+  opam \
+  opam.in \
   README \
   src
 
