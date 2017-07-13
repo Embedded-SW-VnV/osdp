@@ -24,6 +24,10 @@
 
 #include <stdlib.h>
 
+/* for fflush (flush CSDP debug output) before turning hand back to Caml
+   (avoid arbitrary mixing CSDP output with OCaml Format output) */
+#include <stdio.h>
+
 #include "config.h"
 #ifdef WITH_CSDP_yes
 
@@ -421,6 +425,8 @@ value csdp_solve(value ml_printlevel, value ml_obj, value ml_cstrs)
   Store_field(ml_res_XyZ, 2, ml_res_Z);
   Store_field(ml_res, 2, ml_res_XyZ);
 
+  fflush(stdout);
+  
   CAMLreturn(ml_res);
 }
 
