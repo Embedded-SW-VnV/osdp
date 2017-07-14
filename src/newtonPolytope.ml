@@ -89,7 +89,9 @@ let find_separating_plane p si =
   let add_cstr b large sim c =
     let large = if large then Rat.m_one else Rat.zero in
     match List.filter (fun (_, c) -> not Rat.(equal c zero)) c with
-    | [] -> sim
+    | [] ->
+       if Rat.(sign b < 0 || sign b = 0 && sign large < 0) then raise Exit;
+       sim
     | [v, c] ->
        let l, u =
          if Rat.sign c > 0 then None, Some (Rat.div b c, large)
@@ -117,10 +119,14 @@ let find_separating_plane p si =
   let m_z = List.map (fun (v, c) -> v, Rat.minus c) z in
   let cstrs = p |> List.map center' |> List.map p_of_list in
   let sim = Sim.Core.empty ~is_int:false ~check_invs:false ~debug:0 in
-  let sim = add_cstr Rat.m_one false sim m_z in
-  let sim = List.fold_left (add_cstr Rat.one true) sim cstrs in
-  let sim, opt = Sim.Solve.maximize sim (Sim.Core.P.from_list z) in
-  match Sim.Result.get opt sim with
+  let res =
+    try
+      let sim = add_cstr Rat.m_one false sim m_z in
+      let sim = List.fold_left (add_cstr Rat.one true) sim cstrs in
+      let sim, opt = Sim.Solve.maximize sim (Sim.Core.P.from_list z) in
+      Sim.Result.get opt sim
+    with Exit -> Sim.Core.Unknown in
+  match res with
   | (Sim.Core.Unknown | Sim.Core.Unsat _) -> None
   | (Sim.Core.Sat sol | Sim.Core.Unbounded sol | Sim.Core.Max (_, sol)) ->
      let a = Array.make n Rat.zero in
@@ -133,6 +139,8 @@ let find_separating_plane p si =
      Some a
 
 let filter_newton_polytope_ocplib_simplex s p =
+  let s = List.map Monomial.to_list s in
+  let p = List.map Monomial.to_list p in
   (* keep monomials s_i of s such that 2 s_i is in p *)
   let skeep, sfilter =
     let rec inter x y = match x, y with
@@ -141,10 +149,8 @@ let filter_newton_polytope_ocplib_simplex s p =
          let c = compare (List.map (( * ) 2) hx) hy in
          if c = 0 then let k, f = inter tx ty in hx :: k, f
          else if c < 0 then let k, f = inter tx y in k, hx :: f
-         else (* c > 0 *) let k, f = inter x ty in k, f in
-    let ls = List.sort Monomial.compare s in
-    let lp = List.sort Monomial.compare p in
-    inter (List.map Monomial.to_list ls) (List.map Monomial.to_list lp) in
+         else (* c > 0 *) inter x ty in
+    inter (List.sort compare s) (List.sort compare p) in
   (* look for separating hyperplane to rule out monomials not in the
      Newton polynomial *)
   let s =
@@ -153,13 +159,13 @@ let filter_newton_polytope_ocplib_simplex s p =
         | _, [] -> List.map float_of_int x
         | [], _ -> sub [0] y
         | hx :: tx, hy :: ty -> float_of_int (hx - hy) :: sub tx ty in
-      let o = match p with [] -> [] | h :: _ -> Monomial.to_list h in
+      let o = match p with [] -> [] | h :: _ -> h in
       fun x ->
       Array.of_list (sub x o) in
     let rec filter s = function
       | [] -> s
       | si :: sfilter ->
-         match find_separating_plane (List.map Monomial.to_list p) si with
+         match find_separating_plane p si with
          | None -> filter (si :: s) sfilter
          | Some a ->
             let test sj =
@@ -171,7 +177,7 @@ let filter_newton_polytope_ocplib_simplex s p =
               Rat.(compare !obj one) <= 0 in
             filter s (List.filter test sfilter) in
     List.sort compare (filter skeep sfilter) in
-  s
+  List.map Monomial.of_list s
 
 let filter s p =
   (* Format.printf *)
@@ -193,9 +199,8 @@ let filter s p =
        let m = Monomial.mult m m in
        Monomial.divide mi m && Monomial.divide m ma) s in
   let res = filter_newton_polytope_ocplib_simplex s p in
-  let res = List.map Monomial.of_list res in
   let res = List.sort Monomial.compare res in
   (* Format.printf *)
   (*   "@[<2>%d monomials after filtering:@ @[%a@]@]@." *)
-  (*   (List.length s) (Utils.pp_list ~sep:",@ " Monomial.pp) res; *)
+  (*   (List.length res) (Utils.pp_list ~sep:",@ " Monomial.pp) res; *)
   res
