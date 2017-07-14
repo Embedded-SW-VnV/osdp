@@ -71,6 +71,8 @@ module type S = sig
     sdp : Sdp.options;
     verbose : int;
     scale : bool;
+    trace_obj : bool;
+    monoms : Monomial.t list list;
     pad : float;
     pad_list : float list
   }
@@ -78,15 +80,18 @@ module type S = sig
   type obj =
       Minimize of polynomial_expr | Maximize of polynomial_expr | Purefeas
   type values
-  type witness = Monomial.t array * float array array
+  type 'a witness = Monomial.t array * 'a array array
   exception Not_linear
   val solve : ?options:options -> ?solver:Sdp.solver ->
               obj -> polynomial_expr list ->
-              SdpRet.t * (float * float) * values * witness list
+              SdpRet.t * (float * float) * values * float witness list
   val value : polynomial_expr -> values -> Poly.Coeff.t
   val value_poly : polynomial_expr -> values -> Poly.t
   val check : ?options:options -> ?values:values -> polynomial_expr ->
-              witness -> bool
+              float witness -> bool
+  val check_round : ?options:options -> ?values:values ->
+                    polynomial_expr list -> float witness list ->
+                    (values * Scalar.Q.t witness list) option
 end
 
 module Make (P : Polynomial.S) : S with module Poly = P = struct
@@ -172,6 +177,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            let one = const (Poly.one)
            let of_float _ = assert false
            let to_float _ = assert false
+           let of_q _ = assert false
            let to_q _ = assert false
            let add e1 e2 = match e1, e2 with
              | Const p1, Const p2 -> Const (Poly.add p1 p2)
@@ -292,19 +298,33 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     sdp : Sdp.options;
     verbose : int;
     scale : bool;
+    trace_obj : bool;
+    monoms : Monomial.t list list;
     pad : float;
     pad_list : float list
   }
 
-  let default =
-    { sdp = Sdp.default; verbose = 0; scale = true; pad = 2.; pad_list = [] }
+  let default = {
+    sdp = Sdp.default;
+    verbose = 0;
+    scale = true;
+    trace_obj = false;
+    monoms = [];
+    pad = 2.;
+    pad_list = []
+  }
 
   type obj =
       Minimize of polynomial_expr | Maximize of polynomial_expr | Purefeas
 
-  type values = Poly.Coeff.t Ident.Map.t
+  module Dualize = Dualize.Make (Poly.Coeff)
 
-  type witness = Monomial.t array * float array array
+  type dualize_details = float Dualize.details_val Ident.Map.t
+                         * (polynomial_expr * Ident.t array array) list
+
+  type values = Poly.Coeff.t Ident.Map.t * dualize_details option
+
+  type 'a witness = Monomial.t array * 'a array array
 
   let solve ?options ?solver obj el =
     let options, sdp_options =
@@ -363,7 +383,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     (* build the objective (see sdp.mli) *)
     let obj, obj_cst = match LEPoly.to_list obj with
       | [] -> ([], []), 0.
-      | [m, c] when Monomial.to_list m = [] ->
+      | [m, c] when Monomial.(compare m one) = 0 ->
          let le, c = LinExprSC.to_list c in
          let v = List.map (fun (id, c) -> Ident.Map.find id var_idx, c) le in
          (v, []), Poly.Coeff.to_float c
@@ -371,12 +391,16 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     (* associate a monomial basis to each SOS constraint *)
     let monoms_scalarized =
-      let build_monoms e =
-        let h = LEPoly.is_homogeneous e in
-        let n = LEPoly.nb_vars e in
-        let d = (LEPoly.degree e + 1) / 2 in
-        (if h then Monomial.list_eq else Monomial.list_le) n d in
-      List.map (fun e -> Array.of_list (build_monoms e), e) scalarized in
+      let rec build_monoms ml el = match ml, el with
+        | _, [] -> []
+        | m :: ml, e :: el -> (Array.of_list m, e) :: build_monoms ml el
+        | [], e :: el ->
+          let h = LEPoly.is_homogeneous e in
+          let n = LEPoly.nb_vars e in
+          let d = (LEPoly.degree e + 1) / 2 in
+          let m = (if h then Monomial.list_eq else Monomial.list_le) n d in
+          (Array.of_list m, e) :: build_monoms [] el in
+      build_monoms options.monoms scalarized in
 
     (* for monoms = [m_0;...; m_n], square_monoms associates to each
        monom m the list of all i >= j such that m = m_i *
@@ -490,6 +514,13 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     let monoms_cstrs = List.mapi build_cstr monoms_scalarized in
 
+    (* build objective for trace_obj option *)
+    let obj =
+      if not (options.trace_obj && obj = ([], [])) then obj else
+        let neg_tr ei (monoms, _) =
+          ei, List.mapi (fun i _ -> i, i, -1.) (Array.to_list monoms) in
+        [], List.mapi neg_tr monoms_cstrs in
+
     (* pad constraints *)
     (* The solver will return X >= 0 such that tr(A_i X) = b_i + perr
        where perr is bounded by the primal feasibility error stop
@@ -524,34 +555,85 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       List.split (List.map pad_cstrs monoms_cstrs_pad) in
     let cstrs = List.flatten cstrs in
 
+    let module PreSdp = PreSdp.Make (Poly.Coeff) in
+
     (* Format.printf "SDP solved <@."; *)
-    (* Format.printf "%a@." Sdp.pp_ext_sparse (obj, cstrs, []); *)
+    (* Format.printf "%a@." PreSdp.pp_ext_sparse (obj, cstrs, []); *)
     (* Format.printf ">@."; *)
 
     (* call SDP solver *)
-    let module PreSdp = PreSdp.Make (Poly.Coeff) in
-    let (ret, (pobj, dobj), (res_x, res_X, _, _)), tsolver =
-      (* let obj = List.map (fun (i, s) -> i, Poly.Coeff.to_float s) (fst obj), snd obj in *)
-      (* let cstrs = List.map (fun (v, m, a, b) -> List.map (fun (i, s) -> i, Poly.Coeff.to_float s) v, m, Poly.Coeff.to_float a, Poly.Coeff.to_float b) cstrs in *)
-      Utils.profile (fun () ->
-                     PreSdp.solve_ext_sparse ?options:sdp_options ?solver obj cstrs []
-                    ) in
-    (* let res_x = List.map (fun (i, s) -> i, Poly.Coeff.of_float s) res_x in *)
-    if options.verbose > 2 then
-      Format.printf "time for solver: %.3fs@." tsolver;
+    let ret, (pobj, dobj), (res_x, res_X), dualize_details =
+      if false then
+        let (ret, (pobj, dobj), (res_x, res_X, _, _)), tsolver =
+          (* let obj = List.map (fun (i, s) -> i, Poly.Coeff.to_float s) (fst obj), snd obj in *)
+          (* let cstrs = List.map (fun (v, m, a, b) -> List.map (fun (i, s) -> i, Poly.Coeff.to_float s) v, m, Poly.Coeff.to_float a, Poly.Coeff.to_float b) cstrs in *)
+          Utils.profile (fun () ->
+              PreSdp.solve_ext_sparse ?options:sdp_options ?solver obj cstrs []
+            ) in
+        (* let res_x = List.map (fun (i, s) -> i, Poly.Coeff.of_float s) res_x in *)
+        if options.verbose > 2 then
+          Format.printf "time for solver: %.3fs@." tsolver;
+        ret, (pobj, dobj), (res_x, res_X), None
+      else
+        let (ret, (pobj, dobj), (res_x, res_X), details), tsolver =
+          Utils.profile (fun () ->
+              Dualize.solve_ext_sparse_details ?options:sdp_options ?solver obj cstrs []
+            ) in
+        if options.verbose > 2 then
+          Format.printf "time for solver: %.3fs@." tsolver;
+        ret, (pobj, dobj), (res_x, res_X), Some details in
 
     let obj = let f o = obj_sign *. (o +. obj_cst) in f pobj, f dobj in
 
     (* rebuild variables *)
-    if not (SdpRet.is_success ret) then ret, obj, Ident.Map.empty, [] else
+    if not (SdpRet.is_success ret) then
+      ret, obj, (Ident.Map.empty, None), []
+    else
+      let module IntMap =
+        Map.Make (struct type t = int let compare = compare end) in
       let vars =
-        let module IntMap =
-          Map.Make (struct type t = int let compare = compare end) in
         let res_x =
           IntMap.(List.fold_left (fun m (i, c) -> add i c m) empty res_x) in
         Ident.Map.map
           (fun i -> try IntMap.find i res_x with Not_found -> P.Coeff.zero)
           var_idx in
+      Format.printf "after vars@.";
+      let details = match dualize_details with
+        | None -> None
+        | Some (v, m, dv) ->
+          Format.printf "before tr@.";
+          let tr =
+            let v =
+              IntMap.(List.fold_left (fun m (i, id) -> add i id m) empty v) in
+            Ident.Map.fold
+              (fun id i m ->
+                 try Ident.Map.add (IntMap.find i v) id m with Not_found -> m)
+              var_idx Ident.Map.empty in
+          Format.printf "after tr@.";
+          let m =
+            List.map2
+              (fun e (_, b) ->
+                 let sz = Array.length b in
+                 for i = 0 to sz - 1 do
+                   for j = 0 to i do
+                     try b.(i).(j) <- Ident.Map.find b.(i).(j) tr
+                     with Not_found -> ()
+                   done
+                 done;
+                 e, b)
+              el (List.sort (fun (i, _) (j, _) -> compare i j) m) in
+          let repl = Ident.Map.(bindings (map Dualize.ScalarLinExpr.var tr)) in
+          let tr_dv d = match d with
+            | Dualize.DV _ -> d
+            | Dualize.DVexpr le ->
+              Dualize.(DVexpr (ScalarLinExpr.replace le repl)) in
+          let dv =
+            Ident.Map.fold
+              (fun i d m ->
+                 let i = try Ident.Map.find i tr with Not_found -> i in
+                 Ident.Map.add i (tr_dv d) m)
+              dv Ident.Map.empty in
+          Some (dv, m) in
       let witnesses =
         let rec combine monoms res_X = match monoms, res_X with
           | [], [] -> []
@@ -577,9 +659,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
            done
          done)
         scaling_factors witnesses;
-      ret, obj, vars, witnesses
+      ret, obj, (vars, details), witnesses
 
-  let value_poly e m =
+  let value_poly e (m, _) =
     let rec aux = function
       | Const p -> p
       | Var (Vscalar id) -> Poly.const (Ident.Map.find id m)
@@ -602,7 +684,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
   let check ?options:options ?values:values e (v, q) =
     let options = match options with Some o -> o | None -> default in
-    let values = match values with Some v -> v | None -> Ident.Map.empty in
+    let values = match values with Some (v, _) -> v | None -> Ident.Map.empty in
     let module PQ = Polynomial.Q in let module M = Monomial in
     (* first compute (exactly, using Q) a polynomial p from
        polynomial_expr e *)
@@ -714,6 +796,125 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       if options.verbose > 2 then
         Format.printf "time for check: %.3fs@." tcheck;
       res
+
+  let check_round ?options:options ?values:values el wl =
+    (* let options = match options with Some o -> o | None -> default in *)
+    let orig_vals, values =
+      match values with Some (ov, v) -> ov, v | None -> Ident.Map.empty, None in
+    let values = match values with
+      | Some (d, l) when el = List.map fst l -> values
+      | _ -> None in
+    match values with
+    | None -> None
+    | Some (dv, el) ->
+      let module PQ = Polynomial.Q in let module M = Monomial in
+      let try_rounding den =
+        let denf = PQ.Coeff.to_float den in
+        let round f =
+          let s, af = if f >= 0. then 1, f else -1, -.f in
+          let i = s * int_of_float (denf *. af +. 0.5) in
+          PQ.Coeff.(of_int i / den) in
+        (* first round all floats in dv to rationals with den denominator *)
+        let dv =
+          Ident.Map.map
+            (fun d -> match d with
+               | Dualize.DVexpr le -> Dualize.DVexpr le
+               | Dualize.DV f -> Dualize.DV (round f))
+            dv in
+        (* then compute all other values *)
+        let get id = match Ident.Map.find id dv with
+          | Dualize.DV q -> q | Dualize.DVexpr _ -> assert false in
+        let values =
+          Ident.Map.map
+            (function
+              | Dualize.DV q -> q
+              | Dualize.DVexpr le ->
+                let l, c = Dualize.ScalarLinExpr.to_list le in
+                let l = List.map (fun (id, c) -> id, Dualize.Scalar.to_q c) l in
+                let c = Dualize.Scalar.to_q c in
+                List.fold_left (fun r (id, c) -> PQ.Coeff.(r + c * get id)) c l)
+            dv in
+        (* check that matrices are PSD *)
+        let wl =
+          List.rev_map2
+            (fun (_, m) (z, _) ->
+               let sz = Array.length m in
+               let a = Array.make_matrix sz sz PQ.Coeff.zero in
+               for i = 0 to sz - 1 do
+                 for j = 0 to i do
+                   let q =
+                     try Ident.Map.find m.(i).(j) values
+                     with Not_found -> PQ.Coeff.zero in
+                   a.(i).(j) <- q; a.(j).(i) <- q
+                 done
+               done;
+               (* Format.printf *)
+               (*   "  z = @[%a@], q = [@[%a@]]@." *)
+               (*   (Utils.pp_array ~sep:",@ " Monomial.pp) z *)
+               (*   (Utils.pp_matrix ~begl:"@[" ~endl:"@]" ~sepl:";@ " ~sepc:",@ " PQ.Coeff.pp) a; *)
+               if not (Posdef.check_PSD a) then raise Exit;
+               z, a)
+            (List.rev el) (List.rev wl) in
+        values, wl in
+      let rounding =
+        let dens =
+          let rec range n m = if n > m then [] else n :: range (n + 1) m in
+          List.map Q.of_int (range 1 31)
+          @ List.map Q.(mul_2exp one) (range 5 66) in
+        let rec find_rounding = function
+          | [] -> None
+          | den :: l ->
+            Format.printf "  Try rounding %a@." PQ.Coeff.pp den;
+            try Some (try_rounding den)
+            with Exit -> find_rounding l in
+        find_rounding dens in
+      (* check that equalities indeed hold (sanity check) *)
+      let check_eq values e (z, q) =
+        let get id =
+          try Ident.Map.find id values
+          with Not_found -> Poly.Coeff.to_q (Ident.Map.find id orig_vals) in
+        let rec cpt = function
+          | Const p ->
+            Poly.to_list p
+            |> List.map (fun (m, c) -> m, Poly.Coeff.to_q c)
+            |> PQ.of_list
+          | Var (Vscalar id) -> PQ.const (get id)
+          | Var (Vpoly p) ->
+            List.map (fun (m, id) -> m, get id) p.poly
+            |> PQ.of_list
+          | Mult_scalar (c, e) ->
+            PQ.mult_scalar (Poly.Coeff.to_q c) (cpt e)
+          | Add (e1, e2) -> PQ.add (cpt e1) (cpt e2)
+          | Sub (e1, e2) -> PQ.sub (cpt e1) (cpt e2)
+          | Mult (e1, e2) -> PQ.mult (cpt e1) (cpt e2)
+          | Power (e, d) -> PQ.power (cpt e) d
+          | Compose (e, el) ->
+            PQ.compose (cpt e) (List.map cpt el)
+          | Derive (e, i) -> PQ.derive (cpt e) i in
+        let ztqz z q =
+          let sz = Array.length q in
+          let p = ref PQ.zero in
+          for i = 0 to sz - 1 do
+            for j = 0 to sz - 1 do
+              let m = PQ.(monomial z.(i) * const q.(i).(j) * monomial z.(j)) in
+              p := PQ.add !p m
+            done
+          done;
+          !p in
+        let p = cpt e in
+        let p' = ztqz z q in
+        PQ.compare p p' = 0 in
+      match rounding with
+      | None -> None
+      | Some (values, wl) ->
+        if List.for_all2 (fun (e, _) w -> check_eq values e w) el wl then
+          let values =
+            Ident.Map.fold
+              (fun id c m -> Ident.Map.add id (Poly.Coeff.of_q c) m)
+              values orig_vals in
+          Some ((values, None), wl)
+        else
+          None
 
   let ( !! ) = const
   let ( ?? ) i = const (Poly.( ?? ) i)

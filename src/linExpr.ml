@@ -23,14 +23,17 @@ module type S = sig
   type t
   val of_list : (Ident.t * Coeff.t) list -> Coeff.t -> t
   val to_list : t -> (Ident.t * Coeff.t) list * Coeff.t
-  val const : Coeff.t -> t
   val var : Ident.t -> t
+  val const : Coeff.t -> t
   val mult_scalar : Coeff.t -> t -> t
   val add : t -> t -> t
   val sub : t -> t -> t
+  val replace : t -> (Ident.t * t) list -> t
+  val remove : t -> Ident.t -> t
   val compare : t -> t -> int
   val is_var : t -> (Ident.t * Coeff.t) option
   val is_const : t -> Coeff.t option
+  val choose : t -> (Ident.t * Coeff.t) option
   val pp : Format.formatter -> t -> unit
 end
 
@@ -57,9 +60,9 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
 
   let to_list a = a.lin, a.const
 
-  let const c = { const = c; lin = [] }
-
   let var id = { const = Coeff.zero; lin = [id, Coeff.one] }
+
+  let const c = { const = c; lin = [] }
 
   let mult_scalar s a =
     if Coeff.(s = zero) then const Coeff.zero else
@@ -85,6 +88,21 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let add = map2 Coeff.add
   let sub = map2 Coeff.sub
 
+  let replace l ll =
+    let lin =
+      List.fold_left
+        (fun lin (i, c) ->
+           try
+             let _, le = List.find (fun (i', _) -> Ident.compare i i' = 0) ll in
+             (mult_scalar c le) :: lin
+           with Not_found -> of_list [i, c] SC.zero :: lin)
+        [] (List.rev l.lin) in
+    List.fold_left add (const l.const) lin
+
+  let remove l i =
+    { const = l.const;
+      lin = List.filter (fun (i', _) -> Ident.compare i i' <> 0) l.lin }
+  
   let compare a1 a2 =
     let rec compare l1 l2 = match l1, l2 with
       | [], [] -> 0
@@ -109,6 +127,10 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
 
   let is_const a = if a.lin = [] then Some a.const else None
 
+  let choose l = match l.lin with
+    | [] -> None
+    | h :: _ -> Some h
+  
   let pp fmt a =
     let pp_coeff fmt (x, a) =
       if Coeff.(a = one) then
@@ -143,6 +165,7 @@ module MakeScalar (L : S) : Scalar.S with type t = L.t = Scalar.Make (struct
   let one = L.const L.Coeff.one
   let of_float f = L.const (L.Coeff.of_float f)
   let to_float _ = assert false  (* should never happen *)
+  let of_q x = L.const (L.Coeff.of_q x)
   let to_q _ = assert false  (* should never happen *)
   let add = L.add
   let sub = L.sub

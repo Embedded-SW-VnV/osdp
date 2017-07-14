@@ -25,9 +25,14 @@ let check m = check_itv (Array.map (Array.map Utils.itv_float_of_q) m)
 let check_complete m =
   let sz = Array.length m in
   Format.printf "Posdef.check_complete: sz = %d@." sz;
-  let l = Array.make_matrix sz sz Q.zero in
-  let d = Array.make sz Q.zero in
   try
+    for j = 0 to sz - 1 do
+      for i = 0 to j - 1 do
+        if not (Q.equal m.(i).(j) m.(j).(i)) then raise Exit
+      done
+    done;
+    let l = Array.make_matrix sz sz Q.zero in
+    let d = Array.make sz Q.zero in
     for j = 0 to sz - 1 do
       Format.printf "Posdef.check_complete: j = %d@." j;
       for i = 0 to j - 1 do
@@ -43,6 +48,33 @@ let check_complete m =
       done;
       if Q.leq !s Q.zero then raise Exit;
       d.(j) <- !s
+    done;
+    true
+  with Exit -> false
+
+let check_PSD m =
+  let sz = Array.length m in
+  Format.printf "Posdef.check_PSD: sz = %d@." sz;
+  try
+    for j = 0 to sz - 1 do
+      for i = 0 to j - 1 do
+        if not (Q.equal m.(i).(j) m.(j).(i)) then raise Exit
+      done
+    done;
+    let l = Array.(map copy m) in
+    for i = 0 to sz - 1 do
+      let a = l.(i).(i) in
+      if Q.lt a Q.zero then raise Exit;
+      if Q.equal a Q.zero then
+        for j = i + 1 to sz - 1 do
+          if not (Q.equal l.(i).(j) Q.zero) then raise Exit
+        done
+      else
+        for j = i + 1 to sz - 1 do
+          for k = j to sz - 1 do
+            l.(j).(k) <- Q.(l.(j).(k) - l.(i).(j) * l.(i).(k) / a)
+          done
+        done
     done;
     true
   with Exit -> false

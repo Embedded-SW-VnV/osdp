@@ -39,4 +39,8 @@ val check : Q.t array array -> bool
     arithmetic and may be dramatically slower. *)
 val check_complete : Q.t array array -> bool
 
+(** Same as [check_complete] but returns true iff the input is
+    positive *semi*definite (rather than positive definite). *)
+val check_PSD : Q.t array array -> bool
+  
 val string_of_float_bin : float -> string

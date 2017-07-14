@@ -181,6 +181,15 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
     verbose : int;  (** verbosity level, non negative integer, 0 (default)
                         means no output (but see sdp.verbose just above) *)
     scale : bool;  (** scale (default: true) *)
+    trace_obj : bool;  (** When no objective is set
+                           ({{:./Sos.Make.html#TYPEELTobj.Purefeas}Purefeas}
+                           below), minimize the trace of the SOS
+                           constraints instead of no objective
+                           (default: false). *)
+    monoms : Monomial.t list list;  (** monomials (default: \[\]) for each
+                                        constraint (automatically
+                                        determined when list shorter than
+                                        constraints list) *)
     pad : float;  (** padding factor (default: 2.), 0. means no padding *)
     pad_list : float list  (** padding factors (dafault: \[\]) for
                                each constraint ([pad] used when list
@@ -198,7 +207,7 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
 
   type values
 
-  type witness = Monomial.t array * float array array
+  type 'a witness = Monomial.t array * 'a array array
          
   exception Not_linear
 
@@ -230,7 +239,7 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
       polynomial expressions in [l] is non linear. *)
   val solve : ?options:options -> ?solver:Sdp.solver ->
               obj -> polynomial_expr list ->
-              SdpRet.t * (float * float) * values * witness list
+              SdpRet.t * (float * float) * values * float witness list
 
   (** [value e values] returns the evaluation of polynomial expression
       [e], replacing all [Var] by the correspoding value in [values].
@@ -271,7 +280,14 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
       @raise Not_found if [e] contains a variable not present in
       [values]. *)
   val check : ?options:options -> ?values:values -> polynomial_expr ->
-              witness -> bool
+              float witness -> bool
+
+  (** TODO: doc (@raise Invalid argument when lists el and wl not same
+      length, @raise Not_found when el contain a variable not bound in
+      values) *)
+  val check_round : ?options:options -> ?values:values ->
+                    polynomial_expr list -> float witness list ->
+                    (values * Scalar.Q.t witness list) option
 end
 
 module Make (P : Polynomial.S) : S with module Poly = P

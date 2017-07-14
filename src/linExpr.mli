@@ -40,12 +40,14 @@ module type S = sig
       zeros. *)
   val to_list : t -> (Ident.t * Coeff.t) list * Coeff.t
 
-  (** Same as {!of_list} with an empty list. *)
-  val const : Coeff.t -> t
+  (** {2 A few values.} *)
 
   (** Same as {!of_list} with the list [\[ident, Coeff.one\]] and
       constant [Coeff.zero]. *)
   val var : Ident.t -> t
+
+  (** Same as {!of_list} with an empty list. *)
+  val const : Coeff.t -> t
 
   (** {2 Arithmetic operations.} *)
                                          
@@ -53,6 +55,12 @@ module type S = sig
   val add : t -> t -> t
   val sub : t -> t -> t
 
+  (** [compose le \[v_1, l_1;...; v_n, l_n\]] replaces each variable
+      [v_i] by [l_i] in [l]. *)
+  val replace : t -> (Ident.t * t) list -> t
+
+  val remove : t -> Ident.t -> t
+  
   (** {2 Various operations.} *)
 
   val compare : t -> t -> int
@@ -61,6 +69,10 @@ module type S = sig
 
   val is_const : t -> Coeff.t option
 
+  (** Returns one of the (non zero) coefficients in the linear
+      expression (if any). *)
+  val choose : t -> (Ident.t * Coeff.t) option
+  
   (** {2 Printing.} *)
                                          
   val pp : Format.formatter -> t -> unit

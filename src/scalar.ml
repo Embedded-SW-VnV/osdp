@@ -25,6 +25,7 @@ module type M = sig
   val one : t
   val of_float : float -> t
   val to_float : t -> float
+  val of_q : Q.t -> t
   val to_q : t -> Q.t
   val add : t -> t -> t
   val sub : t -> t -> t
@@ -98,6 +99,7 @@ module Q : S with type t = Q.t = Make (struct
   let one = Q.one
   let of_float = Q.of_float
   let to_float = Utils.float_of_q
+  let of_q x = x
   let to_q x = x
   let add = Q.add
   let sub = Q.sub
@@ -115,6 +117,7 @@ module Float : S with type t = float = Make (struct
   let one = 1.
   let of_float x = x
   let to_float x = x
+  let of_q x = Q.to_float x
   let to_q x = Q.of_float x
   let add = ( +. )
   let sub = ( -. )
