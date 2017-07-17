@@ -186,6 +186,8 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
                            below), minimize the trace of the SOS
                            constraints instead of no objective
                            (default: false). *)
+    dualize : bool;  (** solve using the dual representation, can be
+                         slower but more robust (default: false) *)
     monoms : Monomial.t list list;  (** monomials (default: \[\]) for each
                                         constraint (automatically
                                         determined when list shorter than

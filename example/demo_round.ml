@@ -40,6 +40,7 @@ let psatz d eqs leqs pol =
     Sos.verbose = 0(*3*);
     Sos.scale = false;
     Sos.trace_obj = true;
+    Sos.dualize = true;
     Sos.monoms = [Osdp.Monomial.list_le n (d / 2 * 2)];
     Sos.pad = 0.;
     Sos.sdp = {

@@ -72,6 +72,7 @@ module type S = sig
     verbose : int;
     scale : bool;
     trace_obj : bool;
+    dualize : bool;
     monoms : Monomial.t list list;
     pad : float;
     pad_list : float list
@@ -299,6 +300,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     verbose : int;
     scale : bool;
     trace_obj : bool;
+    dualize : bool;
     monoms : Monomial.t list list;
     pad : float;
     pad_list : float list
@@ -309,6 +311,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     verbose = 0;
     scale = true;
     trace_obj = false;
+    dualize = false;
     monoms = [];
     pad = 2.;
     pad_list = []
@@ -562,26 +565,21 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     (* Format.printf ">@."; *)
 
     (* call SDP solver *)
-    let ret, (pobj, dobj), (res_x, res_X), dualize_details =
-      if false then
-        let (ret, (pobj, dobj), (res_x, res_X, _, _)), tsolver =
-          (* let obj = List.map (fun (i, s) -> i, Poly.Coeff.to_float s) (fst obj), snd obj in *)
-          (* let cstrs = List.map (fun (v, m, a, b) -> List.map (fun (i, s) -> i, Poly.Coeff.to_float s) v, m, Poly.Coeff.to_float a, Poly.Coeff.to_float b) cstrs in *)
-          Utils.profile (fun () ->
-              PreSdp.solve_ext_sparse ?options:sdp_options ?solver obj cstrs []
-            ) in
-        (* let res_x = List.map (fun (i, s) -> i, Poly.Coeff.of_float s) res_x in *)
-        if options.verbose > 2 then
-          Format.printf "time for solver: %.3fs@." tsolver;
-        ret, (pobj, dobj), (res_x, res_X), None
-      else
+    let ret, (pobj, dobj), (res_x, res_X), dualize_details, tsolver =
+      if options.dualize then
         let (ret, (pobj, dobj), (res_x, res_X), details), tsolver =
           Utils.profile (fun () ->
               Dualize.solve_ext_sparse_details ?options:sdp_options ?solver obj cstrs []
             ) in
-        if options.verbose > 2 then
-          Format.printf "time for solver: %.3fs@." tsolver;
-        ret, (pobj, dobj), (res_x, res_X), Some details in
+        ret, (pobj, dobj), (res_x, res_X), Some details, tsolver
+      else
+        let (ret, (pobj, dobj), (res_x, res_X, _, _)), tsolver =
+          Utils.profile (fun () ->
+              PreSdp.solve_ext_sparse ?options:sdp_options ?solver obj cstrs []
+            ) in
+        ret, (pobj, dobj), (res_x, res_X), None, tsolver in
+    if options.verbose > 2 then
+      Format.printf "time for solver: %.3fs@." tsolver;
 
     let obj = let f o = obj_sign *. (o +. obj_cst) in f pobj, f dobj in
 
