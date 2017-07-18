@@ -56,7 +56,7 @@ module type S = sig
   val sub : t -> t -> t
 
   (** [compose le \[v_1, l_1;...; v_n, l_n\]] replaces each variable
-      [v_i] by [l_i] in [l]. *)
+      [v_i] by [l_i] in [l]. No duplicates are allowed. *)
   val replace : t -> (Ident.t * t) list -> t
 
   val remove : t -> Ident.t -> t

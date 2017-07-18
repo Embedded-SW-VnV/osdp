@@ -40,96 +40,86 @@ end
 module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   module Coeff = SC
 
+  module IM = Ident.Map
+  
   (* type invariant: lin is sorted by Ident.compare
    * and doesn't contain any zero coefficient *)
-  type t = { const : Coeff.t; lin : (Ident.t * Coeff.t) list }
+  type t = { const : Coeff.t; lin : Coeff.t IM.t }
 
   let of_list l c =
     let l = List.filter (fun (_, s) -> Coeff.(s <> zero)) l in
-    let l = List.sort (fun (i1, _) (i2, _) -> Ident.compare i1 i2) l in
-    let rec remove_duplicates = function
-      | [] -> []
-      | ((i, c) as ic) :: t ->
-         match remove_duplicates t with
-         | [] -> [ic]
-         | ((i', c') :: t) as t' ->
-            if Ident.compare i i' = 0 then (i, Coeff.(c + c')) :: t
-            else ic :: t' in
-    let l = remove_duplicates l in
-    { const = c; lin = l }
+    let m =
+      List.fold_left
+        (fun acc (id, c) ->
+           let c = try Coeff.(c + IM.find id acc) with Not_found -> c in
+           IM.add id c acc)
+        IM.empty l in
+    { const = c; lin = m }
 
-  let to_list a = a.lin, a.const
+  let to_list a = IM.bindings a.lin, a.const
 
-  let var id = { const = Coeff.zero; lin = [id, Coeff.one] }
+  let var id = { const = Coeff.zero; lin = IM.singleton id Coeff.one }
 
-  let const c = { const = c; lin = [] }
+  let const c = { const = c; lin = IM.empty }
 
   let mult_scalar s a =
     if Coeff.(s = zero) then const Coeff.zero else
       { const = Coeff.(s * a.const);
-        lin = List.map (fun (i, c) -> i, Coeff.(s * c)) a.lin }
+        lin = IM.map (fun c -> Coeff.(s * c)) a.lin }
 
-  let rec map2 f l1 l2 = match l1, l2 with
-    | [], [] -> []
-    | [], (i2, c2) :: t2 -> (i2, f Coeff.zero c2) :: map2 f [] t2
-    | (i1, c1) :: t1, [] -> (i1, f c1 Coeff.zero) :: map2 f t1 []
-    | (i1, c1) :: t1, (i2, c2) :: t2 ->
-       let cmp = Ident.compare i1 i2 in
-       if cmp < 0 then
-         (i1, f c1 Coeff.zero) :: map2 f t1 l2
-       else if cmp > 0 then
-         (i2, f Coeff.zero c2) :: map2 f l1 t2
-       else  (* cmp = 0 *)
-         let c = f c1 c2 in
-         if Coeff.(c = zero) then map2 f t1 t2
-         else (i1, f c1 c2) :: map2 f t1 t2
+  let map2 f m1 m2 =
+    let opt s = if Coeff.(s <> zero) then Some s else None in
+    IM.merge
+      (fun _ c1 c2 ->
+       match c1, c2 with
+       | None, None -> None
+       | Some c1, None -> opt (f c1 Coeff.zero)
+       | None, Some c2 -> opt (f Coeff.zero c2)
+       | Some c1, Some c2 -> opt (f c1 c2))
+      m1 m2
   let map2 f a1 a2 =
     { const = f a1.const a2.const; lin = map2 f a1.lin a2.lin }
   let add = map2 Coeff.add
   let sub = map2 Coeff.sub
 
   let replace l ll =
-    let lin =
+    let m, ll =
       List.fold_left
-        (fun lin (i, c) ->
+        (fun (m, ll) (id, l') ->
            try
-             let _, le = List.find (fun (i', _) -> Ident.compare i i' = 0) ll in
-             (mult_scalar c le) :: lin
-           with Not_found -> of_list [i, c] SC.zero :: lin)
-        [] (List.rev l.lin) in
-    List.fold_left add (const l.const) lin
+             let c = IM.find id m in
+             IM.remove id m, (c, l') :: ll
+           with Not_found -> m, ll)
+        (l.lin, []) ll in
+    List.fold_left
+      (fun l (c, l') ->
+         let m =
+           IM.fold
+             (fun id c' m ->
+                let c =
+                  try Coeff.(IM.find id m + c * c')
+                  with Not_found -> Coeff.(c * c') in
+                if Coeff.(c <> zero) then IM.add id c m else IM.remove id m)
+             l'.lin l.lin in
+         { const = Coeff.(l.const + c * l'.const); lin = m })
+      { const = l.const; lin = m } ll
 
-  let remove l i =
-    { const = l.const;
-      lin = List.filter (fun (i', _) -> Ident.compare i i' <> 0) l.lin }
+  let remove l i = { const = l.const; lin = IM.remove i l.lin }
   
   let compare a1 a2 =
-    let rec compare l1 l2 = match l1, l2 with
-      | [], [] -> 0
-      | [], (_, c) :: _ -> Coeff.(compare zero c)
-      | (_, c) :: _, [] -> Coeff.(compare c zero)
-      | (i1, c1) :: t1, (i2, c2) :: t2 ->
-         let cmpi = Ident.compare i1 i2 in
-         if cmpi < 0 then Coeff.(compare c1 zero)
-         else if cmpi > 0 then Coeff.(compare zero c2)
-         else (* cmpi = 0 *)
-           let cmpc = Coeff.compare c1 c2 in
-           if cmpc <> 0 then cmpc else compare t1 t2 in
-    let cmpc = Coeff.compare a1.const a2.const in
-    if cmpc <> 0 then cmpc else compare a1.lin a2.lin
+    let c = Coeff.compare a1.const a2.const in
+    if c <> 0 then c else IM.compare Coeff.compare a1.lin a2.lin
 
   let is_var a =
     if Coeff.(equal a.const zero) then
-      match a.lin with
+      match IM.bindings a.lin with
         | [id_c] -> Some id_c
         | _ -> None
     else None
 
-  let is_const a = if a.lin = [] then Some a.const else None
+  let is_const a = if IM.is_empty a.lin then Some a.const else None
 
-  let choose l = match l.lin with
-    | [] -> None
-    | h :: _ -> Some h
+  let choose l = try Some (IM.choose l.lin) with Not_found -> None
   
   let pp fmt a =
     let pp_coeff fmt (x, a) =
@@ -144,11 +134,11 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
     else if Coeff.(a.const = zero) then
       Format.fprintf fmt "@[%a@]"
                      (Utils.pp_list ~sep:"@ + " pp_coeff)
-                     a.lin
+                     (IM.bindings a.lin)
     else
       Format.fprintf fmt "@[%a@ + %a@]"
                      (Utils.pp_list ~sep:"@ + " pp_coeff)
-                     a.lin
+                     (IM.bindings a.lin)
                      Coeff.pp a.const
 end
 
