@@ -469,7 +469,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
             |> List.map (fun (m, e) -> m, set_zeros_le e)
             |> LEPoly.of_list in
           refines (List.map (fun (m, e) -> m, set_zeros e) monoms_e') in
-    let monoms_scalarized = refines monoms_scalarized in
+    let monoms_scalarized, trefines = Utils.profile (fun () -> refines monoms_scalarized) in
+    Format.printf "time for refining monomials: %.3fs@." trefines;
 
     (* Format.printf *)
     (*   "@[<v 2>after refines:@ %a@]@." *)
@@ -595,11 +596,9 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         Ident.Map.map
           (fun i -> try IntMap.find i res_x with Not_found -> P.Coeff.zero)
           var_idx in
-      Format.printf "after vars@.";
       let details = match dualize_details with
         | None -> None
         | Some (v, m, dv) ->
-          Format.printf "before tr@.";
           let tr =
             let v =
               IntMap.(List.fold_left (fun m (i, id) -> add i id m) empty v) in
@@ -607,10 +606,15 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
               (fun id i m ->
                  try Ident.Map.add (IntMap.find i v) id m with Not_found -> m)
               var_idx Ident.Map.empty in
-          Format.printf "after tr@.";
           let m =
-            List.map2
-              (fun e (_, b) ->
+            let m =
+              IntMap.(List.fold_left (fun m (i, b) -> add i b m) empty m) in
+            let dummy = Ident.create "_dummy_" in
+            List.mapi
+              (fun i e ->
+                 let b =
+                   try IntMap.find i m
+                   with Not_found -> Array.make_matrix 0 0 dummy in
                  let sz = Array.length b in
                  for i = 0 to sz - 1 do
                    for j = 0 to i do
@@ -619,7 +623,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
                    done
                  done;
                  e, b)
-              el (List.sort (fun (i, _) (j, _) -> compare i j) m) in
+              el in
           let repl = Ident.Map.(bindings (map Dualize.ScalarLinExpr.var tr)) in
           let tr_dv d = match d with
             | Dualize.DV _ -> d
