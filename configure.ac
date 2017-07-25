@@ -306,12 +306,25 @@ if test "x$with_csdp" = xno -a "x$with_mosek" = xno -a "x$with_sdpa" = xno -a "x
   AC_MSG_WARN(You should at least install either CSDP (from sources, c.f., INSTALL) or MOSEK or SDPA or SDPA-GMP.)
 fi
 
-AC_CHECK_LIB([m], [fesetround], [],
-  [AC_MSG_ERROR([Could not find function fesetround in math library.])])
-
 # Checks for header files.
 AC_HEADER_STDC
 AC_CHECK_HEADERS([math.h fenv.h])
+
+# Checks for library functions.
+AC_CHECK_LIB([m], [fesetround], [],
+  [AC_MSG_ERROR([Could not find function fesetround in math library.])])
+
+if test "x$with_csdp" != xno; then
+  AC_MSG_CHECKING(for easy_sdp_params in CSDP library)
+  CFLAGS="$CFLAGS -I$CSDP_INCPATH" 
+  LDFLAGS="$LDFLAGS -L$CSDP_LIBPATH" 
+  LIBS="$LIBS -lsdp -llapack -lblas -lm"
+  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include "declarations.h"]],
+                                  [[struct blockmatrix C; easy_sdp_params(0, 0, C, 0, 0, 0., 0, 0, 0, 0, 0, 0, 0)]])], [AC_MSG_RESULT(yes)],
+    [AC_MSG_ERROR([Could not find function easy_sdp_params in CSDP library. \
+Please follow instructions in the INSTALL file \
+to install a patched version of CSDP.])])
+fi
 
 # Create files
 AC_CONFIG_FILES([Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/sdpa_paths.ml])
