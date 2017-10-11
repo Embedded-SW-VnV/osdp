@@ -102,15 +102,14 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
       if j < m.col - 1 then "," else if i < m.line - 1 then ";" else "" in
     let pp_row widths fmt i row =
       if i = 0 then
-	let first_row = Array.map (fun x -> String.make (x + 1) ' ') widths in
-	Array.iteri (fun j strcell ->
+	Array.iteri (fun j width ->
 	  Format.pp_set_tab fmt ();
 	  (* The string cell is filled with the string contained in first row *)
 	  Format.fprintf Format.str_formatter "%a%s" ET.pp row.(j) (sep i j);
 	  let str = Format.flush_str_formatter () in
-	  for z=0 to (String.length str) - 1 do strcell.[z] <- str.[z] done;
-	  Format.fprintf fmt "%s" strcell
-	) first_row
+          let strcell = String.make (width + 1 - String.length str) ' ' in
+	  Format.fprintf fmt "%s%s" str strcell
+	) widths
       else
 	Array.iteri (fun j cell ->
 	  Format.pp_print_tab fmt ();

@@ -25,30 +25,28 @@ module Var = struct
   let is_int _ = false
 end
 
-(*
-module Float = struct
-  type t = float
-  let add = ( +. )
-  let mult = ( *. )
-  let compare = Pervasives.compare
-  let equal = ( = )
-  let zero = 0.
-  let one = 1.
-  let m_one = -1.
-  let is_zero n = n = zero
-  let to_string = string_of_float
-  let print fmt t = Format.fprintf fmt "%g" t
-  let is_int _ = false
-  let div = ( /. )
-  let sub = ( -. )
-  let is_one v = v = 1.
-  let is_m_one v = v = -1.
-  let sign x = if x > 0. then 1 else if x < 0. then -1 else 0
-  let min = min
-  let abs = abs_float
-  let minus = ( ~-. )
-end
-*)
+(* module Float = struct *)
+(*   type t = float *)
+(*   let add = ( +. ) *)
+(*   let mult = ( *. ) *)
+(*   let compare = Pervasives.compare *)
+(*   let equal = ( = ) *)
+(*   let zero = 0. *)
+(*   let one = 1. *)
+(*   let m_one = -1. *)
+(*   let is_zero n = n = zero *)
+(*   let to_string = string_of_float *)
+(*   let print fmt t = Format.fprintf fmt "%g" t *)
+(*   let is_int _ = false *)
+(*   let div = ( /. ) *)
+(*   let sub = ( -. ) *)
+(*   let is_one v = v = 1. *)
+(*   let is_m_one v = v = -1. *)
+(*   let sign x = if x > 0. then 1 else if x < 0. then -1 else 0 *)
+(*   let min = min *)
+(*   let abs = abs_float *)
+(*   let minus = ( ~-. ) *)
+(* end *)
 
 module Rat = struct
   type t = Q.t
@@ -96,12 +94,13 @@ let find_separating_plane p si =
        let l, u =
          if Rat.sign c > 0 then None, Some (Rat.div b c, large)
          else Some (Rat.div b c, Rat.minus large), None in
-       Sim.Assert.var sim v l () u ()
+       OcplibSimplexCompat.fst_opt (Sim.Assert.var sim v l () u ())
     | _ ->
        let s = "s" ^ string_of_int !nb in
        incr nb;
        let c = Sim.Core.P.from_list c in
-       Sim.Assert.poly sim c s None () (Some (b, large)) () in
+       OcplibSimplexCompat.fst_opt
+         (Sim.Assert.poly sim c s None () (Some (b, large)) ()) in
   let n =
     let f n l = max n (List.length l) in
     List.fold_left f 0 p in
@@ -153,7 +152,8 @@ let filter_newton_polytope_ocplib_simplex s p =
     inter (List.sort compare s) (List.sort compare p) in
   (* look for separating hyperplane to rule out monomials not in the
      Newton polynomial *)
-  let s =
+  (* let cpt = ref 0 in *)
+  let s(* , ts *) =
     let center =
       let rec sub x y = match x, y with
         | _, [] -> List.map float_of_int x
@@ -165,6 +165,7 @@ let filter_newton_polytope_ocplib_simplex s p =
     let rec filter s = function
       | [] -> s
       | si :: sfilter ->
+         (* incr cpt; *)
          match find_separating_plane p si with
          | None -> filter (si :: s) sfilter
          | Some a ->
@@ -176,7 +177,9 @@ let filter_newton_polytope_ocplib_simplex s p =
               done;
               Rat.(compare !obj one) <= 0 in
             filter s (List.filter test sfilter) in
-    List.sort compare (filter skeep sfilter) in
+    (* Utils.profile (fun () -> *) List.sort compare (filter skeep sfilter)(* ) *) in
+  (* if sfilter <> [] then *)
+  (*   Format.printf "  %d linear problems solved@." !cpt; *)
   List.map Monomial.of_list s
 
 let filter s p =

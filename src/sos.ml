@@ -431,18 +431,21 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     (*   monoms_scalarized; *)
 
     (* let cpt_refines = ref 0 in *)
-
+    (* let cpt_newton = ref 0. in *)
+    (* let cpt_simpl = ref 0. in *)
+    
     (* refine the monomial basis *)
     let rec refines monoms_e =
       (* let () = incr cpt_refines; Format.printf "<%d refines>@." !cpt_refines in *)
       (* first use Newton polytope *)
-      let monoms_e' =
+      let monoms_e'(* , t_newton *) = (* Utils.profile (fun () -> *)
         List.map
           (fun (m, e) ->
             let l = Array.to_list m in
             let m_e = List.map fst (LEPoly.to_list e) in
             Array.of_list (NewtonPolytope.filter l m_e), e)
-          monoms_e in
+          monoms_e(* ) *) in
+      (* cpt_newton := !cpt_newton +. t_newton; *)
       let eq_lengths (m, _) (m', _) = Array.length m = Array.length m' in
       if List.for_all2 eq_lengths monoms_e monoms_e' then monoms_e else
         (* then remove from e monomials not present in monoms basis *)
@@ -456,7 +459,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
                 | None -> zeros
                 | Some (id, _) -> Ident.Set.add id zeros)
             zeros e in
-        let zeros = List.fold_left collect_zeros Ident.Set.empty monoms_e' in
+        let zeros(* , t_collect *) = (* Utils.profile (fun () -> *) List.fold_left collect_zeros Ident.Set.empty monoms_e'(* ) *) in
+        (* cpt_simpl := !cpt_simpl +. t_collect; *)
         (* try to iterate as long as progress is made *)
         if Ident.Set.is_empty zeros then monoms_e' else
           let set_zeros e =
@@ -468,9 +472,13 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
             LEPoly.to_list e
             |> List.map (fun (m, e) -> m, set_zeros_le e)
             |> LEPoly.of_list in
-          refines (List.map (fun (m, e) -> m, set_zeros e) monoms_e') in
-    let monoms_scalarized, trefines = Utils.profile (fun () -> refines monoms_scalarized) in
-    Format.printf "time for refining monomials: %.3fs@." trefines;
+          let tmp(* , t_tmp *) = (* Utils.profile (fun () -> *) List.map (fun (m, e) -> m, set_zeros e) monoms_e'(* ) *) in
+          (* cpt_simpl := !cpt_simpl +. t_tmp; *)
+          refines tmp in
+    let monoms_scalarized(* , trefines *) = (* Utils.profile (fun () -> *) refines monoms_scalarized(* ) *) in
+    (* Format.printf "time for refining monomials: %.3fs@." trefines; *)
+    (* Format.printf "time for newton_polytope: %.3fs@." !cpt_newton; *)
+    (* Format.printf "time for setting zeros: %.3fs@." !cpt_simpl; *)
 
     (* Format.printf *)
     (*   "@[<v 2>after refines:@ %a@]@." *)
@@ -866,7 +874,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         let rec find_rounding = function
           | [] -> None
           | den :: l ->
-            Format.printf "  Try rounding %a@." PQ.Coeff.pp den;
+            (* Format.printf "  Try rounding %a@." PQ.Coeff.pp den; *)
             try Some (try_rounding den)
             with Exit -> find_rounding l in
         find_rounding dens in

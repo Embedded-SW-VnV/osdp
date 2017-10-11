@@ -1,3 +1,10 @@
+version 0.6.0, Oct 9th, 2017
+----------------------------
+ o compile with ocaml 4.06
+ o add compatibility layer with ocplib-simplex 0.4
+ o add Sos.check_round (proof by rounding, following John Harrison 07)
+ o add Dualize (nedded by check_round)
+
 version 0.5.4, Jun 26th, 2017
 -----------------------------
  o Opam package

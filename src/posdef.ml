@@ -24,7 +24,7 @@ let check m = check_itv (Array.map (Array.map Utils.itv_float_of_q) m)
 
 let check_complete m =
   let sz = Array.length m in
-  Format.printf "Posdef.check_complete: sz = %d@." sz;
+  (* Format.printf "Posdef.check_complete: sz = %d@." sz; *)
   try
     for j = 0 to sz - 1 do
       for i = 0 to j - 1 do
@@ -34,7 +34,7 @@ let check_complete m =
     let l = Array.make_matrix sz sz Q.zero in
     let d = Array.make sz Q.zero in
     for j = 0 to sz - 1 do
-      Format.printf "Posdef.check_complete: j = %d@." j;
+      (* Format.printf "Posdef.check_complete: j = %d@." j; *)
       for i = 0 to j - 1 do
         let s = ref m.(i).(j) in
         for k = 0 to i - 1 do
@@ -54,7 +54,7 @@ let check_complete m =
 
 let check_PSD m =
   let sz = Array.length m in
-  Format.printf "Posdef.check_PSD: sz = %d@." sz;
+  (* Format.printf "Posdef.check_PSD: sz = %d@." sz; *)
   try
     for j = 0 to sz - 1 do
       for i = 0 to j - 1 do
