@@ -11,9 +11,9 @@ Compilation of the OSDP libraries requires:
 and optionally:
 
 * Camlp4 (Debian package camlp4)
-* CSDP (no Debian package, see below)
+* CSDP (Debian package coinor-csdp)
 * MOSEK (no Debian package)
-* SDPA{,-GMP,-DD}
+* SDPA{,-GMP,-DD} (Debian package sdpa for SDPA, no Debian Package for others)
 
 Please note however that the OSDP library is mostly an interface to
 SDP solvers and is quite useless if none of them (CSDP, MOSEK or SDPA)
@@ -22,24 +22,8 @@ is installed.
 CSDP
 ----
 
-To install Csdp:
-* install dependencies:
-  * liblapack-dev
-  * libopenblas-dev
-  * libatlas-base-dev
-  * libatlas-dev
-  * libblas-dev
-  * gfortran
-* download and untar it:
-  % wget http://www.coin-or.org/download/source/Csdp/Csdp-6.1.1.tgz
-  % tar xvzf Csdp-6.1.1.tgz
-* apply our patch (modified install target and enable the control printlevel)
-  % cd Csdp-6.1.1
-  % patch -p1 < path_to_osdp/external/csdp.patch
-* you can change the variable PREFIX in Makefile
-* type:
-  % make
-  % make install  # or sudo make install
+You just need the csdp binary in your PATH. This can for instance be
+done by installing the coinor-csdp package on Debian based systems.
 
 MOSEK
 -----
@@ -47,11 +31,12 @@ MOSEK
 If you use MOSEK: Don't forget to set both PATH *and* LD_LIBRARY_PATH
 to the directory containing the mosek binaries and libraries.
 
-SDPA-GMP
---------
+SDPA{,-GMP,-DD}
+---------------
 
-If you use SDPA-GMP: you may have to apply the patch
-external/sdpa_gmp.patch before compiling SDPA-GMP.
+For SDPA{,-GMP,-DD}, you just need the binary in your PATH. For SDPA,
+this can for instance be done by installing the sdpa package on Debian
+based systems.
 
 SDPA-DD
 -------

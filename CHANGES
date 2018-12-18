@@ -1,3 +1,7 @@
+ o change CSDP interface from the C library to the binary (through
+   Unix pipes), this allows to simply use the Debian package for Csdp,
+   rather than requiring to patch and recompile it from sources
+
 version 0.6.0, Oct 9th, 2017
 ----------------------------
  o compile with ocaml 4.06

@@ -21,11 +21,6 @@
 open Ocamlbuild_plugin
 open Command
 
-let with_csdp = "@with_csdp@"
-let csdp_libs = ["-lsdp"; "-llapack"; "-lblas"; "-lm"]
-let csdp_libdir = "-L@CSDP_LIBPATH@"
-let csdp_include = "-I@CSDP_INCPATH@"
-
 let with_mosek = "@with_mosek@"
 let mosek_rpath="-Wl,-rpath-link=@MOSEK_LIBPATH@"
 let mosek_lib = "-l@MOSEK_LIB@"
@@ -49,16 +44,6 @@ dispatch begin function
    (* posdef *)
    flag ["compile"; "c"] & S[A"-ccopt"; A"-frounding-math"];
    flag ["link"; "ocaml"] & S(cclib ["-lm"]);
-   (* CSDP *)
-   if with_csdp = "yes" then
-     begin
-       flag ["compile"; "c"] &
-         S[A"-ccopt"; A"-DNOSHORTS"; A"-ccopt"; A csdp_include];
-       flag ["ocamlmklib"; "c"] &
-         S([A csdp_libdir]@List.map (fun x -> A x) csdp_libs);
-       flag ["link"; "ocaml"; "library"] &
-         S([A"-ccopt"; A csdp_libdir]@cclib csdp_libs)
-     end;
    (* MOSEK *)
    if with_mosek = "yes" then
      begin

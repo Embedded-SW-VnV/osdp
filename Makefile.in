@@ -28,7 +28,6 @@ DIST_FILES_DIR= \
   descr \
   doc \
   example \
-  external \
   INSTALL \
   Makefile.in \
   opam \

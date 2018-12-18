@@ -119,7 +119,8 @@ let solve_sparse ?options ?solver ?init obj constraints =
       ([], max_idx + 1) (List.rev constraints) in
   let ret, res, (res_X, res_y, res_Z) = match solver with
     | Csdp ->
-       let options = { Csdp.verbose = options.verbose } in
+       let options = { Csdp.verbose = options.verbose;
+                       Csdp.max_iteration = options.max_iteration } in
        Csdp.solve ~options obj constraints
     | Mosek ->
        let options = { Moseksdp.verbose = options.verbose } in

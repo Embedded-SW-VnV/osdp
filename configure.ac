@@ -31,16 +31,11 @@ AC_ARG_WITH([csdp],
   [AS_HELP_STRING([--without-csdp], [disable support for CSDP])],
   [],
   [with_csdp=check])
-AC_ARG_WITH([csdp-inc-path],
-  [AS_HELP_STRING([--with-csdp-inc-path=<path>],
-    [specify path for CSDP headers])],
-  [CSDP_INCPATH=$with_csdp_inc_path],
-  [CSDP_INCPATH=no])
-AC_ARG_WITH([csdp-lib-path],
-  [AS_HELP_STRING([--with-csdp-lib-path=<path>],
-    [specify path for CSDP library])],
-  [CSDP_LIBPATH=$with_csdp_lib_path],
-  [CSDP_LIBPATH=no])
+AC_ARG_WITH([csdp-path],
+  [AS_HELP_STRING([--with-csdp-path=<path>],
+    [specify path for CSDP binary])],
+  [CSDP_PATH=$with_csdp_path],
+  [CSDP_PATH=no])
 
 AC_ARG_WITH([mosek],
   [AS_HELP_STRING([--without-mosek], [disable support for MOSEK])],
@@ -221,47 +216,21 @@ else
 fi
 
 if test "x$with_csdp" != xno; then
-  AC_MSG_CHECKING(for CSDP headers)
-  if test "x$CSDP_INCPATH" = xno; then
-    csdp_path=`command -v csdp || echo no`
-    if test "x$csdp_path" != xno; then
-      CSDP_INCPATH=`echo "$csdp_path" | sed -e 's|[[^/]]*/csdp$||'`
-      CSDP_INCPATH="${CSDP_INCPATH}include/csdp"
-    fi
+  AC_MSG_CHECKING(for CSDP)
+  if test "x$CSDP_PATH" = xno; then
+    CSDP_PATH=`command -v csdp || echo no`
   fi
-  if ! test -f ${CSDP_INCPATH}/declarations.h; then
+  if test "x$CSDP_PATH" = xno; then
     if test "x$with_csdp" = "xcheck"; then
       with_csdp=no
-      CSDP_INCPATH=no
     else
-      AC_MSG_ERROR([Unable to find CSDP header declarations.h, please provide path with option --with-csdp-inc-path=<path>.])
+      AC_MSG_ERROR([Unable to find CSDP in \$PATH, please provide path with option --with-csdp-path=<path>.])
     fi
   fi
-  AC_MSG_RESULT($CSDP_INCPATH)
-fi
-if test "x$with_csdp" != xno; then
-  AC_MSG_CHECKING(for CSDP library)
-  if test "x$CSDP_LIBPATH" = xno; then
-    csdp_path=`command -v csdp || echo no`
-    if test "x$csdp_path" != xno; then
-      CSDP_LIBPATH=`echo "$csdp_path" | sed -e 's|[[^/]]*/csdp$||'`
-      CSDP_LIBPATH="${CSDP_LIBPATH}lib/csdp"
-    fi
-  fi
-  if ! test -f ${CSDP_LIBPATH}/libsdp.a; then
-    if test "x$with_csdp" = "xcheck"; then
-      with_csdp=no
-      CSDP_LIBPATH=no
-    else
-      AC_MSG_ERROR([Unable to find CSDP library libsdp.a, please provide path with option --with-csdp-lib-path=<path>.])
-    fi
-  fi
-  AC_MSG_RESULT($CSDP_LIBPATH)
+  AC_MSG_RESULT($CSDP_PATH)
 fi
 if test "x$with_csdp" != xno; then with_csdp=yes ; fi
-AC_SUBST(with_csdp)
-AC_SUBST(CSDP_INCPATH)
-AC_SUBST(CSDP_LIBPATH)
+AC_SUBST(CSDP_PATH)
 
 if test "x$with_mosek" != xno; then
   AC_MSG_CHECKING(for MOSEK headers)
@@ -313,7 +282,7 @@ AC_SUBST(MOSEK_LIB)
 
 if test "x$with_csdp" = xno -a "x$with_mosek" = xno -a "x$with_sdpa" = xno -a "x$with_sdpa_gmp" = xno; then
   AC_MSG_WARN($PACKAGE_NAME will be compiled without any SDP solver which is quite useless.)
-  AC_MSG_WARN(You should at least install either CSDP (from sources, c.f., INSTALL) or MOSEK or SDPA or SDPA-GMP.)
+  AC_MSG_WARN(You should at least install either CSDP or MOSEK or SDPA or SDPA-GMP.)
 fi
 
 # Checks for header files.
@@ -324,30 +293,17 @@ AC_CHECK_HEADERS([math.h fenv.h])
 AC_CHECK_LIB([m], [fesetround], [],
   [AC_MSG_ERROR([Could not find function fesetround in math library.])])
 
-if test "x$with_csdp" != xno; then
-  AC_MSG_CHECKING(for easy_sdp_params in CSDP library)
-  CFLAGS="$CFLAGS -I$CSDP_INCPATH" 
-  LDFLAGS="$LDFLAGS -L$CSDP_LIBPATH" 
-  LIBS="$LIBS -lsdp -llapack -lblas -lm"
-  AC_LINK_IFELSE([AC_LANG_PROGRAM([[#include "declarations.h"]],
-                                  [[struct blockmatrix C; easy_sdp_params(0, 0, C, 0, 0, 0., 0, 0, 0, 0, 0, 0, 0)]])], [AC_MSG_RESULT(yes)],
-    [AC_MSG_ERROR([Could not find function easy_sdp_params in CSDP library. \
-Please follow instructions in the INSTALL file \
-to install a patched version of CSDP.])])
-fi
-
 # Create files
-AC_CONFIG_FILES([Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/sdpa_paths.ml src/ocplibSimplexCompat.ml])
+AC_CONFIG_FILES([Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/csdp_path.ml src/sdpa_paths.ml src/ocplibSimplexCompat.ml])
 AC_OUTPUT
-chmod a-w Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/sdpa_paths.ml src/ocplibSimplexCompat.ml
+chmod a-w Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/csdp_path.ml src/sdpa_paths.ml src/ocplibSimplexCompat.ml
 
 echo ""
 echo "*** Configuration for $PACKAGE_NAME $PACKAGE_VERSION:"
 echo ""
 echo "  Compiled with CSDP ......... : $with_csdp"
 if test "x$with_csdp" = xyes; then
-  echo "    CSDP_INCPATH ............. : $CSDP_INCPATH"
-  echo "    CSDP_LIBPATH ............. : $CSDP_LIBPATH"
+  echo "    CSDP_PATH ................ : $CSDP_PATH"
 fi
 echo "  Compiled with MOSEK ........ : $with_mosek"
 if test "x$with_mosek" = xyes; then
@@ -375,5 +331,5 @@ echo ""
 
 if test "x$with_csdp" = xno -a "x$with_mosek" = xno -a "x$with_sdpa" = xno -a "x$with_sdpa_gmp" = xno; then
   AC_MSG_WARN($PACKAGE_NAME will be compiled without any SDP solver which is quite useless.)
-  AC_MSG_WARN(You should at least install either CSDP (from sources, c.f., INSTALL) or MOSEK or SDPA or SDPA-GMP.)
+  AC_MSG_WARN(You should at least install either CSDP or MOSEK or SDPA or SDPA-GMP.)
 fi

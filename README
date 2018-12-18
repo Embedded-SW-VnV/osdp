@@ -13,5 +13,5 @@ To use with the ocaml toplevel
 % ledit ocaml
 # #use "topfind";;
 # #require "osdp";;
-These last two lines can be added to ~/.ocamlinit if needed to avoid typing
-them again and again.
+These last two lines can be added to ~/.ocamlinit to avoid typing them
+again and again.
