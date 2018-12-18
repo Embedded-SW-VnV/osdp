@@ -1,0 +1,19 @@
+**/*~
+**/#*#
+autom4te.cache
+config.log
+config.status
+configure
+
+# files with a .in
+Makefile
+opam
+src/META
+src/_tags
+src/config.h
+src/osdp.mlpack
+src/myocamlbuild.ml
+src/csdp_path.ml
+src/ocplibSimplexCompat.ml
+src/osdp_top.ml
+src/sdpa_paths.ml
