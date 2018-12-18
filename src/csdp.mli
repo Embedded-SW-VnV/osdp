@@ -43,6 +43,7 @@ type block_diag_matrix = (int * matrix) list
 type options = {
   verbose : int;  (** verbosity level, non negative integer, 0 (default)
                       means no output *)
+  max_iteration : int;  (** maxIteration (default: 100) *)
 }
 
 (** Default values above. *)

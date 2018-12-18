@@ -142,6 +142,7 @@ let read_output block_struct filename =
       IntMap.fold (fun i (j, _) l -> (i, a.(j - 1)) :: l) block_struct []
       |> List.rev in
     tr res_X, tr res_Z in
+  (* primal and dual are reversed in SDPA *)
   ret, (dobj, pobj), (res_X, res_y, res_Z)
 
 let solve ?options ?init obj constraints =

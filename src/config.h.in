@@ -21,8 +21,6 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
-#define WITH_CSDP_@with_csdp@
-
 #define WITH_MOSEK_@with_mosek@
 
 #endif  /* CONFIG_H */

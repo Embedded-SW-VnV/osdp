@@ -1,4 +1,7 @@
 Csdp
+Csdp_lexer
+Csdp_parser
+Csdp_path
 Dualize
 Ident
 LinExpr
