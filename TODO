@@ -1,1 +1,15 @@
-* meilleur padding pour les LMI
+* SDPA : codes de retour
+* CSDP
+** add support for initial solution
+** plus de codes de retour ?
+X ou Z singulier : "X was singular!", "Z was singular!"
+"Factorization of the system matrix failed, giving up." ?
+"Solving for dy failed!" ?
+"Solving for dy1 failed!" ?
+"Too many line search failures, giving up." ?
+"Lack of progress.  Giving up!" ?
+"Maximum iterations reached." ?
+** documenter le retour en cas de primal/dual infeasible
+* solveur par défaut
+* version 1.0.0
+** enlever les trucs deprecated
