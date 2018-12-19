@@ -110,6 +110,12 @@ AS_IF([test "x$OCAMLBUILD" = xno], [AC_MSG_ERROR([Cannot find ocamlbuild.])])
 AC_CHECK_TOOL([OCAMLFIND], [ocamlfind], [no])
 AS_IF([test "x$OCAMLFIND" = xno], [AC_MSG_ERROR([Cannot find ocamlfind.])])
 
+AC_CHECK_TOOL([OCAMLLEX], [ocamllex], [no])
+AS_IF([test "x$OCAMLLEX" = xno], [AC_MSG_ERROR([Cannot find ocamllex.])])
+
+AC_CHECK_TOOL([OCAMLYACC], [ocamlyacc], [no])
+AS_IF([test "x$OCAMLYACC" = xno], [AC_MSG_ERROR([Cannot find ocamlyacc.])])
+
 if test "x$with_camlp4" != xno; then
   AC_CHECK_TOOL([OCAMLLEX], [ocamllex], [no])
   if test "x$OCAMLLEX" = xno; then
