@@ -15,6 +15,7 @@ Posdef
 PreSdp
 Scalar
 Sdp
+Sdp_default
 Sdpa
 Sdpa_lexer
 Sdpa_parser
