@@ -48,7 +48,7 @@ let block_diag_to_sparse = List.map (fun (i, m) -> i, matrix_to_sparse m)
 (* SDP. *)
 (********)
 
-type solver = Csdp | Mosek | Sdpa | SdpaGmp | SdpaDd
+type solver = Sdp_default.solver = Csdp | Mosek | Sdpa | SdpaGmp | SdpaDd
 
 type options = {
   solver : solver;
@@ -60,7 +60,7 @@ type options = {
 }
 
 let default = {
-  solver = Csdp;
+  solver = Sdp_default.sdp_default;
   verbose = 0;
   max_iteration = 100;
   stop_criterion = 1.0E-7;

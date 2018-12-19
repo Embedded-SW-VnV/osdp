@@ -36,6 +36,6 @@ clean:
 	rm -f *~
 
 distclean: clean
-	rm -f Makefile myocamlbuild.ml config.h META _tags osdp.mlpack osdp_top.ml csdp_path.ml sdpa_paths.ml src/ocplibSimplexCompat.ml
+	rm -f Makefile myocamlbuild.ml config.h META _tags osdp.mlpack osdp_top.ml csdp_path.ml sdpa_paths.ml src/ocplibSimplexCompat.ml src/sdp_default.ml
 
 .PHONY: osdp doc clean install uninstall

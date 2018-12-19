@@ -30,3 +30,4 @@ src/csdp_path.ml
 src/ocplibSimplexCompat.ml
 src/osdp_top.ml
 src/sdpa_paths.ml
+src/sdp_default.ml

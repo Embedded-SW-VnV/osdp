@@ -62,12 +62,12 @@ val block_diag_to_sparse : matrix block_diag -> sparse_matrix block_diag
 
 (** {2 SDP.} *)
 
-type solver = Csdp | Mosek | Sdpa | SdpaGmp | SdpaDd
+type solver = Sdp_default.solver = Csdp | Mosek | Sdpa | SdpaGmp | SdpaDd
 
 (** Options for calling SDP solvers (currently, options other than
     solver are only handled by Sdpa\{,Gmp\}). *)
 type options = {
-  solver : solver;  (** default: Csdp *)
+  solver : solver;  (** default: see {{:./Sdp_default.html}Sdp_default} *)
   verbose : int;  (** verbosity level, non negative integer, 0 (default)
                       means no output (only for SDPA* and Mosek) *)
   max_iteration : int;  (** maxIteration (default: 100) *)

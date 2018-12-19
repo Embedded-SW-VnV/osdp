@@ -250,6 +250,21 @@ if test "x$with_csdp" = xno -a "x$with_mosek" = xno -a "x$with_sdpa" = xno -a "x
   AC_MSG_WARN(You should at least install either CSDP or MOSEK or SDPA or SDPA-GMP.)
 fi
 
+# Choose default SDP solver
+SDP_DEFAULT=Csdp
+if test "x$with_csdp" = xno; then
+  if test "x$with_sdpa_gmp" != xno; then
+    SDP_DEFAULT=SdpaGmp
+  fi
+  if test "x$with_mosek" != xno; then
+    SDP_DEFAULT=Mosek
+  fi
+  if test "x$with_sdpa" != xno; then
+    SDP_DEFAULT=Sdpa
+  fi
+fi
+AC_SUBST(SDP_DEFAULT)
+
 # Checks for header files.
 AC_HEADER_STDC
 AC_CHECK_HEADERS([math.h fenv.h])
@@ -259,9 +274,9 @@ AC_CHECK_LIB([m], [fesetround], [],
   [AC_MSG_ERROR([Could not find function fesetround in math library.])])
 
 # Create files
-AC_CONFIG_FILES([Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/csdp_path.ml src/sdpa_paths.ml src/ocplibSimplexCompat.ml])
+AC_CONFIG_FILES([Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/csdp_path.ml src/sdpa_paths.ml src/ocplibSimplexCompat.ml src/sdp_default.ml])
 AC_OUTPUT
-chmod a-w Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/csdp_path.ml src/sdpa_paths.ml src/ocplibSimplexCompat.ml
+chmod a-w Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/csdp_path.ml src/sdpa_paths.ml src/ocplibSimplexCompat.ml src/sdp_default.ml
 
 echo ""
 echo "*** Configuration for $PACKAGE_NAME $PACKAGE_VERSION:"
@@ -288,6 +303,7 @@ echo "  Compiled with SDPA-DD ...... : $with_sdpa_dd"
 if test "x$with_sdpa_dd" = xyes; then
   echo "    SDPA_DD_PATH ............. : $SDPA_DD_PATH"
 fi
+echo "  Default solver ............. : $SDP_DEFAULT"
 echo ""
 echo "  Now type 'make' to build $PACKAGE $VERSION"
 echo "  then 'make install' to install."
