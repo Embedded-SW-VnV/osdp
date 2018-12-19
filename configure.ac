@@ -186,15 +186,12 @@ if test -n "$OCPLIBSIMPLEXLIB";then
   AC_MSG_RESULT($OCPLIBSIMPLEXLIB)
   AC_MSG_CHECKING(ocplib-simplex version)
   OCPLIBSIMPLEXVERSION=$(ocamlfind query -l ocplib-simplex | grep "version:" | sed -e 's/version:[[^0-9]]*//')
-  if test "x$OCPLIBSIMPLEXVERSION" = "x0.3"; then
-    OCPLIB_SIMPLEX_FST_OPT=""
-  else
-    OCPLIB_SIMPLEX_FST_OPT="fst"
-  fi
   AC_MSG_RESULT($OCPLIBSIMPLEXVERSION)
-  AC_SUBST(OCPLIB_SIMPLEX_FST_OPT)
 else
   AC_MSG_ERROR(Cannot find ocplib-simplex library.)
+fi
+if test "x$OCPLIBSIMPLEXVERSION" != "x0.4"; then
+  AC_MSG_ERROR([ocplib-simplex version must be 0.4.])
 fi
 
 if test "x$with_mosek" != xno; then
@@ -274,9 +271,9 @@ AC_CHECK_LIB([m], [fesetround], [],
   [AC_MSG_ERROR([Could not find function fesetround in math library.])])
 
 # Create files
-AC_CONFIG_FILES([Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/csdp_path.ml src/sdpa_paths.ml src/ocplibSimplexCompat.ml src/sdp_default.ml])
+AC_CONFIG_FILES([Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/csdp_path.ml src/sdpa_paths.ml src/sdp_default.ml])
 AC_OUTPUT
-chmod a-w Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/csdp_path.ml src/sdpa_paths.ml src/ocplibSimplexCompat.ml src/sdp_default.ml
+chmod a-w Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/csdp_path.ml src/sdpa_paths.ml src/sdp_default.ml
 
 echo ""
 echo "*** Configuration for $PACKAGE_NAME $PACKAGE_VERSION:"

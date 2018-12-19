@@ -1,5 +1,0 @@
-(* In ocplib-simplex >= 0.4, the functions in Assert module return an
-   extra boolean which we are not using but causes compatibility
-   issues. This is just adding an adequate projection depending on the
-   version of ocplib-simplex compiled against. *)
-let fst_opt x = @OCPLIB_SIMPLEX_FST_OPT@ x

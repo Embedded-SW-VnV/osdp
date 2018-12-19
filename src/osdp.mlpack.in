@@ -10,7 +10,6 @@ Matrix
 Monomial
 Moseksdp
 NewtonPolytope
-OcplibSimplexCompat
 Polynomial
 Posdef
 PreSdp

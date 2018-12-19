@@ -94,13 +94,12 @@ let find_separating_plane p si =
        let l, u =
          if Rat.sign c > 0 then None, Some (Rat.div b c, large)
          else Some (Rat.div b c, Rat.minus large), None in
-       OcplibSimplexCompat.fst_opt (Sim.Assert.var sim v l () u ())
+       fst (Sim.Assert.var sim v l () u ())
     | _ ->
        let s = "s" ^ string_of_int !nb in
        incr nb;
        let c = Sim.Core.P.from_list c in
-       OcplibSimplexCompat.fst_opt
-         (Sim.Assert.poly sim c s None () (Some (b, large)) ()) in
+       fst (Sim.Assert.poly sim c s None () (Some (b, large)) ()) in
   let n =
     let f n l = max n (List.length l) in
     List.fold_left f 0 p in
