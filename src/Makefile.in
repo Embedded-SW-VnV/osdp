@@ -18,10 +18,9 @@
 
 OCAMLBUILD=@OCAMLBUILD@ -use-ocamlfind -classic-display -no-links
 OCAMLFIND=@OCAMLFIND@
-CAMLP4_PARSERS=@CAMLP4_PARSERS@
 
 osdp:
-	$(OCAMLBUILD) osdp.cma osdp_top.cmo osdp.cmxa osdp.cmxs $(CAMLP4_PARSERS)
+	$(OCAMLBUILD) osdp.cma osdp_top.cmo osdp.cmxa osdp.cmxs
 
 doc: osdp
 	$(OCAMLBUILD) osdp.docdir/index.html
@@ -30,7 +29,7 @@ uninstall:
 	$(OCAMLFIND) remove osdp
 
 install: osdp uninstall
-	cd _build && $(OCAMLFIND) install osdp ../META libosdp.a dllosdp.so osdp.a osdp.cma osdp_top.cmo osdp.cmxa osdp.cmxs osdp.cmi *.mli $(CAMLP4_PARSERS)
+	cd _build && $(OCAMLFIND) install osdp ../META libosdp.a dllosdp.so osdp.a osdp.cma osdp_top.cmo osdp.cmxa osdp.cmxs osdp.cmi *.mli
 
 clean:
 	$(OCAMLBUILD) -clean

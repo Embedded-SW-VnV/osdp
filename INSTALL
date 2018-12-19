@@ -10,7 +10,6 @@ Compilation of the OSDP libraries requires:
 
 and optionally:
 
-* Camlp4 (Debian package camlp4)
 * CSDP (Debian package coinor-csdp)
 * MOSEK (no Debian package)
 * SDPA{,-GMP,-DD} (Debian package sdpa for SDPA, no Debian Package for others)

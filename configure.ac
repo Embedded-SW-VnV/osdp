@@ -83,11 +83,6 @@ AC_ARG_WITH([sdpa-dd-path],
   [SDPA_DD_PATH=$with_sdpa_dd_path],
   [SDPA_DD_PATH=no])
 
-AC_ARG_WITH([camlp4],
-  [AS_HELP_STRING([--without-camlp4], [disable support for Camlp4 parsers])],
-  [],
-  [with_camlp4=no])
-
 # Check for programs
 AC_CHECK_TOOL([OCAMLC], [ocamlc], [no])
 AS_IF([test "x$OCAMLC" = xno], [AC_MSG_ERROR([Cannot find ocamlc.])])
@@ -115,42 +110,6 @@ AS_IF([test "x$OCAMLLEX" = xno], [AC_MSG_ERROR([Cannot find ocamllex.])])
 
 AC_CHECK_TOOL([OCAMLYACC], [ocamlyacc], [no])
 AS_IF([test "x$OCAMLYACC" = xno], [AC_MSG_ERROR([Cannot find ocamlyacc.])])
-
-if test "x$with_camlp4" != xno; then
-  AC_CHECK_TOOL([OCAMLLEX], [ocamllex], [no])
-  if test "x$OCAMLLEX" = xno; then
-    AS_IF([test "x$with_camlp4" = xcheck],
-      [AC_MSG_WARN([Cannot find Ocamllex, will compile without it but installing it and reruning this configure script is highly recommended.])],
-      [AC_MSG_ERROR([Cannot find Ocamllex.])])
-    with_camlp4=no
-  fi
-fi
-if test "x$with_camlp4" != xno; then
-  AC_CHECK_TOOL([OCAMLYACC], [ocamlyacc], [no])
-  if test "x$OCAMLYACC" = xno; then
-    AS_IF([test "x$with_camlp4" = xcheck],
-      [AC_MSG_WARN([Cannot find Ocamlyacc, will compile without it but installing it and reruning this configure script is highly recommended.])],
-      [AC_MSG_ERROR([Cannot find Ocamlyacc.])])
-    with_camlp4=no
-  fi
-fi
-if test "x$with_camlp4" != xno; then
-  AC_CHECK_TOOL([CAMLP4], [camlp4o], [no])
-  if test "x$CAMLP4" = xno; then
-    AS_IF([test "x$with_camlp4" = xcheck],
-      [AC_MSG_WARN([Cannot find Camlp4, will compile without it but installing Camlp4 (package camlp4 on Debian based systems) and reruning this configure script is highly recommended.])],
-      [AC_MSG_ERROR([Cannot find Camlp4.])])
-    with_camlp4=no
-  fi
-fi
-if test "x$with_camlp4" != xno; then
-  with_camlp4=yes
-  CAMLP4_PARSERS="pa_osdp.cma"
-else
-  CAMLP4_PARSERS=""
-fi
-AC_SUBST(with_camlp4)
-AC_SUBST(CAMLP4_PARSERS)
 
 if test "x$with_sdpa" != xno; then
   AC_MSG_CHECKING(for SDPA)
@@ -329,7 +288,6 @@ echo "  Compiled with SDPA-DD ...... : $with_sdpa_dd"
 if test "x$with_sdpa_dd" = xyes; then
   echo "    SDPA_DD_PATH ............. : $SDPA_DD_PATH"
 fi
-echo "  Compiled with Camlp4 ....... : $with_camlp4"
 echo ""
 echo "  Now type 'make' to build $PACKAGE $VERSION"
 echo "  then 'make install' to install."

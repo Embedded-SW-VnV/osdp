@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *)
 
-(** This automatically installs printers and parsers in the
-    toplevel. Magic lines are the following
+(** This automatically installs printers in the toplevel.
+    Magic lines are the following
     {[
     #use "topfind";;
     #require "osdp";;
@@ -30,7 +30,6 @@
 (* This is highly inspired from num_top.ml for the Num library. *)
 
 (**/**)
-let with_camlp4 = "@with_camlp4@"
 let print_outcome = true
 let error_fmt = Format.err_formatter
 
@@ -49,16 +48,8 @@ let printers = [
   "Osdp.Sos.Float.pp";
 ]
 
-let parsers = [
-  "pa_osdp.cma";
-]
-
 let install_commands =
   List.map (fun s -> "#install_printer " ^ s ^ ";;") printers
-  @ (if with_camlp4 <> "yes" then []
-     else
-       "#load \"dynlink.cma\";;" :: "#load \"camlp4o.cma\";;"
-       :: List.map (fun s -> "#load \"" ^ s ^ "\";;") parsers)
 
 let eval_phrase s =
   (* Format.fprintf *)
@@ -79,7 +70,7 @@ let _ =
     begin
       Format.fprintf
         error_fmt
-        "Something weird happened while installing Osdp library printers/parsers.@.";
+        "Something weird happened while installing Osdp library printers.@.";
       Format.pp_print_flush error_fmt ()
     end
 (**/**)
