@@ -20,7 +20,6 @@ example/demo_sos4
 
 # files with a .in
 Makefile
-opam
 src/META
 src/_tags
 src/config.h
