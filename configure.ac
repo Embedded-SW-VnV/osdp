@@ -111,6 +111,23 @@ AS_IF([test "x$OCAMLLEX" = xno], [AC_MSG_ERROR([Cannot find ocamllex.])])
 AC_CHECK_TOOL([OCAMLYACC], [ocamlyacc], [no])
 AS_IF([test "x$OCAMLYACC" = xno], [AC_MSG_ERROR([Cannot find ocamlyacc.])])
 
+if test "x$with_csdp" != xno; then
+  AC_MSG_CHECKING(for CSDP)
+  if test "x$CSDP_PATH" = xno; then
+    CSDP_PATH=`command -v csdp || echo no`
+  fi
+  if test "x$CSDP_PATH" = xno; then
+    if test "x$with_csdp" = "xcheck"; then
+      with_csdp=no
+    else
+      AC_MSG_ERROR([Unable to find CSDP in \$PATH, please provide path with option --with-csdp-path=<path>.])
+    fi
+  fi
+  AC_MSG_RESULT($CSDP_PATH)
+fi
+if test "x$with_csdp" != xno; then with_csdp=yes ; fi
+AC_SUBST(CSDP_PATH)
+
 if test "x$with_sdpa" != xno; then
   AC_MSG_CHECKING(for SDPA)
   if test "x$SDPA_PATH" = xno; then
@@ -179,23 +196,6 @@ if test -n "$OCPLIBSIMPLEXLIB";then
 else
   AC_MSG_ERROR(Cannot find ocplib-simplex library.)
 fi
-
-if test "x$with_csdp" != xno; then
-  AC_MSG_CHECKING(for CSDP)
-  if test "x$CSDP_PATH" = xno; then
-    CSDP_PATH=`command -v csdp || echo no`
-  fi
-  if test "x$CSDP_PATH" = xno; then
-    if test "x$with_csdp" = "xcheck"; then
-      with_csdp=no
-    else
-      AC_MSG_ERROR([Unable to find CSDP in \$PATH, please provide path with option --with-csdp-path=<path>.])
-    fi
-  fi
-  AC_MSG_RESULT($CSDP_PATH)
-fi
-if test "x$with_csdp" != xno; then with_csdp=yes ; fi
-AC_SUBST(CSDP_PATH)
 
 if test "x$with_mosek" != xno; then
   AC_MSG_CHECKING(for MOSEK headers)
