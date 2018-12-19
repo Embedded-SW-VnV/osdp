@@ -10,6 +10,5 @@ X ou Z singulier : "X was singular!", "Z was singular!"
 "Lack of progress.  Giving up!" ?
 "Maximum iterations reached." ?
 ** documenter le retour en cas de primal/dual infeasible
-* solveur par défaut
 * version 1.0.0
-** enlever les trucs deprecated
+** solveur par défaut

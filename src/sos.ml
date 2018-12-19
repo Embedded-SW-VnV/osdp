@@ -32,9 +32,6 @@ module type S = sig
     | Compose of polynomial_expr * polynomial_expr list
     | Derive of polynomial_expr * int
   val make : ?n:int -> ?d:int -> ?homogen:bool -> string -> polynomial_expr
-  val var : string -> polynomial_expr
-  val var_poly : string -> int -> ?homogen:bool -> int ->
-                 polynomial_expr * (Monomial.t * polynomial_expr) list
   val const : Poly.t -> polynomial_expr
   val scalar : Poly.Coeff.t -> polynomial_expr
   val monomial : Monomial.t -> polynomial_expr
@@ -232,12 +229,6 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
             ([], 0) mons in
         List.rev l in
       Var (Vpoly { name = name; poly = l })
-
-  let var s = make s
-
-  let var_poly s n ?homogen d =
-    let v = make ~n ~d ?homogen s in
-    v, to_list v
 
   let nb_vars e = to_list e |> PEPoly.of_list |> PEPoly.nb_vars
   let degree e = to_list e |> PEPoly.of_list |> PEPoly.degree

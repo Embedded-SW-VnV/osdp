@@ -61,13 +61,6 @@ module type S = sig
       x_1^3 + x_0^4 is homogeneous, x_0 x_1^3 + x_0^3 is not) *)
   val make : ?n:int -> ?d:int -> ?homogen:bool -> string -> polynomial_expr
 
-  (** @deprecated {!val:var} is an alias for {!val:make}. *)
-  val var : string -> polynomial_expr
-
-  (** @deprecated {!val:var_poly} is replaced by {!val:make} and {!val:to_list}. *)
-  val var_poly : string -> int -> ?homogen:bool -> int ->
-                 polynomial_expr * (Monomial.t * polynomial_expr) list
-
   (** Functions for above constructors. *)
 
   val const : Poly.t -> polynomial_expr
