@@ -20,8 +20,9 @@ OSDP is an OCaml frontend library to semi-definite programming (SDP)
 numerical optimization solvers. This package will be installed with
 the solver CSDP. It will also be compiled with SDPA and Mosek support
 if they can be found in the PATH."""
-# url {
-#   src:
-#     "TODO url"
-#   checksum: "TODO curl -L archive | md5sum"
-# }
+url {
+  src:
+    "https://cavale.enseeiht.fr/osdp/osdp-1.0.0.tgz"
+  checksum: "f4edf6316268eb77a44d1bd26b76aa7f"
+  # curl -L archive | md5sum
+}
