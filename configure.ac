@@ -194,6 +194,14 @@ if test "x$OCPLIBSIMPLEXVERSION" != "x0.4"; then
   AC_MSG_ERROR([ocplib-simplex version must be 0.4.])
 fi
 
+AC_MSG_CHECKING(for zarith)
+ZARITHLIB=$(ocamlfind query -i-format zarith)
+if test -n "$ZARITHLIB";then
+  AC_MSG_RESULT($ZARITHLIB)
+else
+  AC_MSG_ERROR(Cannot find zarith library.)
+fi
+
 if test "x$with_mosek" != xno; then
   AC_MSG_CHECKING(for MOSEK headers)
   if test "x$MOSEK_INCPATH" = xno; then
