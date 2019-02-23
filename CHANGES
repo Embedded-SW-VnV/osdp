@@ -1,4 +1,12 @@
+ o fix a Not_found exception with Csdp wrapper
+   (git commit 3240ebe033039030d9845b1de06bfa0a4d06e637)
+
+version 1.0.0, Dec 19th, 2018
+-----------------------------
+ o switch repository from subversion to git
  o remove deprecated support for Camlp4
+ o remove support for ocplib-simplex 0.3 (i.e. now requiring 0.4)
+ o remove a few deprecated functions
  o change CSDP interface from the C library to the binary (through
    Unix pipes), this allows to simply use the Debian package for Csdp,
    rather than requiring to patch and recompile it from sources
