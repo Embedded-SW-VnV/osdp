@@ -258,7 +258,10 @@ let solve_ext_sparse ?options ?solver obj constraints bounds =
      let obj, offset, constraints, trans = to_simple obj constraints bounds in
      let ret, (pobj, dobj), res =
        solve_sparse ?options ?solver obj constraints in
-     ret, (pobj +. offset, dobj +. offset), of_simple_res trans res
+     let res =
+       if SdpRet.is_success ret then of_simple_res trans res
+       else [], [], [||], [] in
+     ret, (pobj +. offset, dobj +. offset), res
   | Mosek ->
      let options = match options with Some o -> o | None -> default in
      let options = { Moseksdp.verbose = options.verbose } in

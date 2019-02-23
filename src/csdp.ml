@@ -98,32 +98,35 @@ let output_param dirname options =
   filename
 
 let read_output block_struct filename =
-  let ic = open_in (filename ^ ".out") in
-  let lexbuf = Lexing.from_channel ic in
-  let ret, pdobj =
-    Csdp_parser.retobj Csdp_lexer.token lexbuf in
-  close_in ic;
-  let ic = open_in filename in
-  let lexbuf = Lexing.from_channel ic in
-  let res_X, res_y, res_Z =
-    Csdp_parser.resXyZ Csdp_lexer.token lexbuf in
-  close_in ic;
-  let res_X, res_Z =
-    let tr l =
-      let a = Array.make (IntMap.cardinal block_struct) [||] in
-      IntMap.iter
-        (fun _ (j, sz) -> a.(j - 1) <- Array.make_matrix sz sz 0.)
-        block_struct;
-      List.iter
-        (fun (b, i, j, f) ->
-          a.(b - 1).(i - 1).(j - 1) <- f;
-          a.(b - 1).(j - 1).(i - 1) <- f)
-        l;
-      IntMap.fold (fun i (j, _) l -> (i, a.(j - 1)) :: l) block_struct []
-      |> List.rev in
-    tr res_X, tr res_Z in
-  let res_y = Array.of_list res_y in
-  ret, pdobj, (res_X, res_y, res_Z)
+  let try_parse filename rule k =
+    let default = SdpRet.Unknown, (0., 0.), ([], [||], []) in
+    match try Some (open_in filename) with Sys_error _ -> None with
+    | None -> default
+    | Some ic ->
+       let lexbuf = Lexing.from_channel ic in
+       match
+         try Some (rule Csdp_lexer.token lexbuf)
+         with Parsing.Parse_error -> None
+       with None -> default | Some res -> k res in
+  try_parse (filename ^ ".out") Csdp_parser.retobj (fun (ret, pdobj) ->
+  if not (SdpRet.is_success ret) then ret, pdobj, ([], [||], []) else
+    try_parse filename Csdp_parser.resXyZ (fun (res_X, res_y, res_Z) ->
+    let res_X, res_Z =
+      let tr l =
+        let a = Array.make (IntMap.cardinal block_struct) [||] in
+        IntMap.iter
+          (fun _ (j, sz) -> a.(j - 1) <- Array.make_matrix sz sz 0.)
+          block_struct;
+        List.iter
+          (fun (b, i, j, f) ->
+            a.(b - 1).(i - 1).(j - 1) <- f;
+            a.(b - 1).(j - 1).(i - 1) <- f)
+          l;
+        IntMap.fold (fun i (j, _) l -> (i, a.(j - 1)) :: l) block_struct []
+        |> List.rev in
+      tr res_X, tr res_Z in
+    let res_y = Array.of_list res_y in
+    ret, pdobj, (res_X, res_y, res_Z)))
 
 let solve ?options obj constraints =
   let dirname =
@@ -162,10 +165,8 @@ let solve ?options obj constraints =
       dirname csdp dat_s_filename out_filename
       (if options.verbose > 0 then "| tee" else ">")
       out_filename in
-  let ret = Sys.command cmd in
-  let res =
-    if ret = 0 then read_output block_struct out_filename
-    else SdpRet.Unknown, (0., 0.), ([], [||], []) in
+  let _ = Sys.command cmd in
+  let res = read_output block_struct out_filename in
   begin
     try
       Sys.remove dat_s_filename;
