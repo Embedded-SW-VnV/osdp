@@ -122,17 +122,8 @@ let float_of_q q =
 external setround_tonearest : unit -> unit = "setround_tonearest"
                                                                              
 let profile f =
-  let fnbeg = Filename.temp_file "beg" "" in
-  let fnend = Filename.temp_file "end" "" in
-  let _ = Sys.command ("date '+%s.%N' > " ^ fnbeg) in
+  let fnbeg = Unix.time () in
   let r = f () in
-  let _ = Sys.command ("date '+%s.%N' > " ^ fnend) in
-  let t fn =
-    let ic = open_in fn in
-    let t = float_of_string (input_line ic) in
-    close_in ic;
-    Sys.remove fn;
-    t in
-  r, t fnend -. t fnbeg
-
+  let fnend = Unix.time () in
+  r, fnend -. fnbeg
 let map f l = List.rev (List.rev_map f l)

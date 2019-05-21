@@ -1,3 +1,5 @@
+ o fix profiling issue: no more call to shell but Unix.time 
+   was causing trouble in OSX (float_of_string)
  o fix a Not_found exception with Csdp wrapper
    (git commit 3240ebe033039030d9845b1de06bfa0a4d06e637)
 
