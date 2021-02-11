@@ -230,9 +230,9 @@ if test "x$with_mosek" != xno; then
       MOSEK_LIBPATH="${MOSEK_LIBPATH}bin"
     fi
   fi
-  if test -f ${MOSEK_LIBPATH}/libmosek.so; then
+  if test -f ${MOSEK_LIBPATH}/libmosek.so -o -f ${MOSEK_LIBPATH}/libmosek.dylib; then
     MOSEK_LIB=mosek
-  else if test -f ${MOSEK_LIBPATH}/libmosek64.so; then
+  else if test -f ${MOSEK_LIBPATH}/libmosek64.so -o -f ${MOSEK_LIBPATH}/libmosek64.dylib; then
     MOSEK_LIB=mosek64
   else
     if test "x$with_mosek" = "xcheck"; then
