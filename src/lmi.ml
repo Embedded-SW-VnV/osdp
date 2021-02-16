@@ -80,6 +80,7 @@ module type S = sig
   val solve : ?options:options -> ?solver:Sdp.solver ->
               obj -> matrix_expr list ->
               SdpRet.t * (float * float) * values
+  val empty_values : unit -> values 
   val value : matrix_expr -> values -> Mat.Coeff.t
   val value_mat : matrix_expr -> values -> Mat.t
   val register_value: var -> Mat.Coeff.t -> values -> values
@@ -261,6 +262,8 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
 
   type values = Mat.Coeff.t Ident.Map.t
 
+  let empty_values () = Ident.Map.empty
+                      
   let pp_values fmt values =
     Format.fprintf fmt "@[<v>";
     let _ = Ident.Map.fold (fun key value first ->

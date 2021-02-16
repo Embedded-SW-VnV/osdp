@@ -178,6 +178,9 @@ M.(m1 * m2 + eye 3)]} *)
               obj -> matrix_expr list ->
               SdpRet.t * (float * float) * values
 
+  (** [empty_values ()] returns an empty map of values. Useful when using references. *)
+  val empty_values : unit -> values 
+
   (** [value e values] returns the evaluation of matrix expression
       [e], replacing all [Var] by the corresponding value in [values].
 
