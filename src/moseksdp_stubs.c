@@ -330,7 +330,7 @@ static MSKboundkeye get_bk(double lb, double ub)
   }
 }
 
-static void MSKAPI printstr(void *handle, MSKCONST char str[])
+static void MSKAPI printstr(void *handle, const char str[])
 {
   printf("%s", str);
 }
@@ -430,25 +430,26 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds,
         
   MS(getsolsta(task, MSK_SOL_ITR, &solsta));
 
+  /* Since Mosek v9, No more NEAR statuses. */
   switch(solsta) {
   case MSK_SOL_STA_OPTIMAL:
     sdp_ret = SDP_RET_SUCCESS;
     break;
-  case MSK_SOL_STA_NEAR_OPTIMAL:
-    sdp_ret = SDP_RET_PARTIAL_SUCCESS;
-    break;
+    //case MSK_SOL_STA_NEAR_OPTIMAL:
+    //sdp_ret = SDP_RET_PARTIAL_SUCCESS;
+    //break;
   case MSK_SOL_STA_PRIM_INFEAS_CER:
     sdp_ret = SDP_RET_PRIMAL_INFEASIBLE;
     break;
   case MSK_SOL_STA_DUAL_INFEAS_CER:
     sdp_ret = SDP_RET_DUAL_INFEASIBLE;
     break;
-  case MSK_SOL_STA_NEAR_PRIM_INFEAS_CER:  
-    sdp_ret = SDP_RET_NEAR_PRIMAL_INFEASIBLE;
-    break;
-  case MSK_SOL_STA_NEAR_DUAL_INFEAS_CER:
-    sdp_ret = SDP_RET_NEAR_DUAL_INFEASIBLE;
-    break;
+    //case MSK_SOL_STA_NEAR_PRIM_INFEAS_CER:  
+    //sdp_ret = SDP_RET_NEAR_PRIMAL_INFEASIBLE;
+    //break;
+    //case MSK_SOL_STA_NEAR_DUAL_INFEAS_CER:
+    //sdp_ret = SDP_RET_NEAR_DUAL_INFEASIBLE;
+    //break;
   case MSK_SOL_STA_UNKNOWN:
     if (trmcode == MSK_RES_TRM_MAX_ITERATIONS || trmcode == MSK_RES_TRM_STALL)
       sdp_ret = SDP_RET_PARTIAL_SUCCESS;
