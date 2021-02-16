@@ -29,7 +29,7 @@ uninstall:
 	$(OCAMLFIND) remove osdp
 
 install: osdp uninstall
-	cd _build && $(OCAMLFIND) install osdp ../META libosdp.a dllosdp.so osdp.a osdp.cma osdp_top.cmo osdp.cmxa osdp.cmxs osdp.cmi *.mli
+	cd _build && $(OCAMLFIND) install osdp ../META libosdp.a dllosdp.so osdp.cmx osdp.a osdp.cma osdp_top.cmo osdp.cmxa osdp.cmxs osdp.cmi *.mli
 
 clean:
 	$(OCAMLBUILD) -clean
