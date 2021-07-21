@@ -7,7 +7,7 @@
 let solver = Osdp.Sdp.Mosek
 
 module Sos = Osdp.Sos.Float
-               
+
 let _ =
   let lower = Sos.make "lower" in
   let q1 = Sos.make ~n:2 ~d:2 "q1" in

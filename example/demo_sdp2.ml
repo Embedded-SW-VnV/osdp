@@ -47,7 +47,7 @@ let _ =
   let ret, (pobj, dobj), (rX, ry, rZ) =
     Osdp.Sdp.solve_sparse ~options ?init obj [c1; c2] in
   Format.printf "ret = %a@." Osdp.SdpRet.pp ret;
-  Format.printf "pobj, dobj = %g, %g@." pobj dobj; 
+  Format.printf "pobj, dobj = %g, %g@." pobj dobj;
   List.iter
     (fun (i, m) ->
      Format.printf

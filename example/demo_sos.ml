@@ -20,7 +20,7 @@ let _ =
   let ret, (pobj, dobj), (rx, rX, ry, rZ) =
     Osdp.Sdp.solve_ext_sparse ~solver obj c [12, neg_infinity, infinity] in
   Format.printf "ret = %a@." Osdp.SdpRet.pp ret;
-  Format.printf "pobj, dobj = %g, %g@." pobj dobj; 
+  Format.printf "pobj, dobj = %g, %g@." pobj dobj;
   List.iter
     (fun (i, f) -> Format.printf "x%d = %g@." i f)
     rx;

@@ -1,5 +1,5 @@
 (* Prove that p >= 0 with
- * 
+ *
  * p(x1, x2) = 37 - x2^2 + x1^3 - 2 x1^2 x2 + 2 x2^3 - 12 x1^4
  *             - 10 x1^2 x2^2 - 6 x1 x2^3 - 6 x2^4
  *
@@ -36,12 +36,12 @@ let x1, x2 = Sos.(??0, ??1)
 let pI1 = Sos.(1 / 1 - x1**2)
 (* initial condition x2^2 <= 1 *)
 let pI2 = Sos.(1 / 1 - x2**2)
-(* guard x1 <= x2 (then branch) *)
+(* guard x1 >= x2 (then branch) *)
 let g0 = Sos.(x1 - x2)
 (* assignment in then branch *)
 let t0 = Sos.([687 / 1000 * x1 + 558 / 1000 * x2 - 1 / 10000 * x1 * x2;
                (-292) / 1000 * x1 + 773 / 1000 * x2])
-(* guard x1 >= x2 (else branch) *)
+(* guard x1 <= x2 (else branch) *)
 let g1 = Sos.(x2 - x1)
 (* assignment in else branch *)
 let t1 = Sos.([369 / 1000 * x1 + 532 / 1000 * x2 - 1 / 10000 * x1**2;

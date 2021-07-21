@@ -4,7 +4,7 @@
 let solver = Osdp.Sdp.Csdp
 
 module Sos = Osdp.Sos.Float
-               
+
 let _ =
   let q = Sos.make ~n:1 ~d:2 "q" in
   let p = Sos.(??0**2 + !1.) in

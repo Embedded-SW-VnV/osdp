@@ -54,7 +54,7 @@ let psatz d eqs leqs pol =
   match res with
   | None -> None
   | Some (values, _) -> Some (lambdas, sigmas, sum, values)
-  
+
 let _ =
   (* attempt to prove
      a1 >= 0 /\ a2 >= 0 /\
