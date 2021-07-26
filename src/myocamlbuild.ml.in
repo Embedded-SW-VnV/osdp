@@ -23,6 +23,8 @@ open Command
 
 let with_mosek = "@with_mosek@"
 let mosek_rpath="-Wl,-rpath-link=@MOSEK_LIBPATH@"
+(* On OSX, fix the path after linking *)
+let mosek_rpath=""
 let mosek_lib = "-l@MOSEK_LIB@"
 let mosek_libdir = "-L@MOSEK_LIBPATH@"
 let mosek_include = "-I@MOSEK_INCPATH@"
