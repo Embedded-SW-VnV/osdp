@@ -19,8 +19,8 @@
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
-AC_PREREQ(2.59)
-AC_INIT([OSDP], [1.0.0], [ploc@garoche.net])
+AC_PREREQ([2.71])
+AC_INIT([OSDP],[1.0.0],[ploc@garoche.net])
 AC_CONFIG_SRCDIR([src/sdp.ml])
 
 # default prefix is /usr/local
@@ -271,7 +271,15 @@ fi
 AC_SUBST(SDP_DEFAULT)
 
 # Checks for header files.
-AC_HEADER_STDC
+m4_warn([obsolete],
+[The preprocessor macro `STDC_HEADERS' is obsolete.
+  Except in unusual embedded environments, you can safely include all
+  ISO C90 headers unconditionally.])dnl
+# Autoupdate added the next two lines to ensure that your configure
+# script's behavior did not change.  They are probably safe to remove.
+AC_CHECK_INCLUDES_DEFAULT
+AC_PROG_EGREP
+
 AC_CHECK_HEADERS([math.h fenv.h])
 
 # Checks for library functions.
