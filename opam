@@ -1,10 +1,10 @@
 opam-version: "2.0"
 name: "osdp"
-version: "1.0.0"
+version: "1.1.0"
 maintainer: "Pierre Roux"
 author: "Pierre Roux <pierre.roux@onera.fr>"
 homepage: "https://cavale.enseeiht.fr/osdp/"
-dev-repo: "git+https://cavale.enseeiht.fr/git/osdp"
+dev-repo: "https://github.com/Embedded-SW-VnV/osdp"
 bug-reports: "author"
 license: "LGPL"
 build: [
@@ -23,7 +23,7 @@ the solver CSDP. It will also be compiled with SDPA and Mosek support
 if they can be found in the PATH."""
 url {
   src:
-    "https://cavale.enseeiht.fr/osdp/osdp-1.0.0.tgz"
-  checksum: "f4edf6316268eb77a44d1bd26b76aa7f"
+    "https://github.com/Embedded-SW-VnV/osdp/archive/refs/tags/v1.1.0.tar.gz"
+  checksum: "md5=88f17ea57b6e601009d8a65bd80db54e"
   # curl -L archive | md5sum
 }
