@@ -1,0 +1,139 @@
+<html><head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=iso-8859-1" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of exceptions" rel=Appendix href="index_exceptions.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Csdp" rel="Chapter" href="Csdp.html">
+<link title="Dualize" rel="Chapter" href="Dualize.html">
+<link title="Ident" rel="Chapter" href="Ident.html">
+<link title="LinExpr" rel="Chapter" href="LinExpr.html">
+<link title="Lmi" rel="Chapter" href="Lmi.html">
+<link title="Matrix" rel="Chapter" href="Matrix.html">
+<link title="Monomial" rel="Chapter" href="Monomial.html">
+<link title="Moseksdp" rel="Chapter" href="Moseksdp.html">
+<link title="NewtonPolytope" rel="Chapter" href="NewtonPolytope.html">
+<link title="Osdp_top" rel="Chapter" href="Osdp_top.html">
+<link title="Polynomial" rel="Chapter" href="Polynomial.html">
+<link title="Posdef" rel="Chapter" href="Posdef.html">
+<link title="PreSdp" rel="Chapter" href="PreSdp.html">
+<link title="Scalar" rel="Chapter" href="Scalar.html">
+<link title="Sdp" rel="Chapter" href="Sdp.html">
+<link title="Sdp_default" rel="Chapter" href="Sdp_default.html">
+<link title="Sdpa" rel="Chapter" href="Sdpa.html">
+<link title="SdpRet" rel="Chapter" href="SdpRet.html">
+<link title="Sos" rel="Chapter" href="Sos.html">
+<link title="Utils" rel="Chapter" href="Utils.html"><title>Sdp</title>
+</head>
+<body>
+<code class="code"><span class="keyword">sig</span><br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;sparse_matrix&nbsp;=&nbsp;(int&nbsp;*&nbsp;int&nbsp;*&nbsp;float)&nbsp;list<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;matrix&nbsp;=&nbsp;float&nbsp;array&nbsp;array<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;block_diag&nbsp;=&nbsp;(int&nbsp;*&nbsp;<span class="keywordsign">'</span>a)&nbsp;list<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;matrix_of_sparse&nbsp;:&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sdp</span>.matrix<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;matrix_to_sparse&nbsp;:&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sdp</span>.sparse_matrix<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;block_diag_of_sparse&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;block_diag_to_sparse&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="constructor">Sdp</span>.block_diag<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;solver&nbsp;=&nbsp;<span class="constructor">Sdp_default</span>.solver&nbsp;=&nbsp;<span class="constructor">Csdp</span>&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Mosek</span>&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Sdpa</span>&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">SdpaGmp</span>&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">SdpaDd</span><br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;options&nbsp;=&nbsp;{<br>
+&nbsp;&nbsp;&nbsp;&nbsp;solver&nbsp;:&nbsp;<span class="constructor">Sdp</span>.solver;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;verbose&nbsp;:&nbsp;int;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;max_iteration&nbsp;:&nbsp;int;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;stop_criterion&nbsp;:&nbsp;float;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;initial&nbsp;:&nbsp;float;<br>
+&nbsp;&nbsp;&nbsp;&nbsp;precision&nbsp;:&nbsp;int;<br>
+&nbsp;&nbsp;}<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;default&nbsp;:&nbsp;<span class="constructor">Sdp</span>.options<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;obj&nbsp;=&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="constructor">Sdp</span>.block_diag<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;constr&nbsp;=<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Eq</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;*&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Le</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;*&nbsp;float<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="keywordsign">|</span>&nbsp;<span class="constructor">Ge</span>&nbsp;<span class="keyword">of</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;*&nbsp;float<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;solve_sparse&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;?options:<span class="constructor">Sdp</span>.options&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;?solver:<span class="constructor">Sdp</span>.solver&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;?init:<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;*&nbsp;float&nbsp;array&nbsp;*&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="constructor">Sdp</span>.obj&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="constructor">Sdp</span>.constr&nbsp;list&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">SdpRet</span>.t&nbsp;*&nbsp;(float&nbsp;*&nbsp;float)&nbsp;*<br>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;*&nbsp;float&nbsp;array&nbsp;*&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag)<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;solve&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;?options:<span class="constructor">Sdp</span>.options&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;?solver:<span class="constructor">Sdp</span>.solver&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;?init:<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;*&nbsp;float&nbsp;array&nbsp;*&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.obj&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.constr&nbsp;list&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">SdpRet</span>.t&nbsp;*&nbsp;(float&nbsp;*&nbsp;float)&nbsp;*<br>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;*&nbsp;float&nbsp;array&nbsp;*&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag)<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;vector&nbsp;=&nbsp;(int&nbsp;*&nbsp;float)&nbsp;list<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;obj_ext&nbsp;=&nbsp;<span class="constructor">Sdp</span>.vector&nbsp;*&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="constructor">Sdp</span>.block_diag<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;constr_ext&nbsp;=&nbsp;<span class="constructor">Sdp</span>.vector&nbsp;*&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;*&nbsp;float&nbsp;*&nbsp;float<br>
+&nbsp;&nbsp;<span class="keyword">type</span>&nbsp;bounds&nbsp;=&nbsp;(int&nbsp;*&nbsp;float&nbsp;*&nbsp;float)&nbsp;list<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;solve_ext_sparse&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;?options:<span class="constructor">Sdp</span>.options&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;?solver:<span class="constructor">Sdp</span>.solver&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="constructor">Sdp</span>.obj_ext&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="constructor">Sdp</span>.constr_ext&nbsp;list&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.bounds&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">SdpRet</span>.t&nbsp;*&nbsp;(float&nbsp;*&nbsp;float)&nbsp;*<br>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Sdp</span>.vector&nbsp;*&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;*&nbsp;float&nbsp;array&nbsp;*<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag)<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;solve_ext&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;?options:<span class="constructor">Sdp</span>.options&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;?solver:<span class="constructor">Sdp</span>.solver&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.obj_ext&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.constr_ext&nbsp;list&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.bounds&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">SdpRet</span>.t&nbsp;*&nbsp;(float&nbsp;*&nbsp;float)&nbsp;*<br>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Sdp</span>.vector&nbsp;*&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;*&nbsp;float&nbsp;array&nbsp;*<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.block_diag)<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_sparse_matrix&nbsp;:&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_matrix&nbsp;:&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_block_diag&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="constructor">Sdp</span>.block_diag&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_obj&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="constructor">Sdp</span>.obj&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_constr&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="constructor">Sdp</span>.constr&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_sparse&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="constructor">Sdp</span>.obj&nbsp;*&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="constructor">Sdp</span>.constr&nbsp;list&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.obj&nbsp;*&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.constr&nbsp;list&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_vector&nbsp;:&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sdp</span>.vector&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_obj_ext&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="constructor">Sdp</span>.obj_ext&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_constr_ext&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;(<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit)&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="keywordsign">'</span>a&nbsp;<span class="constructor">Sdp</span>.constr_ext&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_bounds&nbsp;:&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;<span class="constructor">Sdp</span>.bounds&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_ext_sparse&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="constructor">Sdp</span>.obj_ext&nbsp;*&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="constructor">Sdp</span>.constr_ext&nbsp;list&nbsp;*<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.bounds&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_ext&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.obj_ext&nbsp;*&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.constr_ext&nbsp;list&nbsp;*&nbsp;<span class="constructor">Sdp</span>.bounds&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_ext_sparse_sedumi&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="constructor">Sdp</span>.obj_ext&nbsp;*&nbsp;<span class="constructor">Sdp</span>.sparse_matrix&nbsp;<span class="constructor">Sdp</span>.constr_ext&nbsp;list&nbsp;*<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.bounds&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pp_ext_sedumi&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Stdlib</span>.<span class="constructor">Format</span>.formatter&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.obj_ext&nbsp;*&nbsp;<span class="constructor">Sdp</span>.matrix&nbsp;<span class="constructor">Sdp</span>.constr_ext&nbsp;list&nbsp;*&nbsp;<span class="constructor">Sdp</span>.bounds&nbsp;<span class="keywordsign">-&gt;</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;unit<br>
+&nbsp;&nbsp;<span class="keyword">val</span>&nbsp;pfeas_stop_crit&nbsp;:<br>
+&nbsp;&nbsp;&nbsp;&nbsp;?options:<span class="constructor">Sdp</span>.options&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;?solver:<span class="constructor">Sdp</span>.solver&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;float&nbsp;list&nbsp;<span class="keywordsign">-&gt;</span>&nbsp;float<br>
+<span class="keyword">end</span></code></body></html>

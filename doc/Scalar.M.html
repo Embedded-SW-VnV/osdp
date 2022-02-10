@@ -1,0 +1,67 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html>
+<head>
+<link rel="stylesheet" href="style.css" type="text/css">
+<meta content="text/html; charset=iso-8859-1" http-equiv="Content-Type">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="Start" href="index.html">
+<link rel="next" href="Scalar.S.html">
+<link rel="Up" href="Scalar.html">
+<link title="Index of types" rel=Appendix href="index_types.html">
+<link title="Index of exceptions" rel=Appendix href="index_exceptions.html">
+<link title="Index of values" rel=Appendix href="index_values.html">
+<link title="Index of modules" rel=Appendix href="index_modules.html">
+<link title="Index of module types" rel=Appendix href="index_module_types.html">
+<link title="Csdp" rel="Chapter" href="Csdp.html">
+<link title="Dualize" rel="Chapter" href="Dualize.html">
+<link title="Ident" rel="Chapter" href="Ident.html">
+<link title="LinExpr" rel="Chapter" href="LinExpr.html">
+<link title="Lmi" rel="Chapter" href="Lmi.html">
+<link title="Matrix" rel="Chapter" href="Matrix.html">
+<link title="Monomial" rel="Chapter" href="Monomial.html">
+<link title="Moseksdp" rel="Chapter" href="Moseksdp.html">
+<link title="NewtonPolytope" rel="Chapter" href="NewtonPolytope.html">
+<link title="Osdp_top" rel="Chapter" href="Osdp_top.html">
+<link title="Polynomial" rel="Chapter" href="Polynomial.html">
+<link title="Posdef" rel="Chapter" href="Posdef.html">
+<link title="PreSdp" rel="Chapter" href="PreSdp.html">
+<link title="Scalar" rel="Chapter" href="Scalar.html">
+<link title="Sdp" rel="Chapter" href="Sdp.html">
+<link title="Sdp_default" rel="Chapter" href="Sdp_default.html">
+<link title="Sdpa" rel="Chapter" href="Sdpa.html">
+<link title="SdpRet" rel="Chapter" href="SdpRet.html">
+<link title="Sos" rel="Chapter" href="Sos.html">
+<link title="Utils" rel="Chapter" href="Utils.html"><link title="A few values." rel="Section" href="#2_Afewvalues">
+<link title="Conversion functions." rel="Section" href="#2_Conversionfunctions">
+<link title="Arithmetic operations." rel="Section" href="#2_Arithmeticoperations">
+<link title="Printing." rel="Section" href="#2_Printing">
+<title>Scalar.M</title>
+</head>
+<body>
+<div class="navbar">&nbsp;<a class="up" href="Scalar.html" title="Scalar">Up</a>
+&nbsp;<a class="post" href="Scalar.S.html" title="Scalar.S">Next</a>
+</div>
+<h1>Module type <a href="type_Scalar.M.html">Scalar.M</a></h1>
+
+<pre><span id="MODULETYPEM"><span class="keyword">module type</span> M</span> = <code class="code">sig</code> <a href="Scalar.M.html">..</a> <code class="code">end</code></pre><div class="info modtype top">
+<div class="info-desc">
+<p>A minimalistic module type.</p>
+</div>
+</div>
+<hr width="100%">
+
+<pre><span id="TYPEt"><span class="keyword">type</span> <code class="type"></code>t</span> </pre>
+
+
+<pre><span id="VALcompare"><span class="keyword">val</span> compare</span> : <code class="type"><a href="Scalar.M.html#TYPEt">t</a> -> <a href="Scalar.M.html#TYPEt">t</a> -> int</code></pre><h3 id="2_Afewvalues">A few values.</h3>
+<pre><span id="VALzero"><span class="keyword">val</span> zero</span> : <code class="type"><a href="Scalar.M.html#TYPEt">t</a></code></pre>
+<pre><span id="VALone"><span class="keyword">val</span> one</span> : <code class="type"><a href="Scalar.M.html#TYPEt">t</a></code></pre><h3 id="2_Conversionfunctions">Conversion functions.</h3>
+<pre><span id="VALof_float"><span class="keyword">val</span> of_float</span> : <code class="type">float -> <a href="Scalar.M.html#TYPEt">t</a></code></pre>
+<pre><span id="VALto_float"><span class="keyword">val</span> to_float</span> : <code class="type"><a href="Scalar.M.html#TYPEt">t</a> -> float</code></pre>
+<pre><span id="VALof_q"><span class="keyword">val</span> of_q</span> : <code class="type">Q.t -> <a href="Scalar.M.html#TYPEt">t</a></code></pre>
+<pre><span id="VALto_q"><span class="keyword">val</span> to_q</span> : <code class="type"><a href="Scalar.M.html#TYPEt">t</a> -> Q.t</code></pre><h3 id="2_Arithmeticoperations">Arithmetic operations.</h3>
+<pre><span id="VALadd"><span class="keyword">val</span> add</span> : <code class="type"><a href="Scalar.M.html#TYPEt">t</a> -> <a href="Scalar.M.html#TYPEt">t</a> -> <a href="Scalar.M.html#TYPEt">t</a></code></pre>
+<pre><span id="VALsub"><span class="keyword">val</span> sub</span> : <code class="type"><a href="Scalar.M.html#TYPEt">t</a> -> <a href="Scalar.M.html#TYPEt">t</a> -> <a href="Scalar.M.html#TYPEt">t</a></code></pre>
+<pre><span id="VALmult"><span class="keyword">val</span> mult</span> : <code class="type"><a href="Scalar.M.html#TYPEt">t</a> -> <a href="Scalar.M.html#TYPEt">t</a> -> <a href="Scalar.M.html#TYPEt">t</a></code></pre>
+<pre><span id="VALdiv"><span class="keyword">val</span> div</span> : <code class="type"><a href="Scalar.M.html#TYPEt">t</a> -> <a href="Scalar.M.html#TYPEt">t</a> -> <a href="Scalar.M.html#TYPEt">t</a></code></pre><h3 id="2_Printing">Printing.</h3>
+<pre><span id="VALpp"><span class="keyword">val</span> pp</span> : <code class="type">Stdlib.Format.formatter -> <a href="Scalar.M.html#TYPEt">t</a> -> unit</code></pre></body></html>
