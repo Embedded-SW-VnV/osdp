@@ -6,7 +6,7 @@ author: "Pierre Roux <pierre.roux@onera.fr>"
 homepage: "https://cavale.enseeiht.fr/osdp/"
 dev-repo: "git+https://github.com/Embedded-SW-VnV/osdp"
 bug-reports: "author"
-license: "LGPL"
+license: "LGPL-2.1-or-later"
 build: [
   ["autoconf"]
   ["./configure"]
