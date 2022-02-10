@@ -1,3 +1,7 @@
+version 1.1.0, Feb 8th, 2022
+----------------------------
+ o improve support for OSX and MOSEK9
+ o remove outdated 'test' dir, tests are in 'example' dir
  o fix profiling issue: no more call to shell but Unix.time 
    was causing trouble in OSX (float_of_string)
  o fix a Not_found exception with Csdp wrapper
