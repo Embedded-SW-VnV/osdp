@@ -35,7 +35,7 @@ module IntMap = Map.Make (struct type t = int let compare = compare end)
 
 let output_dat dirname block_struct obj constraints =
   let filename = Filename.concat dirname "prob.dat-s" in
-  let oc = Pervasives.open_out filename in
+  let oc = Stdlib.open_out filename in
   (* number of constraints *)
   output_string oc (string_of_int (List.length constraints) ^ "\n");
   (* number of blocks *)
@@ -70,7 +70,7 @@ let output_dat dirname block_struct obj constraints =
 
 let output_param dirname options =
   let filename = Filename.concat dirname "param.csdp" in
-  let oc = Pervasives.open_out filename in
+  let oc = Stdlib.open_out filename in
   output_string
     oc "axtol=1.0e-8\n\
         atytol=1.0e-8\n\

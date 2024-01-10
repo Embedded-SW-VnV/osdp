@@ -170,7 +170,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       (Scalar.Make
          (struct
            type t = polynomial_expr
-           let compare = Pervasives.compare
+           let compare = Stdlib.compare
            let zero = const (Poly.zero)
            let one = const (Poly.one)
            let of_float _ = assert false
