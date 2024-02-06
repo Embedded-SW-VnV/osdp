@@ -277,9 +277,9 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
   val check : ?options:options -> ?values:values -> polynomial_expr ->
               float witness -> bool
 
-  (** TODO: doc (@raise Invalid argument when lists el and wl not same
-      length, @raise Not_found when el contain a variable not bound in
-      values) *)
+  (** TODO: doc
+      @raise Invalid_argument when lists el and wl not same length
+      @raise Not_found when el contain a variable not bound in values) *)
   val check_round : ?options:options -> ?values:values ->
                     polynomial_expr list -> float witness list ->
                     (values * Scalar.Q.t witness list) option

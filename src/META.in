@@ -1,6 +1,0 @@
-description = "OCaml interface to SDP libraries"
-version = "@PACKAGE_VERSION@"
-requires = "unix zarith ocplib-simplex"
-archive(toploop) = "osdp.cma osdp_top.cmo"
-archive(byte) = "osdp.cma"
-archive(native) = "osdp.cmxa"

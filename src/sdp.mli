@@ -21,7 +21,8 @@
 (** {b Common interface for SDP} ({{:./Csdp.html}Csdp} or
     {{:./Moseksdp.html}Moseksdp} or {{:./Sdpa.html}Sdpa}). *)
 
-(** Primal-dual correspondence: the primal problem {[max tr(C X)
+(** Primal-dual correspondence: the primal problem
+    {[max tr(C X)
     tr(A_1 X) = b_1
     .
     .
@@ -29,7 +30,8 @@
     tr(A_m X) = b_m
     X psd]}
     (X psd meaning X positive semi-definite)
-    corresponds to the dual problem {[min b^T y
+    corresponds to the dual problem
+    {[min b^T y
     \sum_i y_i A_i - C = Z psd]}
     where C, A_i and X are symmetric matrices, C, A_i and b_i are
     parameters whereas X (resp. y) is the primal (resp. dual)
@@ -132,8 +134,9 @@ val solve : ?options:options -> ?solver:solver ->
             * (matrix block_diag * float array * matrix block_diag)
 
 (** {2 Extended formulation.} *)
-                                                  
-(** Primal-dual correspondence: the primal problem {[max c^T x + tr(C X)
+
+(** Primal-dual correspondence: the primal problem
+    {[max c^T x + tr(C X)
     b_1^- <= a_1^T x + tr(A_1 X) <= b_1^+
     .
     .
@@ -146,7 +149,8 @@ val solve : ?options:options -> ?solver:solver ->
     d_n^- <= x_n <= d_n^+
     X psd]}
     (X psd meaning X positive semi-definite)
-    corresponds to the dual problem {[min (b^+)^T s^+ - (b^-)^T s^- + (d^+)^T t^+ - (d^-)^T t^-
+    corresponds to the dual problem
+    {[min (b^+)^T s^+ - (b^-)^T s^- + (d^+)^T t^+ - (d^-)^T t^-
     y = s^+ - s^-
     \sum_i y_i A_i - C = Z psd
     [a_1,..., a_n] y - c + t^+ - t^- = 0
