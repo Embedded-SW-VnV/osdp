@@ -69,6 +69,8 @@ module Rat = struct
   let min = Q.min
   let abs = Q.abs
   let minus = Q.neg
+  let floor x = Q.(of_bigint (to_bigint x))
+  let ceiling x = Q.(neg (floor (neg x)))
 end
 
 module Ex = struct
@@ -85,21 +87,26 @@ let find_separating_plane p si =
     List.mapi (fun n c -> "x" ^ string_of_int n, Q.of_float c) l in
   let nb = ref 0 in
   let add_cstr b large sim c =
-    let large = if large then Rat.m_one else Rat.zero in
     match List.filter (fun (_, c) -> not Rat.(equal c zero)) c with
     | [] ->
-       if Rat.(sign b < 0 || sign b = 0 && sign large < 0) then raise Exit;
+       if Rat.(sign b < 0 || sign b = 0 && large) then raise Exit;
        sim
     | [v, c] ->
        let l, u =
-         if Rat.sign c > 0 then None, Some (Rat.div b c, large)
-         else Some (Rat.div b c, Rat.minus large), None in
-       fst (Sim.Assert.var sim v l () u ())
+         let bc = Rat.div b c in
+         if Rat.sign c > 0 then
+           None, Some (Sim.Core.R2.(if large then upper else of_r) bc)
+         else
+           Some (Sim.Core.R2.(if large then lower else of_r) bc), None in
+       let bound = function None -> None | Some x ->
+         Some (Sim.Core.{ bvalue = x; explanation = Ex.empty }) in
+       fst (Sim.Assert.var sim ?min:(bound l) ?max:(bound u) v)
     | _ ->
        let s = "s" ^ string_of_int !nb in
        incr nb;
        let c = Sim.Core.P.from_list c in
-       fst (Sim.Assert.poly sim c s None () (Some (b, large)) ()) in
+       let b = Sim.Core.{bvalue = R2.upper b; explanation = Ex.empty } in
+       fst (Sim.Assert.poly sim c ~max:b s) in
   let n =
     let f n l = max n (List.length l) in
     List.fold_left f 0 p in
@@ -116,7 +123,7 @@ let find_separating_plane p si =
   let z = si |> List.map (( * ) 2) |> center' |> p_of_list in
   let m_z = List.map (fun (v, c) -> v, Rat.minus c) z in
   let cstrs = p |> List.map center' |> List.map p_of_list in
-  let sim = Sim.Core.empty ~is_int:false ~check_invs:false ~debug:0 in
+  let sim = Sim.Core.empty ~is_int:false ~check_invs:false in
   let res =
     try
       let sim = add_cstr Rat.m_one false sim m_z in

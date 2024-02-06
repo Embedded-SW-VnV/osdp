@@ -180,20 +180,6 @@ if test "x$with_sdpa_dd" != xno; then with_sdpa_dd=yes ; fi
 AC_SUBST(SDPA_DD_PATH)
 
 # Check for libraries
-AC_MSG_CHECKING(for ocplib-simplex)
-OCPLIBSIMPLEXLIB=$(ocamlfind query -i-format ocplib-simplex)
-if test -n "$OCPLIBSIMPLEXLIB";then
-  AC_MSG_RESULT($OCPLIBSIMPLEXLIB)
-  AC_MSG_CHECKING(ocplib-simplex version)
-  OCPLIBSIMPLEXVERSION=$(ocamlfind query -l ocplib-simplex | grep "version:" | sed -e 's/version:[[^0-9]]*//')
-  AC_MSG_RESULT($OCPLIBSIMPLEXVERSION)
-else
-  AC_MSG_ERROR(Cannot find ocplib-simplex library.)
-fi
-if test "x$OCPLIBSIMPLEXVERSION" != "x0.4"; then
-  AC_MSG_ERROR([ocplib-simplex version must be 0.4.])
-fi
-
 AC_MSG_CHECKING(for zarith)
 ZARITHLIB=$(ocamlfind query -i-format zarith)
 if test -n "$ZARITHLIB";then
