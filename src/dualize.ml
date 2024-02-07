@@ -69,7 +69,7 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
   module IMap = Map.Make (struct type t = int let compare = compare end)
   module IIIMap =
     Map.Make (struct type t = int * int * int let compare = compare end)
-                                    
+
   let solve_ext_sparse_details ?options ?solver obj constraints bounds =
     if bounds <> [] then assert false;  (* not implemented *)
     let constraints =
@@ -182,7 +182,7 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
              let mC = if S.sign c = 0 then mC else IIIMap.add bij S.(~- c) mC in
              mAi, mC)
           mids (Ident.Map.empty, IIIMap.empty) in
-      
+
       let obj, obj_c =
         let le = LE.of_list (l_of_vec (fst obj) @ l_of_mat (snd obj)) S.zero in
         let le = LE.mult_scalar S.(~- one) le in
@@ -218,7 +218,7 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
       (*     Format.printf " (%d, %d, %d)=%a" bi i j S.pp c) *)
       (*   mC; *)
       (* Format.printf "@."; *)
-      
+
       let tr_mx m =
         IIIMap.fold
           (fun (bi, i, j) c m ->
@@ -226,7 +226,7 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
              IMap.add bi ((i, j, S.to_float c) :: b) m)
           m IMap.empty
         |> IMap.bindings in
-      
+
       (* matrices A_i and vector b for the dual problem *)
       let dual_constraints =
         Ident.Set.fold
@@ -272,14 +272,14 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
             (fun _ id dv ->
                if Ident.Map.mem id dv then dv else Ident.Map.add id (DV 0.) dv)
             vids in
-        
+
         let blocksizes =
           IIIMap.fold
             (fun (bi, i, j) _ blocksizes ->
                let sz = try IMap.find bi blocksizes with Not_found -> 0 in
                IMap.add bi (max sz (max i j + 1)) blocksizes)
             mids IMap.empty in
-        
+
         (* build details to return a trace of the elimination of variables *)
         let details =
           let bids =
@@ -328,9 +328,9 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
             done;
             b' in
           List.map (fun (i, b) -> i, get b) ((fun (_, x, _) -> x) details) in
-        
+
         ret, obj, (v, m), details
-    
+
   let solve_ext_sparse ?options ?solver obj constraints bounds =
     let ret, obj, primsol, _ =
       solve_ext_sparse_details ?options ?solver obj constraints bounds in
@@ -339,7 +339,7 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
   (***********************)
   (* Printing functions. *)
   (***********************)
-  
+
   let pp_obj_ext f fmt (v, m) =
     let pp_e_v fmt (i, s) = Format.fprintf fmt "%a x_%d" Scalar.pp s i in
     let pp_e_m fmt (i, m) = Format.fprintf fmt "tr(%a X_%d)" f m i in
@@ -354,7 +354,7 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
          fmt "@[%a@ + %a@]"
          (Utils.pp_list ~sep:"@ + " pp_e_v) v
          (Utils.pp_list ~sep:"@ + " pp_e_m) m
-         
+
   let pp_constr_ext f fmt (v, m, lb, ub) =
     if Scalar.equal lb ub then
       Format.fprintf fmt "%a = %a" (pp_obj_ext f) (v, m) Scalar.pp lb

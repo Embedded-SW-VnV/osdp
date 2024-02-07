@@ -26,10 +26,10 @@
 
 (** A minimalistic module type. *)
 module type M = sig
-  type t 
+  type t
 
   val compare : t -> t -> int
-         
+
   (** {2 A few values.} *)
 
   val zero : t
@@ -41,7 +41,7 @@ module type M = sig
   val to_float : t -> float
   val of_q : Q.t -> t
   val to_q : t -> Q.t
-                        
+
   (** {2 Arithmetic operations.} *)
 
   val add : t -> t -> t
@@ -59,7 +59,7 @@ module type S = sig
   include M
 
   val minus_one : t
-            
+
   (** {2 More conversion functions.} *)
 
   val of_int : int -> t
@@ -68,7 +68,7 @@ module type S = sig
 
   val neg : t -> t
   val inv : t -> t
-                   
+
   val equal : t -> t -> bool
   val leq : t -> t -> bool
   val geq : t -> t -> bool
@@ -108,7 +108,7 @@ end
 
     Additional comparison operations are defined based on [M.compare]. *)
 module Make (M : M) : S with type t = M.t
-                  
+
 module Q : S with type t = Q.t
 
 module Float : S with type t = float

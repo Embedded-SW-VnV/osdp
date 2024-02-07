@@ -99,31 +99,31 @@ M.(m1 * m2 + eye 3)]} *)
 
   (** {{:#TYPEELTmatrix_expr.Const}Const} *)
   val ( !! ) : Mat.t -> matrix_expr
-                        
+
   (** {{:#VALscalar}scalar} *)
   val ( ! ) : Mat.Coeff.t -> matrix_expr
 
   (** {{:#VALtranspose}transpose} *)
   val ( ~: ) : matrix_expr -> matrix_expr
-                               
+
   val ( *. ) : Mat.Coeff.t -> matrix_expr -> matrix_expr
-                        
+
   val ( ~- ) : matrix_expr -> matrix_expr
-                                 
+
   val ( + ) : matrix_expr -> matrix_expr -> matrix_expr
-                        
+
   val ( - ) : matrix_expr -> matrix_expr -> matrix_expr
-                        
+
   val ( * ) : matrix_expr -> matrix_expr -> matrix_expr
-                        
+
   val ( ** ) : matrix_expr -> int -> matrix_expr
 
   (** [e1 >= e2] is just syntactic sugar for [e1 - e2]. *)
   val ( >= ) : matrix_expr -> matrix_expr -> matrix_expr
-                                           
+
   (** [e1 <= e2] is just syntactic sugar for [e2 - e1]. *)
   val ( <= ) : matrix_expr -> matrix_expr -> matrix_expr
-                                           
+
   (** {2 LMI.} *)
 
   type options = {
@@ -132,7 +132,7 @@ M.(m1 * m2 + eye 3)]} *)
                         means no output (but see sdp.verbose just above) *)
     pad : float  (** padding factor (default: 2.), 0. means no padding *)
   }
-		   
+
   (** Default values above. *)
   val default : options
 
@@ -179,7 +179,7 @@ M.(m1 * m2 + eye 3)]} *)
               SdpRet.t * (float * float) * values
 
   (** [empty_values ()] returns an empty map of values. Useful when using references. *)
-  val empty_values : unit -> values 
+  val empty_values : unit -> values
 
   (** [value e values] returns the evaluation of matrix expression
       [e], replacing all [Var] by the corresponding value in [values].
@@ -199,7 +199,7 @@ M.(m1 * m2 + eye 3)]} *)
 
   (** Register a scalar value in value environement *)
   val register_value: var -> Mat.Coeff.t -> values -> values
-    
+
   (** If [check ?options e ?values] returns [true], then [e] is
       positive semi-definite (PSD). Otherwise, either [e] is not PSD
       or it is not positive definite enough for the proof to
@@ -209,7 +209,7 @@ M.(m1 * m2 + eye 3)]} *)
       @raise Not_found if [e] contains a variable not present in
       [values]. *)
   val check : ?options:options -> ?values:values -> matrix_expr -> bool
-                                                  
+
   (** {2 Printing function.} *)
 
   (** Printer for LMI. *)

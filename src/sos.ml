@@ -222,7 +222,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         let mons =
           (if homogen then Monomial.list_eq else Monomial.list_le) n d in
         let s = (*"__SOS__" ^*) Format.asprintf "%a" Ident.pp name ^ "_" in
-        let l, _ = 
+        let l, _ =
           List.fold_left
             (fun (l, i) m ->
               (m, Ident.create (s ^ string_of_int i)) :: l, i + 1)
@@ -424,7 +424,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     (* let cpt_refines = ref 0 in *)
     (* let cpt_newton = ref 0. in *)
     (* let cpt_simpl = ref 0. in *)
-    
+
     (* refine the monomial basis *)
     let rec refines monoms_e =
       (* let () = incr cpt_refines; Format.printf "<%d refines>@." !cpt_refines in *)

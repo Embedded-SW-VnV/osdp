@@ -53,7 +53,7 @@ static void collect_matrix_indexes(value mx,
 {
   value tmp;
   int i;
-  
+
   for (tmp = mx; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
     i = Int_val(Field(Field(tmp, 0), 0));
     if (i < *min) *min = i;
@@ -65,7 +65,7 @@ static void collect_matrix_sizes(value mx, int idx_offset, int *dimvar)
 {
   value tmp, tmp2;
   int i, j;
-  
+
   for (tmp = mx; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
     i = Int_val(Field(Field(tmp, 0), 0)) - idx_offset;
     for (tmp2 = Field(Field(tmp, 0), 1);
@@ -86,10 +86,10 @@ static void collect_sizes(value ml_obj, value ml_cstrs,
   value tmp;
   int i;
   int min, max;
-  
+
   min = 2147483647;
   max = -2147483647;
-  
+
   collect_matrix_indexes(Field(ml_obj, 0), &min, &max);
 
   *nb_cstrs = 0;
@@ -103,7 +103,7 @@ static void collect_sizes(value ml_obj, value ml_cstrs,
 
   min = 2147483647;
   max = -2147483647;
-  
+
   collect_matrix_indexes(Field(ml_obj, 1), &min, &max);
 
   for (tmp = ml_cstrs; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
@@ -116,7 +116,7 @@ static void collect_sizes(value ml_obj, value ml_cstrs,
   *dimvar = (int*)malloc_fail(*nb_vars, sizeof(int));
 
   for (i = 0; i < *nb_vars; ++i) (*dimvar)[i] = 0;
-  
+
   collect_matrix_sizes(Field(ml_obj, 1), *idx_offset, *dimvar);
 
   for (tmp = ml_cstrs; tmp != Val_emptylist; tmp = Field(tmp, 1)) {
@@ -128,7 +128,7 @@ static int list_length(value list)
 {
   value tmp;
   int cpt;
-  
+
   cpt = 0;
   for (tmp = list; tmp != Val_emptylist; tmp = Field(tmp, 1)) ++cpt;
 
@@ -143,13 +143,13 @@ static MSKrescodee MSK_read_sparsesymmat(MSKtask_t task, value mx, int dim,
   int i, sz;
   int *ai, *aj;
   double *av;
-  
+
   sz = list_length(mx);
-  
+
   ai = (int*)malloc_fail(sz, sizeof(int));
   aj = (int*)malloc_fail(sz, sizeof(int));
   av = (double*)malloc_fail(sz, sizeof(double));
-  
+
   for (tmp = mx, i = 0; tmp != Val_emptylist; tmp = Field(tmp, 1), ++i) {
     ai[i] = Int_val(Field(Field(tmp, 0), 0));
     aj[i] = Int_val(Field(Field(tmp, 0), 1));
@@ -184,14 +184,14 @@ static MSKrescodee MSK_read_x(MSKtask_t task, int nb_lin_vars, value *ml_res_x)
   x = (double*)MSK_calloctask(task, nb_lin_vars, sizeof(MSKrealt));
 
   MS(getxx(task, MSK_SOL_ITR, x));
-              
+
   *ml_res_x = nb_lin_vars > 0
     ? caml_alloc(nb_lin_vars * Double_wosize, Double_array_tag)
     : Atom(Double_array_tag);
   for (i = 0; i < nb_lin_vars; ++i) {
     Store_double_field(*ml_res_x, i, x[i]);
   }
-  
+
   MSK_freetask(task, x);
 
   return r;
@@ -207,7 +207,7 @@ static MSKrescodee MSK_read_barxj(MSKtask_t task, int j, int dim, value *matrix)
   barx = (double*)MSK_calloctask(task, dim * (dim + 1) / 2, sizeof(MSKrealt));
 
   MS(getbarxj(task, MSK_SOL_ITR, j, barx));
-  
+
   *matrix = dim > 0 ? caml_alloc(dim, 0) : Atom(0);
   for (i = 0; i < dim; ++i) {
     line = caml_alloc(dim * Double_wosize, Double_array_tag);
@@ -220,7 +220,7 @@ static MSKrescodee MSK_read_barxj(MSKtask_t task, int j, int dim, value *matrix)
       Store_double_field(Field(*matrix, j), i, barx[k]);
     }
   }
-  
+
   MSK_freetask(task, barx);
 
   return r;
@@ -255,14 +255,14 @@ static MSKrescodee MSK_read_y(MSKtask_t task, int nb_cstrs, value *ml_res_y)
   y = (double*)MSK_calloctask(task, nb_cstrs, sizeof(MSKrealt));
 
   MS(gety(task, MSK_SOL_ITR, y));
-              
+
   *ml_res_y = nb_cstrs > 0
     ? caml_alloc(nb_cstrs * Double_wosize, Double_array_tag)
     : Atom(Double_array_tag);
   for (i = 0; i < nb_cstrs; ++i) {
     Store_double_field(*ml_res_y, i, -y[i]);
   }
-  
+
   MSK_freetask(task, y);
 
   return r;
@@ -278,7 +278,7 @@ static MSKrescodee MSK_read_barsj(MSKtask_t task, int j, int dim, value *matrix)
   bars = (double*)MSK_calloctask(task, dim * (dim + 1) / 2, sizeof(MSKrealt));
 
   MS(getbarsj(task, MSK_SOL_ITR, j, bars));
-  
+
   *matrix = dim > 0 ? caml_alloc(dim, 0) : Atom(0);
   for (i = 0; i < dim; ++i) {
     line = caml_alloc(dim * Double_wosize, Double_array_tag);
@@ -291,7 +291,7 @@ static MSKrescodee MSK_read_barsj(MSKtask_t task, int j, int dim, value *matrix)
       Store_double_field(Field(*matrix, j), i, bars[k]);
     }
   }
-  
+
   MSK_freetask(task, bars);
 
   return r;
@@ -358,7 +358,7 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds,
   char symname[MSK_MAX_STR_LEN];
   char desc[MSK_MAX_STR_LEN];
   sdp_ret_t sdp_ret = SDP_RET_UNKNOWN;
-        
+
   collect_sizes(ml_obj, ml_cstrs, &idx_lin_offset, &nb_lin_vars,
                 &idx_offset, &nb_vars, &nb_cstrs, &dimvar);
 
@@ -421,13 +421,13 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds,
       MS(putvarbound(task, j, get_bk(lb, ub), lb, ub));
     }
   }
-  
+
   MS(optimizetrm(task, &trmcode));
 
   /* Print a summary containing information
      about the solution for debugging purposes*/
   MS(solutionsummary(task, MSK_STREAM_MSG));
-        
+
   MS(getsolsta(task, MSK_SOL_ITR, &solsta));
 
   /* Since Mosek v9, No more NEAR statuses. */
@@ -444,7 +444,7 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds,
   case MSK_SOL_STA_DUAL_INFEAS_CER:
     sdp_ret = SDP_RET_DUAL_INFEASIBLE;
     break;
-    //case MSK_SOL_STA_NEAR_PRIM_INFEAS_CER:  
+    //case MSK_SOL_STA_NEAR_PRIM_INFEAS_CER:
     //sdp_ret = SDP_RET_NEAR_PRIMAL_INFEASIBLE;
     //break;
     //case MSK_SOL_STA_NEAR_DUAL_INFEAS_CER:
@@ -490,7 +490,7 @@ value moseksdp_solve_ext(value ml_obj, value ml_cstrs, value ml_bounds,
   MSK_deleteenv(&env);
 
   free(dimvar);
-  
+
   ml_res = caml_alloc(3, 0);
   Store_field(ml_res, 0, Val_int(sdp_ret));
   ml_res_obj = caml_alloc(2, 0);

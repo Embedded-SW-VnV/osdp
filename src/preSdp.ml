@@ -48,7 +48,7 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
   type 'a constr_ext = vector * 'a Sdp.block_diag * Scalar.t * Scalar.t
 
   module IntMap = Map.Make (struct type t = int let compare = compare end)
-                                    
+
   let solve_ext_sparse ?options ?solver obj constraints bounds =
     let obj = List.sort (fun (i, _) (j, _) -> compare i j) (fst obj), snd obj in
     let constraints =
@@ -179,7 +179,7 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
   (***********************)
   (* Printing functions. *)
   (***********************)
-  
+
   let pp_obj_ext f fmt (v, m) =
     let pp_e_v fmt (i, s) = Format.fprintf fmt "%a x_%d" Scalar.pp s i in
     let pp_e_m fmt (i, m) = Format.fprintf fmt "tr(%a X_%d)" f m i in
@@ -194,7 +194,7 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
          fmt "@[%a@ + %a@]"
          (Utils.pp_list ~sep:"@ + " pp_e_v) v
          (Utils.pp_list ~sep:"@ + " pp_e_m) m
-         
+
   let pp_constr_ext f fmt (v, m, lb, ub) =
     if Scalar.equal lb ub then
       Format.fprintf fmt "%a = %a" (pp_obj_ext f) (v, m) Scalar.pp lb

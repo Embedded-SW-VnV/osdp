@@ -46,7 +46,7 @@ val one : t
 val var : ?d:int -> int -> t
 
 (** {2 Arithmetic operations.} *)
-                                         
+
 (** [mult m1 m2] multiplies the two monomials [m1] and [m2]. If one of
     them is defined on less variables, the undefined exponents are
     considered as 0 (for instance [mult (of_list \[1; 2\]) (of_list
@@ -94,7 +94,7 @@ val degree : t -> int
 (** [is_var m] returns [Some (d, i)] if [m] is the monomial xi^d and
     [None] otherwise. *)
 val is_var : t -> (int * int) option
-                          
+
 (** {2 Sets of monomials.} *)
 
 (** [list_eq n d] provides the list of all monomials with [n]

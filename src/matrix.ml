@@ -82,18 +82,18 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
        { line = line;
          col = col;
          content = content }
-          
+
   let to_list_list m =
     Array.fold_right
       (fun e l -> Array.to_list e :: l)
       m.content
       []
-      
+
   let of_array_array a =
     { line = Array.length a;
       col = Array.length a.(0);
       content = Array.map Array.copy a }
-      
+
   let to_array_array m = Array.map Array.copy m.content
 
   (** Function largely inspired from Pietro Abate tutorial on http://mancoosi.org/~abate/ocaml-format-module *)
@@ -102,30 +102,30 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
       if j < m.col - 1 then "," else if i < m.line - 1 then ";" else "" in
     let pp_row widths fmt i row =
       if i = 0 then
-	Array.iteri (fun j width ->
-	  Format.pp_set_tab fmt ();
-	  (* The string cell is filled with the string contained in first row *)
-	  Format.fprintf Format.str_formatter "%a%s" ET.pp row.(j) (sep i j);
-	  let str = Format.flush_str_formatter () in
+        Array.iteri (fun j width ->
+          Format.pp_set_tab fmt ();
+          (* The string cell is filled with the string contained in first row *)
+          Format.fprintf Format.str_formatter "%a%s" ET.pp row.(j) (sep i j);
+          let str = Format.flush_str_formatter () in
           let strcell = String.make (width + 1 - String.length str) ' ' in
-	  Format.fprintf fmt "%s%s" str strcell
-	) widths
+          Format.fprintf fmt "%s%s" str strcell
+        ) widths
       else
-	Array.iteri (fun j cell ->
-	  Format.pp_print_tab fmt ();
-	  Format.fprintf fmt "%a%s" ET.pp cell (sep i j)
-	) row
+        Array.iteri (fun j cell ->
+          Format.pp_print_tab fmt ();
+          Format.fprintf fmt "%a%s" ET.pp cell (sep i j)
+        ) row
     in
     let compute_widths table =
       (* we build with the largest length of each column of the
        * table and header *)
       let widths = Array.make m.col 0 in
       Array.iteri (fun i row ->
-	Array.iteri (fun j cell ->
-	  Format.fprintf Format.str_formatter "%a%s" ET.pp cell (sep i j);
-	  let str = Format.flush_str_formatter () in
-	  widths.(j) <- max (String.length str) widths.(j)
-	) row
+        Array.iteri (fun j cell ->
+          Format.fprintf Format.str_formatter "%a%s" ET.pp cell (sep i j);
+          let str = Format.flush_str_formatter () in
+          widths.(j) <- max (String.length str) widths.(j)
+        ) row
       ) table;
       widths
     in
@@ -144,7 +144,7 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
   (*   (Utils.fprintf_array ~sep:";@ " *)
   (*      (fun fmt -> Format.fprintf fmt "@[%a@]" *)
   (*        (Utils.fprintf_array ~sep:",@ " ET.pp))) m.content *)
-      
+
   let zeros l c =
     { line = l; col = c; content = Array.make_matrix l c ET.zero }
 
@@ -214,14 +214,14 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
         cur_r := !cur_r + a.(i).(0).line
       done;
       { line = total_rows; col = total_cols; content = c }
-    end      
+    end
 
   let lift_block mat n m pos_l pos_c =
     try
       let res = zeros n m in
       for i = 0 to mat.line - 1 do
         for j = 0 to mat.col - 1 do
-          res.content.(pos_l + i).(pos_c + j) <- mat.content.(i).(j) 
+          res.content.(pos_l + i).(pos_c + j) <- mat.content.(i).(j)
         done;
       done;
       res
@@ -337,15 +337,15 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
       done
     done;
     { line = !nb_r; col = !nb_c; content = m' }
-    
-  let gauss_split m = 
+
+  let gauss_split m =
     (* Local functions for gauss algorithm: careful perform local updates *)
 
     (* switch lines i and j in matrix m.
        Inplace modif *)
     let switch_lines m i j =
       if i = j then
-        () 
+        ()
       else
         let tmp = m.content.(i) in
         m.content.(i) <- m.content.(j);
@@ -354,16 +354,16 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
     (* rewrite_lin m c i j : replace m.(j) by m.(j) + c * m.(i).
        Inplace modif *)
     let rewrite_lin m c r1 r2 =
-      for i = 0 to m.col - 1 do 
+      for i = 0 to m.col - 1 do
         m.content.(r2).(i) <- ET.(m.content.(r2).(i)
                                   + (c * m.content.(r1).(i)))
       done in
 
     let find_non_nul col line m =
       let rec aux cpt =
-        if cpt >= m.line then 
+        if cpt >= m.line then
           (* we reached the end of the matrix without finding a non null value for
-	     column i *)
+             column i *)
           -1
         else if ET.(m.content.(cpt).(col) <> zero) then
           cpt
@@ -383,18 +383,18 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
       (* Find a line below or equal i with a non null value at idx current_col *)
       let pivot_line = find_non_nul col !current_line m in
       if pivot_line = -1 then
-        () (* We stop the processing for idx i, current_line is not increased 
-	      Question for Pierre or Assalé: should we keep the column or remove it ? *)
+        () (* We stop the processing for idx i, current_line is not increased
+              Question for Pierre or Assalé: should we keep the column or remove it ? *)
       else begin
         switch_lines m !current_line pivot_line;
         switch_lines base_change !current_line pivot_line;
         (* Make sure that we have 0 for idx i for all lines j > i *)
         for j = !current_line+1 to m.line -1 do
-  	  if ET.(m.content.(j).(col) <> zero) then
-  	    let coeff = ET.(~- (m.content.(j).(col))
+          if ET.(m.content.(j).(col) <> zero) then
+            let coeff = ET.(~- (m.content.(j).(col))
                             / m.content.(!current_line).(col)) in
-  	    rewrite_lin m coeff !current_line j;
-  	    rewrite_lin base_change coeff !current_line j
+            rewrite_lin m coeff !current_line j;
+            rewrite_lin base_change coeff !current_line j
         done;
         incr current_line
       end
@@ -402,10 +402,10 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
     (* We clean the matrix for empty lines *)
     let m_list = to_list_list m in
     let base_change_list = to_list_list base_change in
-    let paired = List.combine m_list base_change_list in  
+    let paired = List.combine m_list base_change_list in
     let rank, filtered =
       List.fold_right
-        (fun (row, row2) (rank, reduced) -> 
+        (fun (row, row2) (rank, reduced) ->
            if List.exists ET.(( <> ) zero) row then
              (* We keep the line *)
              rank, (row, row2)::reduced
@@ -426,6 +426,6 @@ module Make (ET : Scalar.S) : S with module Coeff = ET = struct
   let ( ** ) = power
 end
 
-module Q = Make (Scalar.Q) 
+module Q = Make (Scalar.Q)
 
 module Float = Make (Scalar.Float)

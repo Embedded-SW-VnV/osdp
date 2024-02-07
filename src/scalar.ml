@@ -92,7 +92,7 @@ module Make (M : M) = struct
   let ( > ) = gt
 end
 
-module Q : S with type t = Q.t = Make (struct 
+module Q : S with type t = Q.t = Make (struct
   type t = Q.t
   let compare = Q.compare
   let zero = Q.zero

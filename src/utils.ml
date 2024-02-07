@@ -45,7 +45,7 @@ let max_subnormal = min_float -. epsilon_under_float
 
 let q_max_float = Q.of_float max_float
 let q_neg_max_float = Q.of_float ( -. max_float)
-                                         
+
 (* Assuming f1 <= f2, [consecutive_float f1 f2] returns true iff there
    is no float f (normal or subnormal) such that f1 < f < f2. *)
 let consecutive_float f1 f2 =
@@ -120,7 +120,7 @@ let float_of_q q =
     if Q.leq (Q.sub (Q.of_float u) q) (Q.sub q (Q.of_float l)) then u else l
 
 external setround_tonearest : unit -> unit = "setround_tonearest"
-                                                                             
+
 let profile f =
   let fnbeg = Unix.time () in
   let r = f () in

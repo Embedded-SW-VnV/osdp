@@ -50,7 +50,7 @@ module type S = sig
   val const : Coeff.t -> t
 
   (** {2 Arithmetic operations.} *)
-                                         
+
   val mult_scalar : Coeff.t -> t -> t
   val add : t -> t -> t
   val sub : t -> t -> t
@@ -60,11 +60,11 @@ module type S = sig
   val replace : t -> (Ident.t * t) list -> t
 
   val remove : t -> Ident.t -> t
-  
+
   (** {2 Various operations.} *)
 
   val compare : t -> t -> int
-                                         
+
   val is_var : t -> (Ident.t * Coeff.t) option
 
   val is_const : t -> Coeff.t option
@@ -72,9 +72,9 @@ module type S = sig
   (** Returns one of the (non zero) coefficients in the linear
       expression (if any). *)
   val choose : t -> (Ident.t * Coeff.t) option
-  
+
   (** {2 Printing.} *)
-                                         
+
   val pp : Format.formatter -> t -> unit
 end
 

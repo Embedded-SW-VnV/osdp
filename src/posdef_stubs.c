@@ -25,7 +25,7 @@
  *
  * The proof is based on a Cholesky decomposition hence done in time O(n^3).
  * See the following paper for details of the proof:
- *   S.M. Rump: Verification of positive definiteness, 
+ *   S.M. Rump: Verification of positive definiteness,
  *   BIT Numerical Mathematics, 46:433-452, 2006. */
 
 #include <caml/memory.h>
@@ -86,7 +86,7 @@ static void parse_matrix(value mll, matrix_t **mp, matrix_t **radp)
   int i, j, sz;
   value line;
   double d1, d2;
-  
+
   sz = Wosize_val(mll);
   *mp = m = matrix_new(sz);
   *radp = rad = matrix_new(sz);
@@ -117,7 +117,7 @@ static int is_symmetric_finite(matrix_t *m)
   for (i = 0; i < m->s; ++i)
     for (j = 0; j < i; ++j)
       if (SEL(m, i, j) != SEL(m, j, i) || !isfinite(SEL(m, i, j))) return 0;
-      
+
   return 1;
 }
 
@@ -145,7 +145,7 @@ static int chol(matrix_t *m)
     }
     SEL(r, j, j) = sqrt(s);
   }
-  
+
   matrix_free(r);
   return 1;
 }
@@ -160,10 +160,10 @@ static int check(value mll)
   matrix_t *m, *rad;
 
   old_rnd = fegetround();
-  
+
   parse_matrix(mll, &m, &rad);
   /* round mode is now FE_UPWARD */
-  
+
   /* the test only works for matrices of size < 2^51 - 2 */
   if (m->s > 1000000000) goto out_no;
 
@@ -207,7 +207,7 @@ static int check(value mll)
     SEL(m, i, i) -= c;
     if (!isfinite(SEL(m, i, i))) goto out_no;
   }
-    
+
   rnd(FE_TONEAREST);
   if (chol(m)) goto out_yes;
   else goto out_no;

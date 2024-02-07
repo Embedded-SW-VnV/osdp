@@ -41,7 +41,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   module Coeff = SC
 
   module IM = Ident.Map
-  
+
   (* type invariant: lin is sorted by Ident.compare
    * and doesn't contain any zero coefficient *)
   type t = { const : Coeff.t; lin : Coeff.t IM.t }
@@ -105,7 +105,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
       { const = l.const; lin = m } ll
 
   let remove l i = { const = l.const; lin = IM.remove i l.lin }
-  
+
   let compare a1 a2 =
     let c = Coeff.compare a1.const a2.const in
     if c <> 0 then c else IM.compare Coeff.compare a1.lin a2.lin
@@ -120,7 +120,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let is_const a = if IM.is_empty a.lin then Some a.const else None
 
   let choose l = try Some (IM.choose l.lin) with Not_found -> None
-  
+
   let pp fmt a =
     let pp_coeff fmt (x, a) =
       if Coeff.(a = one) then
@@ -142,7 +142,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
                      Coeff.pp a.const
 end
 
-module Q = Make (Scalar.Q) 
+module Q = Make (Scalar.Q)
 
 module Float = Make (Scalar.Float)
 

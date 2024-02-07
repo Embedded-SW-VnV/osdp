@@ -44,7 +44,7 @@ val itv_float_of_q : Q.t -> float * float
 val float_of_q : Q.t -> float
 
 val setround_tonearest : unit -> unit
-                          
+
 (** [profile f] executes the function [f] and returns both its result
     and the execution time in second. *)
 val profile : (unit -> 'a) -> 'a * float

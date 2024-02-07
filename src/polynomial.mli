@@ -49,15 +49,15 @@ module type S = sig
       Monomial.var ~d i]]. [c] is [Coeff.one] and [d] is [1] by
       default. [i] and [d] must be non negative. *)
   val var : ?c:Coeff.t -> ?d:int -> int -> t
- 
+
   (** [const c] is equivalent to [var ~c ~d:0 0]. *)
   val const : Coeff.t -> t
-                                             
+
   (** [monomial m] is equivalent to [of_list [m, Coeff.one]]. *)
   val monomial : Monomial.t -> t
-                                             
+
   (** {2 Arithmetic operations.} *)
-                                         
+
   val mult_scalar : Coeff.t -> t -> t
   val add : t -> t -> t
   val sub : t -> t -> t
@@ -109,15 +109,15 @@ module type S = sig
   (** [is_var p] returns [Some (c, d, i)] if [p] is a polynomial of
       the form c xi^d and [None] otherwise. *)
   val is_var : t -> (Coeff.t * int * int) option
-                              
+
   (** [is_const p] returns [Some c] if [p] is the constant polynomial
       c and [None] otherwise. *)
   val is_const : t -> Coeff.t option
-                              
+
   (** [is_monomial p] returns [Some m] if [p] is a monmial x_0^i_0
       ... x_n^i_n and [None] otherwise. *)
   val is_monomial : t -> Monomial.t option
-                              
+
   (** {2 Prefix and infix operators.} *)
 
   (** To use this operators, it's convenient to use local opens. For
@@ -131,32 +131,32 @@ P.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
 
   (** {{:#VALconst}const} *)
   val ( ! ) : Coeff.t -> t
-                        
+
   (** {{:#VALmult_scalar}mult_scalar} *)
   val ( *. ) : Coeff.t -> t -> t
 
   (** Unary minus, [~- p] is syntactic sugar for [sub zero p]. *)
   val ( ~- ) : t -> t
-                                 
+
   (** {{:#VALadd}add} *)
   val ( + ) : t -> t -> t
-                        
+
   (** {{:#VALsub}sub} *)
   val ( - ) : t -> t -> t
-                        
+
   (** {{:#VALmult}mult} *)
   val ( * ) : t -> t -> t
-                        
+
   (** [p / c] is equivaent to [mult_scalar (Coeff.div Coeff.one c)
       p]. *)
   val ( / ) : t -> Coeff.t -> t
-                        
+
   (** [c1 /. c2] is equivaent to [!c1 / c2]. *)
   val ( /. ) : Coeff.t -> Coeff.t -> t
-                        
+
   (** {{:#VALpower}power} *)
   val ( ** ) : t -> int -> t
-                        
+
   (** {2 Printing.} *)
 
   val pp : Format.formatter -> t -> unit

@@ -66,7 +66,7 @@ module type S = sig
   val ( ** ) : matrix_expr -> int -> matrix_expr
   val ( >= ) : matrix_expr -> matrix_expr -> matrix_expr
   val ( <= ) : matrix_expr -> matrix_expr -> matrix_expr
-  type options = { 
+  type options = {
     sdp : Sdp.options;
     verbose : int;
     pad : float
@@ -80,7 +80,7 @@ module type S = sig
   val solve : ?options:options -> ?solver:Sdp.solver ->
               obj -> matrix_expr list ->
               SdpRet.t * (float * float) * values
-  val empty_values : unit -> values 
+  val empty_values : unit -> values
   val value : matrix_expr -> values -> Mat.Coeff.t
   val value_mat : matrix_expr -> values -> Mat.t
   val register_value: var -> Mat.Coeff.t -> values -> values
@@ -123,11 +123,11 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
         done
       done;
       a in
-    let v = { name = name; mat = a } in 
+    let v = { name = name; mat = a } in
     v, Var v
 
   let var s dim = snd (var_var s dim)
-                              
+
   let const m = Const m
   let scalar s = Const (Mat.of_list_list [[s]])
   let zeros n m = Zeros (n, m)
@@ -263,7 +263,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
   type values = Mat.Coeff.t Ident.Map.t
 
   let empty_values () = Ident.Map.empty
-                      
+
   let pp_values fmt values =
     Format.fprintf fmt "@[<v>";
     let _ = Ident.Map.fold (fun key value first ->
@@ -273,13 +273,13 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       false
     ) values true in
   Format.fprintf fmt "@ @]"
-    
+
   exception Not_symmetric
 
   let solve ?options ?solver obj el =
     let _options, sdp_options =
       match options with None -> default, None | Some o -> o, Some o.sdp in
-    
+
     let obj, obj_sign = match obj with
       | Minimize obj -> obj, 1.
       | Maximize obj -> Minus obj, -1.
@@ -376,7 +376,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
       | Const mat -> mat
       | Var v -> (
           Array.map (Array.map find) v.mat
-		|> Mat.of_array_array
+          |> Mat.of_array_array
       )
       | Zeros (n, m) -> Mat.zeros n m
       | Eye n -> Mat.eye n
@@ -407,7 +407,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
     match v.mat with
     | [|[|vid|]|] -> Ident.Map.add vid vval e
     | _ -> raise (Dimension_error "register_value (scalar expected)")
-       
+
   let check ?options:options ?values:values e =
     let _options = options in  (* silence warning about unused var options *)
     let values = match values with Some v -> v | None -> Ident.Map.empty in

@@ -92,7 +92,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let const c = var ~c ~d:0 0
 
   let monomial m = MM.singleton m Coeff.one
-                    
+
   let mult_scalar s p =
     if Coeff.(s = zero) then zero
     else MM.map (Coeff.mult s) p
@@ -208,7 +208,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
     if MM.cardinal p <> 1 then None else
       let m, c = MM.choose p in
       if Coeff.(c = one) then Some m else None
-                
+
   let pp_names names fmt = function
     | [] -> Format.fprintf fmt "0"
     | l ->
@@ -228,7 +228,7 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
   let pp_names names fmt p = pp_names names fmt (to_list p)
 
   let pp = pp_names []
-                   
+
   let ( ?? ) i = var i
   let ( ! ) = const
   let ( *. ) = mult_scalar

@@ -33,7 +33,7 @@ module type S = sig
   module Scalar : Scalar.S
 
   (** {2 Extended formulation.} *)
-                                                  
+
   (** C.f. {{:./Sdp.html#TYPEvector}Sdp.vector} *)
   type vector = (int * Scalar.t) list
 
