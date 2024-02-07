@@ -163,15 +163,15 @@ module Make (SC : Scalar.S) : S with module Coeff = SC = struct
       (fun m c r -> Coeff.(r + c * eval_monomial m))
       p Coeff.zero
 
-  let rec compare p1 p2 =
+  let compare p1 p2 =
     let p =
       MM.merge
-        (fun m c1 c2 ->
+        (fun _m c1 c2 ->
          let desome c = match c with Some c -> c | None -> Coeff.zero in
          Some (desome c1, desome c2))
         p1 p2 in
     MM.fold
-      (fun m (c1, c2) cmp -> if cmp <> 0 then cmp else Coeff.compare c1 c2)
+      (fun _m (c1, c2) cmp -> if cmp <> 0 then cmp else Coeff.compare c1 c2)
       p 0
 
   let nb_vars p = MM.fold (fun m _ n -> max n (Monomial.nb_vars m)) p 0

@@ -270,6 +270,7 @@ let solve_ext_sparse ?options ?solver obj constraints bounds =
      ret, res, (res_x, res_X, res_y, res_Z)
 
 let solve_ext ?options ?solver obj constraints bounds =
+  let _options = options in  (* silence warning about unused var options *)
   check_prog_ext check_sym obj constraints;
   let obj = fst obj, block_diag_to_sparse (snd obj) in
   let constraints =

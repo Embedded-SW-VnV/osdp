@@ -277,7 +277,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
   exception Not_symmetric
 
   let solve ?options ?solver obj el =
-    let options, sdp_options =
+    let _options, sdp_options =
       match options with None -> default, None | Some o -> o, Some o.sdp in
     
     let obj, obj_sign = match obj with
@@ -370,7 +370,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
         |> Ident.Map.(List.fold_left (fun m (id, v) -> add id v m) empty) in
       ret, res, vars
 
-  let rec value_mat e m =
+  let value_mat e m =
     let find id = Ident.Map.find id m in
     let rec aux = function
       | Const mat -> mat
@@ -409,6 +409,7 @@ module Make (M : Matrix.S) : S with module Mat = M = struct
     | _ -> raise (Dimension_error "register_value (scalar expected)")
        
   let check ?options:options ?values:values e =
+    let _options = options in  (* silence warning about unused var options *)
     let values = match values with Some v -> v | None -> Ident.Map.empty in
     let module MQ = Matrix.Q in
     (* first compute (exactly, using Q) a matrix m from matrix_expr e *)

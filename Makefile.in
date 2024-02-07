@@ -38,6 +38,9 @@ DIST_FILES_DIR= \
 osdp:
 	dune build -p osdp @install
 
+check:
+	dune build src @install
+
 doc:
 	dune build -p osdp @doc
 	rm -rf $(LOCAL_DOCDIR)
