@@ -14,8 +14,9 @@ build: [
 ]
 install: [make "install"]
 depends: [
+  "ocaml" {>= "4.08"}
   "conf-autoconf" {build}
-  "dune" {build}
+  "dune" {>= "3.11"}
   "ocamlfind"
   "zarith"
   "ocplib-simplex" {= "0.5"}
