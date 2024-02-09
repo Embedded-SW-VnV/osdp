@@ -47,6 +47,7 @@ Compilation and installation
 ============================
 
 Configure:
+% autoconf
 % ./configure
 
 Compile:

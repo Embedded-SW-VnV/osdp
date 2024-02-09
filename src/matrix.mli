@@ -26,10 +26,10 @@ module type S = sig
 
   (** Type of matrices. *)
   type t
-         
+
   (** Most of the functions in this module can raise this exception. *)
   exception Dimension_error of string
-              
+
   (** {2 Conversion functions.} *)
 
   (** [of_list_list l] returns the matrix with lines corresponding to
@@ -38,7 +38,7 @@ module type S = sig
   val of_list_list : Coeff.t list list -> t
 
   val to_list_list : t -> Coeff.t list list
-                                 
+
   (** [of_array_array a] returns the matrix with lines corresponding
       to the elements of [a]. All arrays in [a] must have the same
       size. A copy of the array is made internally. *)
@@ -49,11 +49,11 @@ module type S = sig
   val to_array_array : t -> Coeff.t array array
 
   (** {2 Construction functions.} *)
-                                         
+
   (** [zeros n m] builds a matrix of size n x m with all coefficients
       equal to [Coeff.of_int O]. [n] and [m] must be non negative. *)
   val zeros : int -> int -> t
-                              
+
   (** [eye n] builds the identity matrix of size n (i.e., a square
       matrix of size n with coefficients (i, j) equal to [Coeff.of_int
       O] when i != j and [Coeff.of_int 1] when i = j). [n] must be non
@@ -81,7 +81,7 @@ module type S = sig
       same number of rows and [a] and [c] the same number of
       columns). *)
   val block : t array array -> t
-                                 
+
   (** [lift_block m i j k l] returns a matrix of size i x j with zeros
       everywhere except starting from indices k x l where matrix m is
       copied. The parameters must satisfy 0 <= k, 0 <= l, k + nb_lines
@@ -89,22 +89,22 @@ module type S = sig
   val lift_block : t -> int -> int -> int -> int -> t
 
   (** {2 Matrix operations.} *)
-                                         
+
   (** Matrix transposition. *)
   val transpose : t -> t
-                                
+
   (** Unary minus. *)
   val minus : t -> t
-    
+
   (** [mult_scalar s m] multiplies matrix [m] by scalar [s]. *)
   val mult_scalar : Coeff.t -> t -> t
 
   (** Matrix addition. Both matrices must have the same size. *)
   val add : t -> t -> t
-                               
+
   (** Matrix subtraction. Both matrices must have the same size. *)
   val sub : t -> t -> t
-    
+
   (** Matrix multiplication. First matrix must have as many columns as
       the second as rows. *)
   val mult : t -> t -> t
@@ -113,7 +113,7 @@ module type S = sig
   val power : t -> int -> t
 
   (** {2 Various operations.} *)
-                                         
+
   val nb_lines : t -> int
   val nb_cols : t -> int
 
@@ -136,24 +136,23 @@ module type S = sig
   (** To use this operators, it's convenient to use local opens. For
       instance to write the matrix operations m1 * m2 + I_3x3:
 
-      {[let module M = Osdp.Matrix.Float in
-M.(m1 * m2 + eye 3)]} *)
+      {[let module M = Osdp.Matrix.Float in M.(m1 * m2 + eye 3)]} *)
 
   (** Same as {{:#VALtranspose}transpose}. *)
   val ( ~: ) : t -> t
-                       
+
   (** Same as {{:#VALminus}minus}. *)
   val ( ~- ) : t -> t
-                      
+
   (** Same as {{:#VALmult_scalar}mult_scalar}. *)
   val ( *. ) : Coeff.t -> t -> t
-                                  
+
   (** Same as {{:#VALadd}add}. *)
   val ( + ) : t -> t -> t
 
   (** Same as {{:#VALsub}sub}. *)
   val ( - ) : t -> t -> t
-                           
+
   (** Same as {{:#VALmult}mult}. *)
   val ( * ) : t -> t -> t
 
@@ -161,7 +160,7 @@ M.(m1 * m2 + eye 3)]} *)
   val ( ** ) : t -> int -> t
 
   (** {2 Printing.} *)
-                                         
+
   val pp : Format.formatter -> t -> unit
 end
 

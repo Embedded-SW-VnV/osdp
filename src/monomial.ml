@@ -80,7 +80,7 @@ let rec derive m i = match m with
        match derive t (i - 1) with
        | 0, _ -> 0, []
        | j, t -> j, (h :: t)
-                      
+
 let degree = List.fold_left ( + ) 0
 
 let compare m1 m2 =
@@ -105,7 +105,7 @@ let rec is_var = function
        | None -> None
      end
   | _ -> None
-                            
+
 let rec list_eq n d =
   let add_diff m = (List.fold_left ( - ) d m) :: m in
   if n <= 0 then [[]] else Utils.map add_diff (list_le (n - 1) d)

@@ -26,36 +26,40 @@ DIST_FILES_DIR= \
   COPYING \
   COPYING.LESSER \
   doc \
+  dune-project \
   example \
   INSTALL \
   Makefile.in \
   opam \
   opam.in \
-  README \
+  README.md \
   src
 
 osdp:
-	make -C src osdp
+	dune build -p osdp @install
+
+check:
+	dune build src @install
 
 doc:
-	make -C src doc
+	dune build -p osdp @doc
 	rm -rf $(LOCAL_DOCDIR)
-	cp -rf src/_build/osdp.docdir $(LOCAL_DOCDIR)
+	cp -rf _build/default/_doc/_html $(LOCAL_DOCDIR)
 
 install:
-	make -C src install
+	dune install osdp
 
 uninstall:
-	make -C src uninstall
+	dune uninstall osdp
 
 clean:
-	make -C src clean
+	dune clean
 	make -C example clean
 	rm -f *~
 
 distclean: clean
-	make -C src distclean
-	rm -rf Makefile autom4te.cache config.log config.status 
+	rm -f src/config.h src/csdp_path.ml src/sdpa_paths.ml src/sdp_default.ml
+	rm -rf Makefile autom4te.cache config.log config.status
 
 dist: doc distclean
 	rm -rf @PACKAGE_TARNAME@-@PACKAGE_VERSION@

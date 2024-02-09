@@ -222,7 +222,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         let mons =
           (if homogen then Monomial.list_eq else Monomial.list_le) n d in
         let s = (*"__SOS__" ^*) Format.asprintf "%a" Ident.pp name ^ "_" in
-        let l, _ = 
+        let l, _ =
           List.fold_left
             (fun (l, i) m ->
               (m, Ident.create (s ^ string_of_int i)) :: l, i + 1)
@@ -236,7 +236,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
   let param_vars e =
     let rec aux env = function
-      | Const p -> env
+      | Const _p -> env
       | Var ((Vscalar id) as v) | Var ((Vpoly { name = id; poly = _ }) as v) ->
          Ident.Map.add id v env
       | Mult_scalar (_, e) | Power (e, _) -> aux env e
@@ -424,7 +424,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     (* let cpt_refines = ref 0 in *)
     (* let cpt_newton = ref 0. in *)
     (* let cpt_simpl = ref 0. in *)
-    
+
     (* refine the monomial basis *)
     let rec refines monoms_e =
       (* let () = incr cpt_refines; Format.printf "<%d refines>@." !cpt_refines in *)
@@ -709,7 +709,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       | Compose (e, el) ->
          PQ.compose (scalarize e) (List.map scalarize el)
       | Derive (e, i) -> PQ.derive (scalarize e) i in
-    let (b, r), time = Utils.profile (fun () ->
+    let (b, r), _time = Utils.profile (fun () ->
     let p = scalarize e in
     (* then check that p can be expressed in monomial base v *)
     let check_base =
@@ -758,7 +758,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       let () = if options.verbose > 0 then Format.printf "r = %g@." (Utils.float_of_q r) in
       (* Format.printf "Q = %a@." Matrix.Float.pp (Matrix.Float.of_array_array q); *)
       (* form the interval matrix q +/- r *)
-      let qpmr, time = Utils.profile (fun () ->
+      let qpmr, _time = Utils.profile (fun () ->
         let itv f =
           let q = Q.of_float f in
           let l, _ = Utils.itv_float_of_q (Q.sub q r) in
@@ -767,7 +767,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
         Array.map (Array.map itv) q) in
       (* Format.printf "time for qpmr: %.3fs@." time; *)
       (* and check its positive definiteness *)
-      let res, time = Utils.profile (fun () -> Posdef.check_itv qpmr) in
+      let res, _time = Utils.profile (fun () -> Posdef.check_itv qpmr) in
       (* Format.printf "time for posdef_check: %.3fs@." time; *)
       (* let qmnr = *)
       (*   let nr = Q.((of_int (Array.length q)) * r) in *)
@@ -799,11 +799,12 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       res
 
   let check_round ?options:options ?values:values el wl =
+    let _options = options in  (* silence warning about unused var options *)
     (* let options = match options with Some o -> o | None -> default in *)
     let orig_vals, values =
       match values with Some (ov, v) -> ov, v | None -> Ident.Map.empty, None in
     let values = match values with
-      | Some (d, l) when el = List.map fst l -> values
+      | Some (_d, l) when el = List.map fst l -> values
       | _ -> None in
     match values with
     | None -> None

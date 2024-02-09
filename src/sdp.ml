@@ -155,7 +155,7 @@ let solve ?options ?solver ?init obj constraints =
 (*************************)
 (* Extended formulation. *)
 (*************************)
-  
+
 type vector = (int * float) list
 
 type 'a obj_ext = vector * 'a block_diag
@@ -165,7 +165,7 @@ type 'a constr_ext = vector * 'a block_diag * float * float
 type bounds = (int * float * float) list
 
 module IntMap = Map.Make (struct type t = int let compare = compare end)
-                                    
+
 let to_simple obj constraints bounds =
   let max_idx =
     let f = List.fold_left (fun m (i, _) -> max m i) in
@@ -245,7 +245,7 @@ let of_simple_res (trans, max_idx) (res_X, res_y, res_Z) =
       trans [] in
   let res_Z = List.filter (fun (i, _) -> i <= max_idx) res_Z in
   List.rev res_x, res_X, res_y, res_Z
-                                          
+
 let check_prog_ext f obj constraints =
   let check_block f = List.iter (fun (_, m) -> f m) in
   check_block f (snd obj);
@@ -270,6 +270,7 @@ let solve_ext_sparse ?options ?solver obj constraints bounds =
      ret, res, (res_x, res_X, res_y, res_Z)
 
 let solve_ext ?options ?solver obj constraints bounds =
+  let _options = options in  (* silence warning about unused var options *)
   check_prog_ext check_sym obj constraints;
   let obj = fst obj, block_diag_to_sparse (snd obj) in
   let constraints =
@@ -281,7 +282,7 @@ let solve_ext ?options ?solver obj constraints bounds =
 (***********************)
 (* Printing functions. *)
 (***********************)
-  
+
 let pp_sparse_matrix fmt m =
   let pp_e fmt (i, j, f) = Format.fprintf fmt "(%d, %d, %g)" i j f in
   Format.fprintf fmt "[@[%a@]]" (Utils.pp_list ~sep:",@ " pp_e) m
@@ -470,7 +471,7 @@ let pp_ext_sedumi fmt (obj, cstrs, bounds) =
 (****************************)
 (* Miscellaneous functions. *)
 (****************************)
-  
+
 let pfeas_stop_crit ?options ?solver bl =
   match get_solver options solver with
   | Csdp ->

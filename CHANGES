@@ -1,3 +1,6 @@
+version 1.1.1, Feb 9th, 2024
+----------------------------
+ o build with Dune
  o use ocplib-simplex 0.5 (instead of 0.4)
 
 version 1.1.0, Feb 8th, 2022

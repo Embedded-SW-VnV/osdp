@@ -20,7 +20,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.59])
-AC_INIT([OSDP],[1.1.0],[ploc@garoche.net])
+AC_INIT([OSDP],[1.1.1],[ploc@garoche.net])
 AC_CONFIG_SRCDIR([src/sdp.ml])
 
 # default prefix is /usr/local
@@ -98,9 +98,6 @@ AC_MSG_RESULT($ocamlc_version)
 
 AC_CHECK_TOOL([OCAMLOPT], [ocamlopt], [no])
 AS_IF([test "x$OCAMLOPT" = xno], [AC_MSG_ERROR([Cannot find ocamlopt.])])
-
-AC_CHECK_TOOL([OCAMLBUILD], [ocamlbuild], [no])
-AS_IF([test "x$OCAMLBUILD" = xno], [AC_MSG_ERROR([Cannot find ocamlbuild.])])
 
 AC_CHECK_TOOL([OCAMLFIND], [ocamlfind], [no])
 AS_IF([test "x$OCAMLFIND" = xno], [AC_MSG_ERROR([Cannot find ocamlfind.])])
@@ -180,14 +177,6 @@ if test "x$with_sdpa_dd" != xno; then with_sdpa_dd=yes ; fi
 AC_SUBST(SDPA_DD_PATH)
 
 # Check for libraries
-AC_MSG_CHECKING(for zarith)
-ZARITHLIB=$(ocamlfind query -i-format zarith)
-if test -n "$ZARITHLIB";then
-  AC_MSG_RESULT($ZARITHLIB)
-else
-  AC_MSG_ERROR(Cannot find zarith library.)
-fi
-
 if test "x$with_mosek" != xno; then
   AC_MSG_CHECKING(for MOSEK headers)
   if test "x$MOSEK_INCPATH" = xno; then
@@ -264,9 +253,9 @@ AC_CHECK_LIB([m], [fesetround], [],
   [AC_MSG_ERROR([Could not find function fesetround in math library.])])
 
 # Create files
-AC_CONFIG_FILES([Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/csdp_path.ml src/sdpa_paths.ml src/sdp_default.ml])
+AC_CONFIG_FILES([Makefile opam src/config.h src/csdp_path.ml src/sdpa_paths.ml src/sdp_default.ml])
 AC_OUTPUT
-chmod a-w Makefile opam src/Makefile src/myocamlbuild.ml src/config.h src/META src/_tags src/osdp.mlpack src/osdp_top.ml src/csdp_path.ml src/sdpa_paths.ml src/sdp_default.ml
+chmod a-w Makefile opam src/config.h src/csdp_path.ml src/sdpa_paths.ml src/sdp_default.ml
 
 echo ""
 echo "*** Configuration for $PACKAGE_NAME $PACKAGE_VERSION:"

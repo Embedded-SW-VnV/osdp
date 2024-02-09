@@ -5,7 +5,8 @@ autom4te.cache
 config.log
 config.status
 configure
-src/_build
+_build
+osdp.install
 example/*.cm*
 example/*.o
 example/demo
@@ -20,12 +21,7 @@ example/demo_sos4
 
 # files with a .in
 Makefile
-src/META
-src/_tags
 src/config.h
-src/osdp.mlpack
-src/myocamlbuild.ml
 src/csdp_path.ml
-src/osdp_top.ml
 src/sdpa_paths.ml
 src/sdp_default.ml

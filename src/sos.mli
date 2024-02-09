@@ -89,7 +89,7 @@ module type S = sig
       @raise Dimension_error in case {!val:compose} is used with not
       enough arguments. *)
   val to_list : polynomial_expr -> (Monomial.t * polynomial_expr) list
-                                                                  
+
   (** {3 Various functions.} *)
 
   (** See the module {{:./Polynomial.S.html}Polynomial.S} for
@@ -130,31 +130,31 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
 
   (** {{:#TYPEELTpolynomial_expr.Const}Const} *)
   val ( !! ) : Poly.t -> polynomial_expr
-                        
+
   val ( ?? ) : int -> polynomial_expr
 
   (** {{:#VALscalar}scalar} *)
   val ( ! ) : Poly.Coeff.t -> polynomial_expr
-                        
+
   val ( *. ) : Poly.Coeff.t -> polynomial_expr -> polynomial_expr
-                        
+
   val ( ~- ) : polynomial_expr -> polynomial_expr
-                                 
+
   val ( + ) : polynomial_expr -> polynomial_expr -> polynomial_expr
-                        
+
   val ( - ) : polynomial_expr -> polynomial_expr -> polynomial_expr
-                        
+
   val ( * ) : polynomial_expr -> polynomial_expr -> polynomial_expr
-                        
+
   val ( / ) : polynomial_expr -> Poly.Coeff.t -> polynomial_expr
-                        
+
   val ( /. ) : Poly.Coeff.t -> Poly.Coeff.t -> polynomial_expr
-                        
+
   val ( ** ) : polynomial_expr -> int -> polynomial_expr
 
   (** [e1 >= e2] is just syntactic sugar for [e1 - e2]. *)
   val ( >= ) : polynomial_expr -> polynomial_expr -> polynomial_expr
-                                           
+
   (** [e1 <= e2] is just syntactic sugar for [e2 - e1]. *)
   val ( <= ) : polynomial_expr -> polynomial_expr -> polynomial_expr
 
@@ -203,7 +203,7 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
   type values
 
   type 'a witness = Monomial.t array * 'a array array
-         
+
   exception Not_linear
 
   (** [solve obj l] tries to optimise the objective [obj] under the
@@ -277,9 +277,9 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
   val check : ?options:options -> ?values:values -> polynomial_expr ->
               float witness -> bool
 
-  (** TODO: doc (@raise Invalid argument when lists el and wl not same
-      length, @raise Not_found when el contain a variable not bound in
-      values) *)
+  (** TODO: doc
+      @raise Invalid_argument when lists el and wl not same length
+      @raise Not_found when el contain a variable not bound in values) *)
   val check_round : ?options:options -> ?values:values ->
                     polynomial_expr list -> float witness list ->
                     (values * Scalar.Q.t witness list) option
