@@ -4,7 +4,8 @@
  (libraries unix zarith ocplib-simplex)
  (foreign_stubs
   (language c)
-  (names moseksdp_stubs posdef_stubs)))
+  (names moseksdp_stubs posdef_stubs)
+  (flags -I @MOSEK_INCPATH@)))
 (ocamllex csdp_lexer)
 (ocamlyacc csdp_parser)
 (ocamllex sdpa_lexer)

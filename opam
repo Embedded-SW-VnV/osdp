@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "osdp"
-version: "1.1.1"
+version: "1.1.2-git"
 maintainer: "Pierre Roux"
 author: "Pierre Roux <pierre.roux@onera.fr>"
 homepage: "https://cavale.enseeiht.fr/osdp/"

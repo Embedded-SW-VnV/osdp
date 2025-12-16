@@ -182,7 +182,7 @@ if test "x$with_mosek" != xno; then
   if test "x$MOSEK_INCPATH" = xno; then
     mosek_path=`command -v mosek || echo no`
     if test "x$mosek_path" != xno; then
-      MOSEK_INCPATH=`echo "$mosek_path" | sed -e 's|[[^/]]*/mosek$||'`
+      MOSEK_INCPATH=`echo "$mosek_path" | sed -e 's|bin/mosek$||'`
       MOSEK_INCPATH="${MOSEK_INCPATH}h"
     fi
   fi
@@ -253,7 +253,7 @@ AC_CHECK_LIB([m], [fesetround], [],
   [AC_MSG_ERROR([Could not find function fesetround in math library.])])
 
 # Create files
-AC_CONFIG_FILES([Makefile opam src/config.h src/csdp_path.ml src/sdpa_paths.ml src/sdp_default.ml])
+AC_CONFIG_FILES([Makefile opam src/config.h src/csdp_path.ml src/sdpa_paths.ml src/sdp_default.ml src/dune])
 AC_OUTPUT
 chmod a-w Makefile opam src/config.h src/csdp_path.ml src/sdpa_paths.ml src/sdp_default.ml
 
