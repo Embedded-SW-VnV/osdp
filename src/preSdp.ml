@@ -23,6 +23,8 @@ module type S = sig
   type vector = (int * Scalar.t) list
   type 'a obj_ext = vector * 'a Sdp.block_diag
   type 'a constr_ext = vector * 'a Sdp.block_diag * Scalar.t * Scalar.t
+  val pfeas_stop_crit : ?options:Sdp.options -> ?solver:Sdp.solver ->
+                        Scalar.t list -> float
   val solve_ext_sparse : ?options:Sdp.options -> ?solver:Sdp.solver ->
                          Sdp.sparse_matrix obj_ext ->
                          Sdp.sparse_matrix constr_ext list -> Sdp.bounds ->
@@ -48,6 +50,9 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
   type 'a constr_ext = vector * 'a Sdp.block_diag * Scalar.t * Scalar.t
 
   module IntMap = Map.Make (struct type t = int let compare = compare end)
+
+  let pfeas_stop_crit ?options ?solver bl =
+    Sdp.pfeas_stop_crit ?options ?solver (List.map S.to_float bl)
 
   let solve_ext_sparse ?options ?solver obj constraints bounds =
     let obj = List.sort (fun (i, _) (j, _) -> compare i j) (fst obj), snd obj in

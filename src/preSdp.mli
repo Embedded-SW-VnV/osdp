@@ -39,6 +39,11 @@ module type S = sig
   (** C.f. {{:./Sdp.html#TYPEconstr_ext}Sdp.constr_ext} *)
   type 'a constr_ext = vector * 'a Sdp.block_diag * Scalar.t * Scalar.t
 
+  (** Scalar-typed wrapper for {!Sdp.pfeas_stop_crit}: converts [Scalar.t]
+      RHS values to float internally. *)
+  val pfeas_stop_crit : ?options:Sdp.options -> ?solver:Sdp.solver ->
+                        Scalar.t list -> float
+
   (** See {{:./Sdp.html#VALsolve_ext_sparse}Sdp.solve_ext_sparse} for
       details. The only difference is that redundant free variables
       are handled before calling the SDP solver. That is, when a

@@ -72,7 +72,8 @@ module type S = sig
     dualize : bool;
     monoms : Monomial.t list list;
     pad : float;
-    pad_list : float list
+    pad_list : float list;
+    basis : SosBasis.basis_choice
   }
   val default : options
   type obj =
@@ -94,6 +95,7 @@ end
 
 module Make (P : Polynomial.S) : S with module Poly = P = struct
   module Poly = P
+  module Basis = SosBasis.Registry (P.Coeff)
 
   type polynomial_var = {
     name : Ident.t;
@@ -294,7 +296,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     dualize : bool;
     monoms : Monomial.t list list;
     pad : float;
-    pad_list : float list
+    pad_list : float list;
+    basis : SosBasis.basis_choice
   }
 
   let default = {
@@ -305,13 +308,15 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     dualize = false;
     monoms = [];
     pad = 2.;
-    pad_list = []
+    pad_list = [];
+    basis = SosBasis.Classical
   }
 
   type obj =
       Minimize of polynomial_expr | Maximize of polynomial_expr | Purefeas
 
   module Dualize = Dualize.Make (Poly.Coeff)
+  module PreSdp  = PreSdp.Make  (Poly.Coeff)
 
   type dualize_details = float Dualize.details_val Ident.Map.t
                          * (polynomial_expr * Ident.t array array) list
@@ -396,17 +401,22 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
           (Array.of_list m, e) :: build_monoms [] el in
       build_monoms options.monoms scalarized in
 
+    let prod_to_classical = Basis.prod_to_classical_fn options.basis in
+    let refine_basis      = Basis.refine_basis_fn      options.basis in
+
     (* for monoms = [m_0;...; m_n], square_monoms associates to each
-       monom m the list of all i >= j such that m = m_i *
-       m_j. square_monoms is sorted by Monomial.compare. *)
+       classical monomial m the list of (i, j, c) such that c * m appears
+       in the product monoms.(i) * monoms.(j).  sorted by Monomial.compare. *)
     let square_monoms monoms =
       let sz = Array.length monoms in
       let m = ref Monomial.Map.empty in
       for i = 0 to sz - 1 do
         for j = 0 to i do
-          let mij = Monomial.mult monoms.(i) monoms.(j) in
-          let lm = try Monomial.Map.find mij !m with Not_found -> [] in
-          m := Monomial.Map.add mij ((i, j) :: lm) !m
+          let terms = prod_to_classical monoms.(i) monoms.(j) in
+          List.iter (fun (mij, c) ->
+            let lm = try Monomial.Map.find mij !m with Not_found -> [] in
+            m := Monomial.Map.add mij ((i, j, c) :: lm) !m
+          ) terms
         done
       done;
       !m in
@@ -427,14 +437,12 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
 
     (* refine the monomial basis *)
     let rec refines monoms_e =
-      (* let () = incr cpt_refines; Format.printf "<%d refines>@." !cpt_refines in *)
-      (* first use Newton polytope *)
+      (* first shrink each basis using the basis-specific filter *)
       let monoms_e'(* , t_newton *) = (* Utils.profile (fun () -> *)
         List.map
           (fun (m, e) ->
-            let l = Array.to_list m in
             let m_e = List.map fst (LEPoly.to_list e) in
-            Array.of_list (NewtonPolytope.filter l m_e), e)
+            Array.of_list (refine_basis (Array.to_list m) m_e), e)
           monoms_e(* ) *) in
       (* cpt_newton := !cpt_newton +. t_newton; *)
       let eq_lengths (m, _) (m', _) = Array.length m = Array.length m' in
@@ -510,7 +518,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
                (fun (id, c) ->
                 Ident.Map.find id var_idx, Poly.Coeff.neg c)
                le in
-           let mat = [ei, List.map (fun (i, j) -> i, j, 1.) lij] in
+           let mat = [ei, lij] in
            (vect, mat), b)
           constraints in
       monoms, constraints in
@@ -521,7 +529,7 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     let obj =
       if not (options.trace_obj && obj = ([], [])) then obj else
         let neg_tr ei (monoms, _) =
-          ei, List.mapi (fun i _ -> i, i, -1.) (Array.to_list monoms) in
+          ei, List.mapi (fun i _ -> i, i, P.Coeff.(neg one)) (Array.to_list monoms) in
         [], List.mapi neg_tr monoms_cstrs in
 
     (* pad constraints *)
@@ -533,8 +541,8 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
     let paddings, cstrs =
       let perr = if false then 0. else
         let bl = List.map (fun (_, c) -> List.map snd c) monoms_cstrs
-                 |> List.flatten |> List.map Poly.Coeff.to_float in
-        Sdp.pfeas_stop_crit ?options:sdp_options ?solver bl in
+                 |> List.flatten in
+        PreSdp.pfeas_stop_crit ?options:sdp_options ?solver bl in
       if options.verbose > 0 then Format.printf "perr = %g@." perr;
       let monoms_cstrs_pad =
         let rec aux mc p = match mc, p with
@@ -558,7 +566,13 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       List.split (List.map pad_cstrs monoms_cstrs_pad) in
     let cstrs = List.flatten cstrs in
 
-    let module PreSdp = PreSdp.Make (Poly.Coeff) in
+    (* Float conversion at the SDP boundary: all matrix entries P.Coeff.t -> float.
+       The SOS encoding stays exact up to this point; the solver requires float. *)
+    let float_block bd =
+      List.map
+        (fun (i, m) -> i, List.map (fun (r, c, v) -> r, c, P.Coeff.to_float v) m) bd in
+    let obj   = fst obj, float_block (snd obj) in
+    let cstrs = List.map (fun (v, bd, bl, bu) -> v, float_block bd, bl, bu) cstrs in
 
     (* Format.printf "SDP solved <@."; *)
     (* Format.printf "%a@." PreSdp.pp_ext_sparse (obj, cstrs, []); *)

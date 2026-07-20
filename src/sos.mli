@@ -186,9 +186,11 @@ Sos.(2.3 *. ??0**3 * ??2**2 + ??1 + !0.5)]} *)
                                         determined when list shorter than
                                         constraints list) *)
     pad : float;  (** padding factor (default: 2.), 0. means no padding *)
-    pad_list : float list  (** padding factors (dafault: \[\]) for
+    pad_list : float list;  (** padding factors (dafault: \[\]) for
                                each constraint ([pad] used when list
                                shorter than constraints list) *)
+    basis : SosBasis.basis_choice  (** polynomial basis for SOS encoding
+                                       (default: {!SosBasis.Classical}) *)
   }
 
   (** Default values above. *)
