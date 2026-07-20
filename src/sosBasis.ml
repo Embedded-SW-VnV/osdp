@@ -189,11 +189,11 @@ module TensorProduct = struct
     let current_set, current_len =
       if exist then
         let s = Hashtbl.find cache dim in s, List.length s
-      else [], -1
+      else [], 0
     in
-    if current_len < up_to_deg + 1 then begin
+    if current_len <= up_to_deg then begin
       let new_levels = ref [] in
-      for d = up_to_deg downto current_len + 1 do
+      for d = up_to_deg downto current_len do
         new_levels := monomials_at_deg dim d :: !new_levels
       done;
       Hashtbl.replace cache dim (current_set @ !new_levels)
