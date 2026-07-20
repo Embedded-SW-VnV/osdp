@@ -1,0 +1,96 @@
+version 1.1.1, Feb 9th, 2024
+----------------------------
+ o build with Dune
+ o use ocplib-simplex 0.5 (instead of 0.4)
+
+version 1.1.0, Feb 8th, 2022
+----------------------------
+ o improve support for OSX and MOSEK9
+ o remove outdated 'test' dir, tests are in 'example' dir
+ o fix profiling issue: no more call to shell but Unix.time 
+   was causing trouble in OSX (float_of_string)
+ o fix a Not_found exception with Csdp wrapper
+   (git commit 3240ebe033039030d9845b1de06bfa0a4d06e637)
+
+version 1.0.0, Dec 19th, 2018
+-----------------------------
+ o switch repository from subversion to git
+ o remove deprecated support for Camlp4
+ o remove support for ocplib-simplex 0.3 (i.e. now requiring 0.4)
+ o remove a few deprecated functions
+ o change CSDP interface from the C library to the binary (through
+   Unix pipes), this allows to simply use the Debian package for Csdp,
+   rather than requiring to patch and recompile it from sources
+
+version 0.6.0, Oct 9th, 2017
+----------------------------
+ o compile with ocaml 4.06
+ o add compatibility layer with ocplib-simplex 0.4
+ o add Sos.check_round (proof by rounding, following John Harrison 07)
+ o add Dualize (nedded by check_round)
+
+version 0.5.4, Jun 26th, 2017
+-----------------------------
+ o Opam package
+
+version 0.5.3, Apr 19th, 2017
+-----------------------------
+ o make Sos.var and Sos.var_poly deprecated
+ o replace them by Sos.make
+ o add Sos.{of,to}_list and Sos.param_vars
+ o add some facial reduction (iterate Newton Polytope and setting
+   variables to 0, enables to solve example/demo_sos3)
+
+version 0.5.2, Dec 9th, 2016
+----------------------------
+ o add small functions to polynomial (degree_list)
+   and monomial (gcd, lcm, divide, div)
+
+version 0.5.1, Nov 30th, 2016
+-----------------------------
+ o improve functions float_of_q and itv_float_of_q
+
+version 0.5.0, Nov 10th, 2016
+-----------------------------
+ o change license from GPL to LGPL
+ o replace ocaml-glpk with ocplib-simplex
+
+version 0.4.5, Apr 19th, 2016
+-----------------------------
+ o make camlp4 deprecated
+
+version 0.4.4, Jan 11th, 2016
+-----------------------------
+ o fix a small soundness bug (some 1x1 matrices were incorrectly proved psd)
+ o fix a bug in configure.ac preventing installation without ocaml-glpk
+
+version 0.4.3, Dec 2nd, 2015
+----------------------------
+ o rewrite some functions in a recursive terminal way to avoid some
+   stack overflows
+
+version 0.4.2, Nov 24th, 2015
+-----------------------------
+ o patch to control CSDP verbosity
+
+version 0.4.1, Oct 27th, 2015
+-----------------------------
+ o verification capabilities for LMI
+
+version 0.4, Oct 12th, 2015
+---------------------------
+ o verification capabilities for SOS
+ o add derive function to polynomials
+
+version 0.3, Mar 17th, 2015
+---------------------------
+ o changes in SOS encoding
+ o some changes in SOS and LMI interfaces (c.f., example/demo.ml)
+
+version 0.2, Nov 12th, 2014
+---------------------------
+ o Camlp4 interface
+
+version 0.1, Oct 25th, 2014
+---------------------------
+ o first release

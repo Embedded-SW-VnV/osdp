@@ -1,36 +1,61 @@
-Requires ocaml, csdp (no Debian package)
+Requirements
+============
 
+Compilation of the OSDP libraries requires:
 
-To install Csdp:
-* download it from https://projects.coin-or.org/Csdp/
-  http://www.coin-or.org/download/source/Csdp/Csdp-6.1.1.tgz
-* Apply our patchs (modified install target and enable the use of global
-param.csdp)
-  cd Csdp-6.1.1.tgz
-  for i in path_to_osdp/external/csdp_*.patch; do patch -p0 < $i; done
-* install dependencies:
-  * libatlas-base-dev
-  * libatlas-dev
-  * libblas-dev
-  * gfortran
-* type make, sudo make install
+* OCaml (>= 4.01)
+* ocamlfind
+* Zarith (Opam package zarith),
+* ocplib-simplex (>= 0.5, Opam package ocplib-simplex)
 
+and optionally:
 
-Autoconf :
+* CSDP (Debian package coinor-csdp)
+* MOSEK (no Debian package)
+* SDPA{,-GMP,-DD} (Debian package sdpa for SDPA, no Debian Package for others)
+
+Please note however that the OSDP library is mostly an interface to
+SDP solvers and is quite useless if none of them (CSDP, MOSEK or SDPA)
+is installed.
+
+CSDP
+----
+
+You just need the csdp binary in your PATH. This can for instance be
+done by installing the coinor-csdp package on Debian based systems.
+
+MOSEK
+-----
+
+If you use MOSEK: Don't forget to set both PATH *and* LD_LIBRARY_PATH
+to the directory containing the mosek binaries and libraries.
+
+SDPA{,-GMP,-DD}
+---------------
+
+For SDPA{,-GMP,-DD}, you just need the binary in your PATH. For SDPA,
+this can for instance be done by installing the sdpa package on Debian
+based systems.
+
+SDPA-DD
+-------
+
+If you use SDPA-DD: install the QD library from
+http://crd-legacy.lbl.gov/~dhbailey/mpdist before compiling SDPA-DD.
+
+Compilation and installation
+============================
+
+Configure:
 % autoconf
-
-
-Configure :
 % ./configure
-or
-% ./configure --with-csdp-lib-path=PATH --with-csdp-inc-path=PATH
 
-the default path is /usr/local/
-
-
-To compile:
+Compile:
 % make
 
-
-To install (optional):
+Install:
 # make install
+
+This will install the library in ocamlfind default installation
+directory which may require root privileges depending on ocamlfind
+configuration.

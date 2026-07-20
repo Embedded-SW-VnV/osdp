@@ -1,0 +1,27 @@
+doc
+**/*~
+**/#*#
+autom4te.cache
+config.log
+config.status
+configure
+_build
+osdp.install
+example/*.cm*
+example/*.o
+example/demo
+example/demo_invariant
+example/demo_round
+example/demo_sdp
+example/demo_sdp2
+example/demo_sos
+example/demo_sos2
+example/demo_sos3
+example/demo_sos4
+
+# files with a .in
+Makefile
+src/config.h
+src/csdp_path.ml
+src/sdpa_paths.ml
+src/sdp_default.ml
