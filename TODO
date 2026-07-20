@@ -10,3 +10,127 @@ X ou Z singulier : "X was singular!", "Z was singular!"
 "Lack of progress.  Giving up!" ?
 "Maximum iterations reached." ?
 ** documenter le retour en cas de primal/dual infeasible
+
+---------------------------------------------------------------------------
+SOS basis layer — next steps
+---------------------------------------------------------------------------
+
+* Adding more orthogonal polynomial bases
+
+  The BASIS interface in sosBasis.mli is already fully abstracted: each
+  basis only needs to implement to_classical, prod_to_classical, list_le,
+  list_eq, nth, and refine_basis.  The multivariate case is handled
+  generically via TensorProduct, so adding a univariate basis automatically
+  gives the full multivariate one.
+
+  Candidate bases to add:
+
+  - Chebyshev (1st kind, T_n): good conditioning on [-1,1]^n; recurrence
+    T_0=1, T_1=x, T_{n+1}=2x T_n - T_{n-1}.  prod_to_classical via the
+    identity T_m T_n = (T_{m+n} + T_{|m-n|})/2.
+
+  - Chebyshev (2nd kind, U_n): related to trigonometric moments; U_0=1,
+    U_1=2x, U_{n+1}=2x U_n - U_{n-1}.  Useful for integration weights.
+
+  - Legendre (P_n): orthogonal on [-1,1] w.r.t. Lebesgue measure;
+    (n+1)P_{n+1}=(2n+1)x P_n - n P_{n-1}.  Natural for polynomials on
+    bounded domains without the endpoint singularity of Chebyshev.
+
+  - Laguerre (L_n): orthogonal on [0,∞) w.r.t. e^{-x}; useful for SOS
+    on half-spaces or positive-orthant constraints without lifting to a
+    compact domain.
+
+  For each new basis, the work is:
+  1. Implement the univariate recurrence and the closed-form product rule
+     (or compute it via to_classical + classical multiplication).
+  2. Plug into Registry so the basis_choice type and the dispatch in
+     sos.ml pick it up automatically.
+  3. Add unit tests in test_sosbasis.ml: to_classical sampling,
+     prod_to_classical sampling, enumeration sizes.
+  4. Add residual tests in test_residuals.ml: solve a few SOS problems
+     in the new basis, check coefficient residuals.
+
+  Note: for bases that are not orthonormal, the conditioning of the Gram
+  matrix differs.  The pad_list mechanism already compensates for some of
+  this, but it may be worth tuning default padding per basis.
+
+
+* Interpolation-based encoding of the Gram-matrix linear dependencies
+
+  The current build_cstr function (sos.ml) encodes the SOS-to-LMI reduction
+  by matching polynomial coefficients: for each classical monomial m it
+  produces one linear equality
+
+    sum_{(i,j): prod(v_i,v_j) has monomial m} Q_{ij} = coeff(p, m).
+
+  An alternative is the interpolation (or discretization) approach:
+  choose a set of evaluation points {x_1,...,x_N} (N >= dim of basis vector)
+  and encode the SOS constraint as
+
+    v(x_k)^T Q v(x_k) = p(x_k)   for k=1,...,N
+
+  where v(x_k) is the vector of basis values at x_k.  This yields the same
+  LMI once N is large enough (a Vandermonde-type argument), but the matrix
+  of coefficients V with V_{ki} = basis_i(x_k) is often much better
+  conditioned than the monomial-matching system, especially for Chebyshev
+  or Hermite bases with their natural quadrature points.
+
+  Implementation plan:
+
+  - Add val interpolation_points : int -> int -> float list list to the
+    BASIS interface (returns N >= get_sos_size n d points for n variables
+    and degree d).  For Chebyshev use Chebyshev-Lobatto nodes, for Hermite
+    use Gauss-Hermite quadrature points, for Classical use equispaced or
+    Leja points.
+
+  - Add a new encoding mode (e.g., options.encoding = Monomial | Interpolation)
+    in sos.mli.  In Interpolation mode, build_cstr is replaced by a function
+    that evaluates the basis vector at each interpolation point and builds
+    the Vandermonde constraints directly.
+
+  - The float conversion (currently at the SDP boundary in float_block)
+    remains valid: the basis evaluations are exact rationals (or exact for
+    the algebraic nodes), converted to float only when passed to the SDP
+    solver.
+
+  - Expected benefit: better numerical conditioning for high-degree
+    polynomials and for bases with fast-decaying coefficients (Chebyshev,
+    Hermite), at the cost of slightly larger but denser LMI constraint
+    matrices.
+
+
+* Symbolic encoding and possible uses
+
+  The SOS-to-LMI reduction currently stays exact (in P.Coeff.t, typically
+  rational) up to the float_block call at the SDP boundary.  This structure
+  already supports symbolic instantiation: replacing Scalar.Q with a
+  Scalar.Symbolic module (whose t is an expression AST) and bypassing
+  float_block would produce the LMI constraints as closed-form symbolic
+  expressions rather than float matrices.
+
+  Concretely: introduce a separate entry point
+
+    val encode : options -> polynomial_expr list -> symbolic_sdp
+
+  that runs the full build_cstr / padding pipeline but stops before
+  float_block, returning the constraint matrices as (Monomial.t * Coeff.t)
+  expressions.
+
+  Possible uses:
+
+  - Formal verification certificates: the symbolic LMI can be exported to
+    a proof assistant (Coq/Lean) and the certificate checked inside the
+    prover using exact arithmetic, without trusting the SDP solver output.
+
+  - Parametric SOS: if the polynomial p contains symbolic parameters
+    (e.g., p = x^4 + a*x^2 + b), encode produces the LMI as a function
+    of (a, b).  Sweeping over parameter values then only requires
+    re-evaluating the float_block step, not re-running the full encoding.
+
+  - Code generation: the symbolic SDP can be compiled to efficient C or
+    Fortran code for embedded or online solvers where the problem structure
+    is fixed but the data changes at runtime.
+
+  - SMT-LIB / interval arithmetic export: route the symbolic constraints
+    to an interval arithmetic checker or an SMT solver to get a
+    machine-verified bound without any floating-point rounding errors.
