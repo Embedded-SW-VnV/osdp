@@ -9,7 +9,7 @@
 
 (authors
  "Pierre Roux <pierre.roux@onera.fr>"
- "Pierre-Loïc Garoche <pierre-loic.garoche@ensac.fr>")
+ "Pierre-Loïc Garoche <pierre-loic.garoche@enac.fr>")
 
 (maintainers "Pierre Roux")
 
