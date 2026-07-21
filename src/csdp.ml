@@ -104,10 +104,11 @@ let read_output block_struct filename =
     | None -> default
     | Some ic ->
        let lexbuf = Lexing.from_channel ic in
-       match
+       let parsed =
          try Some (rule Csdp_lexer.token lexbuf)
-         with Parsing.Parse_error -> None
-       with None -> default | Some res -> k res in
+         with Parsing.Parse_error -> None in
+       close_in ic;
+       match parsed with None -> default | Some res -> k res in
   try_parse (filename ^ ".out") Csdp_parser.retobj (fun (ret, pdobj) ->
   if not (SdpRet.is_success ret) then ret, pdobj, ([], [||], []) else
     try_parse filename Csdp_parser.resXyZ (fun (res_X, res_y, res_Z) ->
