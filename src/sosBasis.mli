@@ -130,7 +130,15 @@ module Classical (S : Scalar.S) : BASIS with module Coeff = S
 
     [prod] uses the exact product formula with [Q.t] rationals.
     [to_classical] and [prod_to_classical] compute internally in [Q.t]
-    and convert each coefficient via [S.of_q]. *)
+    and convert each coefficient via [S.of_q].
+
+    [refine_basis] also delegates to the Newton polytope filter, reusing
+    the same index type as {!Classical}. This is an empirically-validated
+    heuristic rather than a proven-tight bound for Hermite indices (whose
+    products reach a range of degrees, unlike a single monomial product),
+    but leaving it as the identity measurably enlarges the retained Gram
+    matrix and can turn a feasible problem into a spurious
+    [PrimalInfeasible] (see [test/test_compose_multiplier.ml]). *)
 module Hermite (S : Scalar.S) : BASIS with module Coeff = S
                                        and type t = Monomial.t
 

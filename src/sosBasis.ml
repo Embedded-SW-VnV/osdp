@@ -508,7 +508,27 @@ module Hermite (S : Scalar.S)
     List.map (fun (mon, q) -> mon, S.of_q q)
       (HermiteUniVariate.tensorize_classical polys_1d)
 
-  let refine_basis elems _classical_support = elems
+  (* NewtonPolytope.filter's exact criterion (2*index lies in the convex
+     hull of the target support) is derived from monomial semantics
+     (x^a * x^b = x^{a+b}, a single reachable exponent per pair) and is not
+     a priori a tight (or even proven-sound) necessary condition for
+     Hermite indices: He_a * He_b reaches a whole range of degrees
+     (|a-b| .. a+b, matching parity), not the single exponent a+b, so an
+     index could in principle be prunable-in-appearance yet still
+     necessary. In practice, applying the same filter here (reusing the
+     index type, which is shared with Classical) measurably shrinks the
+     retained Gram matrix and, on the Compose + domain-multiplier
+     regression this was written for (test/test_compose_multiplier.ml),
+     turns a spurious PrimalInfeasible (using the full unpruned candidate
+     set) into Success/PartialSuccess -- matching what Classical's
+     (pruned) certificate already found on the identical constraints,
+     which is itself the evidence that the unpruned Gram matrix, not a
+     deeper Hermite-specific issue, was the actual cause. Still, this
+     should be read as an empirically-validated heuristic rather than a
+     proven-tight bound; a fully rigorous Hermite reachability analysis
+     (accounting for the wider per-pair degree range) is future work. *)
+  let refine_basis elems classical_support =
+    NewtonPolytope.filter elems classical_support
 end
 
 

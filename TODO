@@ -15,6 +15,48 @@ X ou Z singulier : "X was singular!", "Z was singular!"
 SOS basis layer — next steps
 ---------------------------------------------------------------------------
 
+* FIXED: Compose + domain-multiplier combined with Hermite/
+  HermiteNormalized (test/test_compose_multiplier.ml)
+
+  Putinar-style certificates that combine Compose with a domain-multiplier
+  product (v(f(x)) - lambda(x)*s(x) must be SOS, the shape used by
+  build_positivity_constraint / surapproximate_image in the saimcop
+  project) used to solve fine with Classical while Hermite and
+  HermiteNormalized reported PrimalInfeasible on the exact same
+  constraints. Since SOS-feasibility at a fixed Gram-matrix dimension
+  cannot depend on which basis is used to search for the certificate,
+  this had to be a numerical artifact, not a real infeasibility (Classical
+  succeeding on the identical problem was the witness).
+
+  Isolated repro in test/test_compose_multiplier.ml (part 2); part 1
+  confirms Compose alone and a multiplier product alone each work fine in
+  every basis, so the bug was specific to the combination.
+
+  Root cause, confirmed (not just hypothesised): Classical.refine_basis
+  delegates to NewtonPolytope.filter, pruning candidate Gram-matrix
+  elements down to those that can actually contribute to the target's
+  monomial support; Hermite/HermiteNormalized's refine_basis used to be
+  the identity (no pruning), so for the same nominal degree their Gram
+  matrix was considerably larger/less pruned than Classical's (measured:
+  4 vs 6 elements on the test_compose_multiplier repro). Confirmed by
+  forcing Hermite onto Classical's pruned candidate set via
+  options.monoms, which flipped the same PrimalInfeasible into
+  Success/PartialSuccess; forcing it onto the full unpruned set reproduced
+  the failure. Fix applied: Hermite.refine_basis now also delegates to
+  NewtonPolytope.filter (HermiteNormalized inherits it unchanged).
+
+  Caveat: NewtonPolytope.filter's criterion (2*index in the convex hull of
+  the target support) is derived from monomial semantics (a single
+  reachable exponent per product pair) and is not a priori a tight, or
+  even proven-sound, necessary condition for Hermite indices, whose
+  products reach a whole range of degrees (|a-b| .. a+b, matching parity)
+  rather than a single exponent. It works on every case tested so far
+  (test_compose_multiplier.ml, the saimcop project's examples), but a
+  fully rigorous Hermite-specific reachability analysis remains future
+  work -- watch for cases where this heuristic might not be tight enough
+  (leaving avoidable size in the Gram matrix) or, worse, incorrectly
+  sound (pruning something Hermite genuinely needs).
+
 * Adding more orthogonal polynomial bases
 
   The BASIS interface in sosBasis.mli is already fully abstracted: each
