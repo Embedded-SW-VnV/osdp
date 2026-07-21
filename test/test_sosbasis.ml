@@ -24,13 +24,13 @@ let eval_classical coeffs pt =
     acc +. Osdp.Scalar.Q.to_float c *. xpow
   ) 0. coeffs
 
-(* Physicist's Hermite polynomial H_n(x): H_0=1, H_1=2x,
-   H_{n+1} = 2x H_n - 2n H_{n-1}. *)
+(* Probabilist's (monic) Hermite polynomial He_n(x): He_0=1, He_1=x,
+   He_{n+1} = x He_n - n He_{n-1}. Leading coefficient is always 1. *)
 let rec herm n x =
   match n with
   | 0 -> 1.
-  | 1 -> 2. *. x
-  | _ -> 2. *. x *. herm (n-1) x -. 2. *. float_of_int (n-1) *. herm (n-2) x
+  | 1 -> x
+  | _ -> x *. herm (n-1) x -. float_of_int (n-1) *. herm (n-2) x
 
 let tol = 1e-10
 

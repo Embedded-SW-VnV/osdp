@@ -10,12 +10,19 @@ module M   = Osdp.Monomial
 (* Witness evaluator                                                    *)
 (* ------------------------------------------------------------------ *)
 
-(* Physicist's Hermite polynomial H_n(x). *)
+(* Probabilist's (monic) Hermite polynomial He_n(x): leading coefficient
+   is always 1, unlike the physicist's H_n (leading coefficient 2^n). *)
 let rec herm n x =
   match n with
   | 0 -> 1.
-  | 1 -> 2. *. x
-  | _ -> 2. *. x *. herm (n-1) x -. 2. *. float_of_int (n-1) *. herm (n-2) x
+  | 1 -> x
+  | _ -> x *. herm (n-1) x -. float_of_int (n-1) *. herm (n-2) x
+
+let rec fact_float n = if n <= 1 then 1. else float_of_int n *. fact_float (n-1)
+
+(* E_gamma[He_n^2] = n! under the standard normal measure gamma, so
+   He_n / sqrt(n!) is the orthonormal rescaling used by HermiteNormalized. *)
+let herm_normalized n x = herm n x /. sqrt (fact_float n)
 
 (* Evaluate a basis element m at float point [pt], using eval_dim for
    each dimension.  Handles monomials shorter than [pt] correctly
@@ -30,6 +37,7 @@ let eval_mono eval_dim m pt =
 
 let eval_classical_mono = eval_mono (fun e x -> x ** float_of_int e)
 let eval_hermite_mono   = eval_mono herm
+let eval_hermite_normalized_mono = eval_mono herm_normalized
 
 (* v(pt)^T Q v(pt) — Q is a full symmetric float matrix. *)
 let eval_gram eval_mono (v, q) pt =
@@ -99,19 +107,26 @@ let () =
   let open Sos in
   let x = ??0 and y = ??1 in
   let hermite   = { default with basis = Osdp.SosBasis.Hermite } in
+  let hermite_n = { default with basis = Osdp.SosBasis.HermiteNormalized } in
   let classical = { default with basis = Osdp.SosBasis.Classical } in
 
   (* 1. x^2+1 is SOS (Hermite). *)
   let ret, _, _, _ = solve ~options:hermite Purefeas [x * x + !1.] in
   check_success "Hermite x^2+1 feasible" ret;
+  let ret, _, _, _ = solve ~options:hermite_n Purefeas [x * x + !1.] in
+  check_success "HermiteNormalized x^2+1 feasible" ret;
 
   (* 2. x^2+y^2+1 is SOS (Hermite, multivariate). *)
   let ret, _, _, _ = solve ~options:hermite Purefeas [x*x + y*y + !1.] in
   check_success "Hermite x^2+y^2+1 feasible" ret;
+  let ret, _, _, _ = solve ~options:hermite_n Purefeas [x*x + y*y + !1.] in
+  check_success "HermiteNormalized x^2+y^2+1 feasible" ret;
 
   (* 3. -1 is not SOS in any basis. *)
   let ret, _, _, _ = solve ~options:hermite Purefeas [!(-1.)] in
   check_failure "Hermite -1 infeasible" ret;
+  let ret, _, _, _ = solve ~options:hermite_n Purefeas [!(-1.)] in
+  check_failure "HermiteNormalized -1 infeasible" ret;
 
   (* 4. max t s.t. x^2+1-t SOS (Hermite) → t*=min_x(x^2+1)=1. *)
   let t = make "t" in
@@ -119,15 +134,24 @@ let () =
   check_success "Hermite max-t solve" ret;
   check_value   "Hermite max-t value" v 1.0 tol_outcome;
 
-  (* 5. Same problem in Classical basis → same optimum. *)
+  (* 5. Same problem in Classical / HermiteNormalized bases → same optimum
+     (the basis only changes the internal certificate search, never the
+     feasible set, so all three must agree). *)
   let t = make "t" in
   let ret, (v, _), _, _ = solve ~options:classical (Maximize t) [x*x + !1. - t] in
   check_success "Classical max-t solve" ret;
   check_value   "Classical max-t value" v 1.0 tol_outcome;
 
+  let t = make "t" in
+  let ret, (v, _), _, _ = solve ~options:hermite_n (Maximize t) [x*x + !1. - t] in
+  check_success "HermiteNormalized max-t solve" ret;
+  check_value   "HermiteNormalized max-t value" v 1.0 tol_outcome;
+
   (* 6. x^4+1 (degree-4) is SOS (Hermite). *)
   let ret, _, _, _ = solve ~options:hermite Purefeas [x*x*x*x + !1.] in
   check_success "Hermite x^4+1 feasible" ret;
+  let ret, _, _, _ = solve ~options:hermite_n Purefeas [x*x*x*x + !1.] in
+  check_success "HermiteNormalized x^4+1 feasible" ret;
 
 (* ------------------------------------------------------------------ *)
 (* Tests — Part 2: witness evaluation                                   *)
@@ -137,29 +161,35 @@ let () =
 (* Hermite basis elements require different evaluators.                 *)
 (* ------------------------------------------------------------------ *)
 
-  (* 7. x^2+1: witness in both bases. *)
+  (* 7. x^2+1: witness in all three bases. *)
   let _, _, _, ws_c = solve ~options:classical Purefeas [x*x + !1.] in
   let _, _, _, ws_h = solve ~options:hermite   Purefeas [x*x + !1.] in
-  let w_c = only1 ws_c and w_h = only1 ws_h in
+  let _, _, _, ws_hn = solve ~options:hermite_n Purefeas [x*x + !1.] in
+  let w_c = only1 ws_c and w_h = only1 ws_h and w_hn = only1 ws_hn in
   let pts1d = [[-1.5]; [-1.]; [0.]; [0.7]; [2.]; [-0.3]] in
   check_witness "Classical witness x^2+1" eval_classical_mono w_c pts1d p_x2_1;
   check_witness "Hermite   witness x^2+1" eval_hermite_mono   w_h pts1d p_x2_1;
+  check_witness "HermiteNormalized witness x^2+1" eval_hermite_normalized_mono w_hn pts1d p_x2_1;
 
-  (* 8. x^2+y^2+1: witness in both bases. *)
+  (* 8. x^2+y^2+1: witness in all three bases. *)
   let _, _, _, ws_c = solve ~options:classical Purefeas [x*x + y*y + !1.] in
   let _, _, _, ws_h = solve ~options:hermite   Purefeas [x*x + y*y + !1.] in
-  let w_c = only1 ws_c and w_h = only1 ws_h in
+  let _, _, _, ws_hn = solve ~options:hermite_n Purefeas [x*x + y*y + !1.] in
+  let w_c = only1 ws_c and w_h = only1 ws_h and w_hn = only1 ws_hn in
   let pts2d = [[0.;0.]; [1.;0.]; [0.;1.]; [1.;1.];
                [-0.5; 1.5]; [2.; -1.]; [0.3; 0.7]] in
   check_witness "Classical witness x^2+y^2+1" eval_classical_mono w_c pts2d p_x2y2_1;
   check_witness "Hermite   witness x^2+y^2+1" eval_hermite_mono   w_h pts2d p_x2y2_1;
+  check_witness "HermiteNormalized witness x^2+y^2+1" eval_hermite_normalized_mono w_hn pts2d p_x2y2_1;
 
-  (* 9. x^4+1: witness in both bases. *)
+  (* 9. x^4+1: witness in all three bases. *)
   let _, _, _, ws_c = solve ~options:classical Purefeas [x*x*x*x + !1.] in
   let _, _, _, ws_h = solve ~options:hermite   Purefeas [x*x*x*x + !1.] in
-  let w_c = only1 ws_c and w_h = only1 ws_h in
+  let _, _, _, ws_hn = solve ~options:hermite_n Purefeas [x*x*x*x + !1.] in
+  let w_c = only1 ws_c and w_h = only1 ws_h and w_hn = only1 ws_hn in
   check_witness "Classical witness x^4+1" eval_classical_mono w_c pts1d p_x4_1;
   check_witness "Hermite   witness x^4+1" eval_hermite_mono   w_h pts1d p_x4_1;
+  check_witness "HermiteNormalized witness x^4+1" eval_hermite_normalized_mono w_hn pts1d p_x4_1;
 
   (* 10. check function works on Classical witness (Hermite-unaware). *)
   let ret, _, _, ws = solve ~options:classical Purefeas [x*x*x*x + !1.] in

@@ -27,8 +27,8 @@
           SOS constraints — independent of the chosen basis.}
       {li Polynomial representation layer (this module): abstract {!BASIS}
           interface, parameterised by a scalar type [Coeff : Scalar.S], with
-          concrete {!Classical} and {!Hermite} implementations (and future
-          orthogonal families).}
+          concrete {!Classical}, {!Hermite} and {!HermiteNormalized}
+          implementations (and future orthogonal families).}
       {li SOS-to-SDP encoding layer ([sos.ml]): converts SOS constraints
           into affine SDP constraints.  Instantiates {!Registry} with the
           polynomial's coefficient type, then converts to [float] at the SDP
@@ -120,11 +120,13 @@ module LinExpr (M : MONOMIAL) : LINEXPR with type M.t = M.t
 module Classical (S : Scalar.S) : BASIS with module Coeff = S
                                          and type t = Monomial.t
 
-(** Physicist's Hermite polynomial basis, parameterised by scalar type.
+(** Probabilist's (monic) Hermite polynomial basis, parameterised by
+    scalar type.
 
-    [H_0 = 1], [H_1 = 2x], [H_{n+1} = 2x H_n - 2n H_{n-1}].
-    Basis element [[a0; ...; a_{k-1}]] represents
-    [H_{a0}(x_0) * ... * H_{a_{k-1}}(x_{k-1})].
+    [He_0 = 1], [He_1 = x], [He_{n+1} = x He_n - n He_{n-1}]: leading
+    coefficient is always [1] (unlike the physicist's [H_n], whose leading
+    coefficient is [2^n]). Basis element [[a0; ...; a_{k-1}]] represents
+    [He_{a0}(x_0) * ... * He_{a_{k-1}}(x_{k-1})].
 
     [prod] uses the exact product formula with [Q.t] rationals.
     [to_classical] and [prod_to_classical] compute internally in [Q.t]
@@ -132,11 +134,29 @@ module Classical (S : Scalar.S) : BASIS with module Coeff = S
 module Hermite (S : Scalar.S) : BASIS with module Coeff = S
                                        and type t = Monomial.t
 
+(** Orthonormal rescaling of {!Hermite}: same monic [He_n] family, but
+    [to_classical]/[prod_to_classical] are rescaled so that
+    [E_gamma[He_n^2] = 1] under the standard normal measure [gamma]
+    (since [E_gamma[He_m He_n] = n! delta_mn] for monic [He_n], the
+    rescaling factor is [1 / sqrt(a0! * ... * a_{k-1}!)] for basis index
+    [[a0; ...; a_{k-1}]]).
+
+    These constants are generically irrational, so unlike {!Hermite} this
+    cannot be computed exactly in [Q.t]: the rescaling is applied directly
+    in [float] and lifted into [Coeff.t] via [S.of_float]. Meaningful
+    mostly for [S = Scalar.Float]; instantiating with [S = Scalar.Q] still
+    type-checks but only yields a float-precision approximation of the
+    normalization, not an exact rational. [prod]/[LE] are inherited
+    unchanged (unnormalized) from {!Hermite}, since they are basis-index
+    bookkeeping never consumed by the SOS-to-SDP encoding in [sos.ml]. *)
+module HermiteNormalized (S : Scalar.S) : BASIS with module Coeff = S
+                                                  and type t = Monomial.t
+
 
 (** {2 Named basis selection} *)
 
 (** Runtime selector passed via [options.basis] in [sos.ml]. *)
-type basis_choice = Classical | Hermite
+type basis_choice = Classical | Hermite | HermiteNormalized
 
 (** [Registry(S)] packages the dispatch functions for scalar type [S].
     Instantiated in [sos.ml] with [P.Coeff] so that all arithmetic stays in

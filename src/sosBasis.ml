@@ -27,16 +27,33 @@
 
    2. Polynomial representation layer (this file): an abstract BASIS interface
       parameterised by a scalar type S, with concrete implementations for
-      Classical and Hermite bases (and future families).
+      Classical, Hermite and HermiteNormalized bases (and future families).
 
       [prod_to_classical] and [to_classical] return coefficients of type
       [Coeff.t = S.t], so the precision of the classical expansion is
       determined by the caller.  Hermite's internal arithmetic always uses
-      exact [Q.t] rationals; the conversion to [S.t] happens via [S.of_q]
+      exact [Q.t] rationals (probabilist's, monic convention: He_0 = 1,
+      He_1 = x, He_{n+1} = x He_n - n He_{n-1}, so the leading coefficient
+      never grows with degree); the conversion to [S.t] happens via [S.of_q]
       at the point of output.
+
+      HermiteNormalized rescales Hermite so that E_gamma[He_n^2] = 1 under
+      the standard normal measure gamma (E_gamma[He_m He_n] = n! delta_mn
+      for monic He_n), which requires irrational constants (sqrt of a
+      factorial) that cannot be represented in Q.t: its to_classical/
+      prod_to_classical are computed directly in float and lifted via
+      [S.of_float] instead. Meaningful mostly for S = Scalar.Float;
+      instantiating with S = Scalar.Q still type-checks but only yields a
+      float-precision approximation of the normalization, since exactness
+      is fundamentally unreachable here.
 
       [prod] (product in the same basis) always uses exact [Q.t] rationals
       through [LINEXPR], as the product formula has integer coefficients.
+      HermiteNormalized reuses Hermite's (unnormalized) [prod]/[LE]
+      unchanged: they are basis-index bookkeeping only, never consumed by
+      the SOS-to-SDP encoding below (which only calls [prod_to_classical],
+      [list_le]/[list_eq] and [refine_basis]), so leaving them at the
+      unnormalized scale is harmless in practice.
 
    3. SOS-to-SDP encoding layer (sos.ml): uses only the abstract BASIS
       interface, so changing the basis never requires touching the encoding.
@@ -312,30 +329,28 @@ module HermiteUniVariate = struct
     for i = 2 to k do r := Q.mul !r (Q.of_int i) done;
     !r
 
-  let pow2 k =
-    let r = ref Q.one in
-    for _ = 1 to k do r := Q.add !r !r done;
-    !r
-
-  (** H_m * H_n in the Hermite basis, exact rational coefficients. *)
+  (** H_m * H_n in the Hermite basis, exact rational coefficients.
+      Probabilist's (monic) convention:
+      He_m He_n = sum_{k=0}^{min(m,n)} k! C(m,k) C(n,k) He_{m+n-2k}. *)
   let prod_1d m n =
     let lo = min m n in
     let result = ref [] in
     for k = 0 to lo do
-      let c = Q.mul (Q.mul (binom m k) (binom n k))
-                    (Q.mul (factorial k) (pow2 k)) in
+      let c = Q.mul (Q.mul (binom m k) (binom n k)) (factorial k) in
       if not (Q.equal c Q.zero) then
         result := (c, m + n - 2 * k) :: !result
     done;
     List.sort (fun (_, a) (_, b) -> Int.compare b a) !result
 
-  (** H_n(x) as a classical polynomial with exact Q.t coefficients.
-      Recurrence: H_{k+1} = 2x H_k - 2k H_{k-1}. *)
+  (** He_n(x) as a classical polynomial with exact Q.t coefficients.
+      Probabilist's convention, monic: leading coefficient is always 1
+      (no growth with degree), unlike the physicist's H_n (leading
+      coefficient 2^n). Recurrence: He_{k+1} = x He_k - k He_{k-1}. *)
   let h1d_to_classical n =
-    let mul2x p =
+    let mulx p =
       let len = Array.length p in
       let r = Array.make (len + 1) Q.zero in
-      for i = 0 to len - 1 do r.(i + 1) <- Q.mul (Q.of_int 2) p.(i) done;
+      for i = 0 to len - 1 do r.(i + 1) <- p.(i) done;
       r
     in
     let sub_smul s p1 p2 =
@@ -347,12 +362,12 @@ module HermiteUniVariate = struct
     in
     let rec aux prev curr k =
       if k >= n then curr
-      else aux curr (sub_smul (Q.of_int (2 * k)) (mul2x curr) prev) (k + 1)
+      else aux curr (sub_smul (Q.of_int k) (mulx curr) prev) (k + 1)
     in
     match n with
     | 0 -> [| Q.one |]
-    | 1 -> [| Q.zero; Q.of_int 2 |]
-    | _ -> aux [| Q.one |] [| Q.zero; Q.of_int 2 |] 1
+    | 1 -> [| Q.zero; Q.one |]
+    | _ -> aux [| Q.one |] [| Q.zero; Q.one |] 1
 
   (** Multiply two univariate classical polynomials (Q.t arrays). *)
   let poly1d_mult p1 p2 =
@@ -419,7 +434,7 @@ module Hermite (S : Scalar.S)
   let pp names fmt m =
     let names_a = Array.of_list names in
     let l = Monomial.to_list m in
-    if l = [] then Format.fprintf fmt "H_0"
+    if l = [] then Format.fprintf fmt "He_0"
     else begin
       let x_char = Char.code 'x' in
       List.iteri (fun i ai ->
@@ -427,7 +442,7 @@ module Hermite (S : Scalar.S)
           if i < Array.length names_a then names_a.(i)
           else String.make 1 (Char.chr (x_char + i))
         in
-        Format.fprintf fmt "H_%d(%s)" ai name
+        Format.fprintf fmt "He_%d(%s)" ai name
       ) l
     end
 
@@ -498,28 +513,77 @@ end
 
 
 (* ===================================================================== *)
+(*  Orthonormal Hermite polynomial basis (float-computed)                 *)
+(* ===================================================================== *)
+
+(* Same monic He_n family as Hermite(S), rescaled so that
+   E_gamma[He_n(x)^2] = 1 under the standard normal measure gamma
+   (E_gamma[He_m He_n] = n! delta_mn for monic He_n, so the rescaling
+   factor for a single variable is 1/sqrt(n!); for a multivariate index
+   [a0;...;a_{k-1}] it is the product 1/sqrt(a0! * ... * a_{k-1}!)).
+
+   These constants are generically irrational, so unlike Hermite(S) this
+   cannot be represented exactly in Q.t through the LINEXPR/prod_to_classical
+   machinery: the rescaling is applied directly in float, then lifted into
+   S.t via S.of_float. This makes the basis meaningful mostly for
+   S = Scalar.Float; instantiating with S = Scalar.Q still type-checks
+   (S.of_float exists for every Scalar.S) but only produces a
+   float-precision approximation of the normalization rather than an
+   exact rational, since exactness is fundamentally unreachable here. *)
+module HermiteNormalized (S : Scalar.S)
+    : BASIS with module Coeff = S and type t = Monomial.t = struct
+
+  module Base = Hermite (S)
+  include Base
+  (* prod/LE are inherited unchanged from Base (unnormalized): they are
+     basis-index bookkeeping only, never consumed by the SOS-to-SDP
+     encoding in sos.ml (which only calls prod_to_classical, list_le/
+     list_eq and refine_basis), so leaving them at the unnormalized scale
+     is harmless in practice. Only to_classical/prod_to_classical (the
+     ones actually consumed downstream) are overridden below. *)
+
+  let norm_1d n = 1. /. sqrt (Q.to_float (HermiteUniVariate.factorial n))
+
+  let norm m =
+    List.fold_left (fun acc ai -> acc *. norm_1d ai) 1. (Monomial.to_list m)
+
+  let to_classical m =
+    let scale = S.of_float (norm m) in
+    List.map (fun (mon, c) -> mon, S.mult scale c) (Base.to_classical m)
+
+  let prod_to_classical a b =
+    let scale = S.of_float (norm a *. norm b) in
+    List.map (fun (mon, c) -> mon, S.mult scale c) (Base.prod_to_classical a b)
+end
+
+
+(* ===================================================================== *)
 (*  Named basis selection                                                 *)
 (* ===================================================================== *)
 
-type basis_choice = Classical | Hermite
+type basis_choice = Classical | Hermite | HermiteNormalized
   (* Future: | Chebyshev | Legendre | Bernstein | Laguerre
              | Custom of (module BASIS) *)
 
 (** [Registry(S)] packages the basis-dispatch functions for scalar type [S].
     Instantiate once per [Make(P)] with [S = P.Coeff]. *)
 module Registry (S : Scalar.S) = struct
-  module C = Classical (S)
-  module H = Hermite   (S)
+  module C  = Classical (S)
+  module H  = Hermite   (S)
+  module HN = HermiteNormalized (S)
 
   let prod_to_classical_fn = function
-    | Classical -> C.prod_to_classical
-    | Hermite   -> H.prod_to_classical
+    | Classical         -> C.prod_to_classical
+    | Hermite           -> H.prod_to_classical
+    | HermiteNormalized -> HN.prod_to_classical
 
   let list_fns = function
-    | Classical -> C.list_le, C.list_eq
-    | Hermite   -> H.list_le, H.list_eq
+    | Classical         -> C.list_le, C.list_eq
+    | Hermite           -> H.list_le, H.list_eq
+    | HermiteNormalized -> HN.list_le, HN.list_eq
 
   let refine_basis_fn = function
-    | Classical -> C.refine_basis
-    | Hermite   -> H.refine_basis
+    | Classical         -> C.refine_basis
+    | Hermite           -> H.refine_basis
+    | HermiteNormalized -> HN.refine_basis
 end
