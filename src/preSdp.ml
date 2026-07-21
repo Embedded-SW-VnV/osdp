@@ -162,22 +162,20 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
         List.fold_left
           (fun m (i, f) -> IntMap.add i (S.of_float f) m)
           IntMap.empty res_x in
-      Format.eprintf "DEBUG res_x keys: @[%a@]@."
-        (fun fmt m -> IntMap.iter (fun i _ -> Format.fprintf fmt "%d " i) m) res_x;
-      Format.eprintf "DEBUG to_replace: @[%a@]@."
-        (fun fmt m -> IntMap.iter (fun i (b, v) ->
-             Format.fprintf fmt "@[%d = %a + [%a]@]@ " i S.pp b
-               (fun fmt v -> List.iter (fun (j,c) -> Format.fprintf fmt "(%d,%a) " j S.pp c) v) v)
-             m) to_replace;
+      (* A variable eliminated above (in [to_replace]) can be defined in
+         terms of another variable that itself never ends up appearing in
+         any surviving constraint or the objective once fully reduced (a
+         common occurrence for e.g. odd-degree SOS coefficients that
+         decouple from everything in low-dimensional problems): such a
+         variable is never sent to the solver and so has no entry in
+         [res_x]. It is then genuinely free/unconstrained by the actual
+         problem solved, so any value is a valid witness; 0 is used. *)
+      let find_or_zero i m = try IntMap.find i m with Not_found -> S.zero in
       let res_x' =
         IntMap.map
           (fun (b, v) ->
            List.fold_left
-             (fun b (i, c) ->
-                (try S.(b + c * (IntMap.find i res_x))
-                 with Not_found ->
-                   Format.eprintf "DEBUG MISSING var %d@." i;
-                   raise Not_found))
+             (fun b (i, c) -> S.(b + c * (find_or_zero i res_x)))
              b v)
           to_replace in
       IntMap.bindings
