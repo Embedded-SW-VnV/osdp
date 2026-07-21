@@ -162,11 +162,22 @@ module Make (S : Scalar.S) : S with module Scalar = S = struct
         List.fold_left
           (fun m (i, f) -> IntMap.add i (S.of_float f) m)
           IntMap.empty res_x in
+      Format.eprintf "DEBUG res_x keys: @[%a@]@."
+        (fun fmt m -> IntMap.iter (fun i _ -> Format.fprintf fmt "%d " i) m) res_x;
+      Format.eprintf "DEBUG to_replace: @[%a@]@."
+        (fun fmt m -> IntMap.iter (fun i (b, v) ->
+             Format.fprintf fmt "@[%d = %a + [%a]@]@ " i S.pp b
+               (fun fmt v -> List.iter (fun (j,c) -> Format.fprintf fmt "(%d,%a) " j S.pp c) v) v)
+             m) to_replace;
       let res_x' =
         IntMap.map
           (fun (b, v) ->
            List.fold_left
-             (fun b (i, c) -> S.(b + c * (IntMap.find i res_x)))
+             (fun b (i, c) ->
+                (try S.(b + c * (IntMap.find i res_x))
+                 with Not_found ->
+                   Format.eprintf "DEBUG MISSING var %d@." i;
+                   raise Not_found))
              b v)
           to_replace in
       IntMap.bindings
