@@ -1,7 +1,6 @@
 (library
  (name osdp)
  (public_name osdp)
- (modules (:standard \ myocamlbuild osdp_top))
  (libraries unix zarith ocplib-simplex)
  (foreign_stubs
   (language c)
