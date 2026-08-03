@@ -141,6 +141,52 @@ SOS basis layer — next steps
     matrices.
 
 
+* Sampling-based encoding of the Gram-matrix linear dependencies
+
+  Related to the interpolation-based encoding above (deterministic
+  evaluation points), a further alternative is a genuinely random
+  sampling-based construction: draw N sample points {x_1,...,x_N} from a
+  probability distribution matched to the chosen basis's orthogonality
+  measure, and build the SOS constraint from the sampled system
+
+    v(x_k)^T Q v(x_k) = p(x_k)   for k=1,...,N
+
+  exactly as in the interpolation approach, but with x_k drawn i.i.d.
+  rather than placed at fixed quadrature nodes. This trades the
+  determinism/tightness of quadrature nodes for scalability to higher
+  dimensions (tensor-product quadrature node counts grow badly with the
+  number of variables, while i.i.d. sampling does not).
+
+  The sampling distribution should follow the basis's own weight
+  function so that the samples are "typical" for that basis:
+
+  - Classical (monomial) basis: no canonical weight -- uniform (or an
+    arcsine-type distribution on [-1,1]^n) is a reasonable default.
+  - Hermite / HermiteNormalized: Gaussian N(0,1)^n, matching the weight
+    e^{-x^2} the Hermite polynomials are orthogonal against.
+  - Chebyshev (1st kind, once added): arcsine distribution on [-1,1]
+    (density 1/(pi*sqrt(1-x^2))), matching the Chebyshev weight.
+  - Legendre (once added): uniform on [-1,1].
+  - Laguerre (once added): Exponential(1) on [0,infty), matching e^{-x}.
+
+  Implementation plan:
+
+  - Add val sample_distribution : unit -> (unit -> float) to the BASIS
+    interface (or a registry keyed on basis_choice), returning a sampler
+    for the basis's natural univariate measure; multivariate samples are
+    then n independent draws (tensor-product measure), consistent with
+    how TensorProduct already builds the multivariate basis from
+    univariate ones.
+  - Extend options.encoding (see interpolation-based encoding above) with
+    a Sampling variant carrying the sample count N and an optional seed
+    for reproducibility.
+  - Reuse the same constraint-building code path as the interpolation
+    mode; only the choice of {x_k} differs.
+  - Needs a rank/conditioning check after sampling (or a resampling
+    retry): unlike quadrature nodes, there is no a priori guarantee that
+    N random points give a full-rank system.
+
+
 * Symbolic encoding and possible uses
 
   The SOS-to-LMI reduction currently stays exact (in P.Coeff.t, typically
@@ -176,3 +222,50 @@ SOS basis layer — next steps
   - SMT-LIB / interval arithmetic export: route the symbolic constraints
     to an interval arithmetic checker or an SMT solver to get a
     machine-verified bound without any floating-point rounding errors.
+
+
+* Export the generated SDP problem in an open format
+
+  Currently the constraint matrices built by build_cstr / float_block are
+  handed directly, in-process, to whichever solver backend is selected
+  (Csdp, Sdpa, Mosek, ...); there is no way to inspect or reuse the
+  generated SDP outside of osdp itself.
+
+  Add an export path that serializes the final (post-padding,
+  post-float_block) SDP -- the block-diagonal LMI data, the objective
+  vector, and any linear equality/inequality constraints -- to a
+  standard open format instead of (or in addition to) feeding it
+  straight to a solver:
+
+  - SDPA sparse format (.dat-s): the de facto text format understood by
+    CSDP, SDPA, and most other SDP solvers; simplest to produce since
+    osdp's internal block/sparse-matrix representation is already close
+    to it.
+  - Alternatively/additionally, the more modern CBF (Conic Benchmark
+    Format) used by e.g. Mosek and the conic-benchmark library, which
+    also supports mixing SDP cones with LP/SOCP cones and would be
+    better suited if osdp ever mixes cone types.
+
+  Suggested entry point:
+
+    val export : format -> options -> polynomial_expr list -> out_channel -> unit
+
+  where format = Sdpa | Cbf, running through the same build_cstr /
+  padding pipeline used before calling a solver, but writing the
+  resulting blocks to the given channel instead of invoking Csdp/Sdpa
+  in-process.
+
+  Benefits:
+
+  - Reproducibility/debugging: a solver-independent problem instance can
+    be replayed with a different solver or solver version without going
+    back through osdp.
+  - Benchmarking: generated problems can be fed to SDP benchmark suites
+    (SDPLIB-style collections) or compared across solver versions.
+  - Interop: problems built with osdp's polynomial/SOS frontend become
+    usable from other tools that consume SDPA/CBF but have no SOS layer
+    of their own.
+
+  Independent of the encoding work above (Monomial / Interpolation /
+  Sampling) -- whichever encoding produces the LMI blocks, the same
+  export step can serialize the result.
