@@ -1,0 +1,4 @@
+(library
+ (name osdp_trace)
+ (public_name osdp.trace)
+ (libraries unix))

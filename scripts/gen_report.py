@@ -1,75 +1,111 @@
 #!/usr/bin/env python3
-"""Generate report/full_test_comparison.html from a full_matrix.csv
-produced by scripts/full_test_comparison.sh (osdp's test/matrix_runner.exe
-and saimcop's residual_probe.native, concatenated).
+"""Render an accumulated osdp.trace log (JSON Lines, see Osdp_trace.record)
+as a self-contained, filterable/sortable HTML report.
 
-Usage: gen_report.py <input.csv> <output.html>
+Schema-agnostic: the set of columns is whatever keys are present across
+the rows of the input file(s), a union not a fixed layout -- any project
+logging to the trace file can add its own columns (an example name, a
+box, a confidence level, ...) alongside the common ones (solver, basis,
+pad, ...) and they render as one extra column, no code change needed here.
+A few well-known column names get extra treatment when present: "success"
+(a sound/unsound badge), any column whose name contains "residual"
+(magnitude-coloured, scientific notation), any column whose name contains
+"time" (rendered in milliseconds when numeric).
+
+Usage: gen_report.py <input.jsonl> [<input2.jsonl> ...] <output.html>
 """
-import csv
 import html
+import json
 import math
 import sys
 from datetime import datetime, timezone
 
+PREFERRED_COLUMNS = [
+    "timestamp", "suite", "solver", "basis", "pad",
+    "success", "sdpret", "max_residual", "time_sec",
+]
 
-def read_rows(path):
-    with open(path, newline="") as f:
-        reader = csv.DictReader(f, delimiter=";")
-        return list(reader)
+
+def read_rows(paths):
+    rows = []
+    for path in paths:
+        with open(path) as f:
+            for lineno, line in enumerate(f, 1):
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError as e:
+                    print(f"{path}:{lineno}: skipping malformed line: {e}", file=sys.stderr)
+                    continue
+                rows.append({k: "" if v is None else str(v) for k, v in obj.items()})
+    return rows
+
+
+def column_order(rows):
+    all_keys = set()
+    for r in rows:
+        all_keys.update(r.keys())
+    ordered = [c for c in PREFERRED_COLUMNS if c in all_keys]
+    remaining = sorted(all_keys - set(ordered))
+    return ordered + remaining
 
 
 def as_float(s):
     try:
-        return float(s)
+        v = float(s)
+        return None if math.isnan(v) else v
     except (TypeError, ValueError):
         return None
 
 
-def fmt_residual(s):
-    v = as_float(s)
-    if v is None or math.isnan(v):
-        return "&mdash;"
-    return f"{v:.2e}"
+def is_residual_col(col):
+    return "residual" in col.lower()
 
 
-def fmt_time(s):
-    v = as_float(s)
-    if v is None:
-        return "&mdash;"
-    return f"{v * 1000:.1f} ms"
+def is_time_col(col):
+    return "time" in col.lower()
 
 
-def residual_class(s):
-    v = as_float(s)
-    if v is None or math.isnan(v):
-        return ""
-    if v <= 1e-9:
-        return "res-good"
-    if v <= 1e-4:
-        return "res-ok"
-    return "res-bad"
+def is_bool_str(s):
+    return s.strip().lower() in ("true", "false")
 
 
-def row_html(r):
-    success = r["success"].strip().lower() == "true"
-    badge = (
-        '<span class="badge badge-ok">sound</span>'
-        if success
-        else '<span class="badge badge-bad">unsound</span>'
+def fmt_cell(col, value):
+    if col == "success":
+        ok = value.strip().lower() == "true"
+        cls = "badge-ok" if ok else "badge-bad"
+        label = "sound" if ok else "unsound"
+        return f'<span class="badge {cls}">{label}</span>', ""
+    if is_residual_col(col):
+        v = as_float(value)
+        if v is None:
+            return "&mdash;" if value == "" else html.escape(value), ""
+        cls = "res-good" if v <= 1e-9 else "res-ok" if v <= 1e-4 else "res-bad"
+        return f"{v:.2e}", f"num {cls}"
+    if is_time_col(col):
+        v = as_float(value)
+        if v is None:
+            return html.escape(value), ""
+        return f"{v * 1000:.1f} ms", "num"
+    v = as_float(value)
+    if v is not None and not is_bool_str(value):
+        return html.escape(value), "num"
+    return html.escape(value), ""
+
+
+def row_html(row, columns):
+    data_attrs = "".join(
+        f' data-{c}="{html.escape(row.get(c, ""))}"'
+        for c in ("suite", "solver", "basis", "pad") if c in columns
     )
-    rescls = residual_class(r["max_residual"])
-    return f"""
-      <tr data-suite="{html.escape(r['suite'])}" data-solver="{html.escape(r['solver'])}"
-          data-basis="{html.escape(r['basis'])}" data-pad="{html.escape(r['pad'])}">
-        <td>{html.escape(r['suite'])}</td>
-        <td>{html.escape(r['solver'])}</td>
-        <td>{html.escape(r['basis'])}</td>
-        <td class="num">{html.escape(r['pad'])}</td>
-        <td>{badge}</td>
-        <td class="muted">{html.escape(r['sdpret'])}</td>
-        <td class="num {rescls}">{fmt_residual(r['max_residual'])}</td>
-        <td class="num">{fmt_time(r['time_sec'])}</td>
-      </tr>"""
+    cells = []
+    for c in columns:
+        text, cls = fmt_cell(c, row.get(c, ""))
+        cls_attr = f' class="{cls}"' if cls else ""
+        cells.append(f"<td{cls_attr}>{text}</td>")
+    return f"      <tr{data_attrs}>\n        " + "\n        ".join(cells) + "\n      </tr>"
 
 
 def stat_tile(label, value, tone=""):
@@ -81,12 +117,32 @@ def stat_tile(label, value, tone=""):
       </div>"""
 
 
+def build_stats(rows):
+    tiles = [stat_tile("Rows", len(rows))]
+    if any("success" in r for r in rows):
+        sound = sum(1 for r in rows if r.get("success", "").strip().lower() == "true")
+        unsound = sum(1 for r in rows if "success" in r) - sound
+        tiles.append(stat_tile("Sound", sound, tone="good"))
+        tiles.append(stat_tile("Unsound", unsound, tone=("bad" if unsound else "")))
+    residual_cols = set()
+    for r in rows:
+        residual_cols.update(c for c in r if is_residual_col(c))
+    residuals = [v for v in (as_float(r.get(c)) for r in rows for c in residual_cols) if v is not None]
+    if residuals:
+        tiles.append(stat_tile("Worst residual", f"{max(residuals):.2e}", tone="accent"))
+    for label, key in (("Suites", "suite"), ("Solvers", "solver"), ("Bases", "basis")):
+        vals = {r[key] for r in rows if key in r}
+        if vals:
+            tiles.append(stat_tile(label, len(vals)))
+    return "".join(tiles)
+
+
 PAGE = """<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OSDP solver &times; basis &times; padding matrix</title>
+<title>OSDP trace report</title>
 <style>
   :root {{
     color-scheme: light dark;
@@ -105,17 +161,12 @@ PAGE = """<!doctype html>
   }}
   @media (prefers-color-scheme: dark) {{
     :root {{
-      --bg: #101513;
-      --panel: #161d1a;
-      --fg: #e6ece9;
-      --muted: #93a39c;
-      --border: #26302b;
-      --row-alt: #1b2320;
-      --accent: #35b3a6;
-      --accent-fg: #06211e;
-      --good: #4fd18b;      --good-bg: #113325;
-      --bad:  #f2857a;      --bad-bg:  #3a1613;
-      --warn: #e3b23c;      --warn-bg: #382a0c;
+      --bg: #101513; --panel: #161d1a; --fg: #e6ece9; --muted: #93a39c;
+      --border: #26302b; --row-alt: #1b2320;
+      --accent: #35b3a6; --accent-fg: #06211e;
+      --good: #4fd18b; --good-bg: #113325;
+      --bad: #f2857a; --bad-bg: #3a1613;
+      --warn: #e3b23c; --warn-bg: #382a0c;
       --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.35);
     }}
   }}
@@ -145,7 +196,7 @@ PAGE = """<!doctype html>
     margin: 0; padding: 2.5rem 1.25rem 4rem;
     -webkit-font-smoothing: antialiased;
   }}
-  .wrap {{ max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }}
+  .wrap {{ max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }}
   .masthead {{ display: flex; flex-direction: column; gap: 0.5rem; }}
   .eyebrow {{
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -157,7 +208,7 @@ PAGE = """<!doctype html>
     font-size: 1.55rem; font-weight: 600; margin: 0; text-wrap: balance;
     letter-spacing: -0.01em;
   }}
-  .subtitle {{ color: var(--muted); font-size: 0.92rem; max-width: 62ch; line-height: 1.5; }}
+  .subtitle {{ color: var(--muted); font-size: 0.92rem; max-width: 68ch; line-height: 1.5; }}
   .subtitle code {{
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
     background: var(--row-alt); padding: 0.05rem 0.35rem; border-radius: 4px; font-size: 0.85em;
@@ -213,7 +264,6 @@ PAGE = """<!doctype html>
     font-variant-numeric: tabular-nums;
     font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }}
-  td.muted {{ color: var(--muted); }}
   .res-good {{ color: var(--good); }}
   .res-ok {{ color: var(--warn); }}
   .res-bad {{ color: var(--bad); font-weight: 700; }}
@@ -231,15 +281,14 @@ PAGE = """<!doctype html>
 <body>
 <div class="wrap">
   <div class="masthead">
-    <div class="eyebrow">osdp &middot; regression matrix</div>
-    <h1>solver &times; basis &times; padding</h1>
+    <div class="eyebrow">osdp.trace &middot; accumulated log</div>
+    <h1>osdp trace report</h1>
     <div class="subtitle">
-      Every combination of SDP backend, polynomial basis and padding setting,
-      run against osdp's own test suite and the downstream <code>saimcop</code>
-      project. Generated {generated_at} by
-      <code>scripts/full_test_comparison.sh</code> (<code>make fulltest_comparison</code>).
-      &ldquo;Sound&rdquo; means the solver reported success (or partial success)
-      <em>and</em> the returned witness's exact coefficient residual is below 1e-4.
+      {nb_sources} source log(s), {nb_rows} accumulated rows. Generated {generated_at}.
+      Columns are whatever fields the logging project chose to record
+      (see <code>Osdp_trace.record</code>) &mdash; this report doesn't assume a
+      fixed schema, so a downstream project's own context columns show up
+      automatically alongside osdp's.
     </div>
   </div>
 
@@ -247,43 +296,25 @@ PAGE = """<!doctype html>
   </div>
 
   <div class="panel">
-    <div class="controls">
-      <div class="field"><label for="f-suite">Suite</label>
-        <select id="f-suite"><option value="">all</option></select></div>
-      <div class="field"><label for="f-solver">Solver</label>
-        <select id="f-solver"><option value="">all</option></select></div>
-      <div class="field"><label for="f-basis">Basis</label>
-        <select id="f-basis"><option value="">all</option></select></div>
-      <div class="field"><label for="f-pad">Padding</label>
-        <select id="f-pad"><option value="">all</option></select></div>
+    <div class="controls">{filters}
     </div>
     <div class="table-scroll">
       <table id="t">
         <thead>
-          <tr>
-            <th data-k="suite">Suite</th>
-            <th data-k="solver">Solver</th>
-            <th data-k="basis">Basis</th>
-            <th data-k="pad">Pad</th>
-            <th data-k="sound">Sound</th>
-            <th data-k="sdpret">SDP status</th>
-            <th data-k="residual">Max residual</th>
-            <th data-k="time">Time</th>
+          <tr>{header_cells}
           </tr>
         </thead>
-        <tbody>{rows}
+        <tbody>
+{rows}
         </tbody>
       </table>
     </div>
   </div>
 
   <footer>
-    Residual is an exact reconstruction: v(x)<sup>T</sup>Qv(x) is expanded in the
-    classical monomial basis via each basis's rational <code>prod_to_classical</code>
-    and compared coefficient-by-coefficient against the actual solved constraint
-    polynomial &mdash; not a floating-point sampling estimate. Time is wall-clock
-    (<code>Unix.gettimeofday</code>), so it is comparable across in-process
-    (Csdp, Mosek) and subprocess-based (Sdpa, Sdpa-Gmp, Sdpa-Dd) backends alike.
+    Rows accumulate across runs and across whichever projects log to this
+    file; nothing is ever rewritten in place, so this report reflects the
+    full history in the source log(s), not just the latest run.
   </footer>
 </div>
 <script>
@@ -292,40 +323,32 @@ PAGE = """<!doctype html>
   var tbody = table.tBodies[0];
   var rows = Array.prototype.slice.call(tbody.rows);
 
-  function uniq(key) {{
-    var s = new Set();
-    rows.forEach(function (r) {{ s.add(r.dataset[key]); }});
-    return Array.from(s).sort();
-  }}
-  function fillSelect(id, key) {{
-    var sel = document.getElementById(id);
-    uniq(key).forEach(function (v) {{
+  ['suite', 'solver', 'basis', 'pad'].forEach(function (key) {{
+    var sel = document.getElementById('f-' + key);
+    if (!sel) return;
+    var vals = new Set();
+    rows.forEach(function (r) {{ if (r.dataset[key] !== undefined) vals.add(r.dataset[key]); }});
+    Array.from(vals).sort().forEach(function (v) {{
       var o = document.createElement('option');
       o.value = v; o.textContent = v;
       sel.appendChild(o);
     }});
-  }}
-  fillSelect('f-suite', 'suite');
-  fillSelect('f-solver', 'solver');
-  fillSelect('f-basis', 'basis');
-  fillSelect('f-pad', 'pad');
+    sel.addEventListener('change', applyFilter);
+  }});
 
   function applyFilter() {{
-    var fs = document.getElementById('f-suite').value;
-    var fo = document.getElementById('f-solver').value;
-    var fb = document.getElementById('f-basis').value;
-    var fp = document.getElementById('f-pad').value;
+    var filters = {{}};
+    ['suite', 'solver', 'basis', 'pad'].forEach(function (key) {{
+      var sel = document.getElementById('f-' + key);
+      if (sel) filters[key] = sel.value;
+    }});
     rows.forEach(function (r) {{
-      var show = (!fs || r.dataset.suite === fs)
-        && (!fo || r.dataset.solver === fo)
-        && (!fb || r.dataset.basis === fb)
-        && (!fp || r.dataset.pad === fp);
+      var show = Object.keys(filters).every(function (k) {{
+        return !filters[k] || r.dataset[k] === filters[k];
+      }});
       r.style.display = show ? '' : 'none';
     }});
   }}
-  ['f-suite', 'f-solver', 'f-basis', 'f-pad'].forEach(function (id) {{
-    document.getElementById(id).addEventListener('change', applyFilter);
-  }});
 
   var sortDir = {{}};
   table.tHead.querySelectorAll('th').forEach(function (th, idx) {{
@@ -353,36 +376,31 @@ PAGE = """<!doctype html>
 
 
 def main():
-    if len(sys.argv) != 3:
+    if len(sys.argv) < 3:
         print(__doc__, file=sys.stderr)
         sys.exit(1)
-    in_csv, out_html = sys.argv[1], sys.argv[2]
-    rows = read_rows(in_csv)
+    *in_paths, out_html = sys.argv[1:]
+    rows = read_rows(in_paths)
+    columns = column_order(rows)
 
-    total = len(rows)
-    sound = sum(1 for r in rows if r["success"].strip().lower() == "true")
-    unsound = total - sound
-    residuals = [v for v in (as_float(r["max_residual"]) for r in rows)
-                 if v is not None and not math.isnan(v)]
-    worst = max(residuals) if residuals else float("nan")
-    solvers = sorted({r["solver"] for r in rows})
-    bases = sorted({r["basis"] for r in rows})
-
-    stats = "".join([
-        stat_tile("Configurations", total),
-        stat_tile("Sound", sound, tone="good"),
-        stat_tile("Unsound", unsound, tone=("bad" if unsound else "")),
-        stat_tile("Worst residual", fmt_residual(str(worst)), tone="accent"),
-        stat_tile("Solvers", len(solvers)),
-        stat_tile("Bases", len(bases)),
-    ])
-
-    rows_html = "".join(row_html(r) for r in rows)
+    filters = "".join(
+        f"""
+      <div class="field"><label for="f-{c}">{c.capitalize()}</label>
+        <select id="f-{c}"><option value="">all</option></select></div>"""
+        for c in ("suite", "solver", "basis", "pad") if c in columns
+    )
+    header_cells = "".join(f'\n            <th data-k="{c}">{html.escape(c)}</th>' for c in columns)
+    rows_html = "\n".join(row_html(r, columns) for r in rows)
+    stats = build_stats(rows)
     generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
-    page = PAGE.format(rows=rows_html, stats=stats, generated_at=generated_at)
+
+    page = PAGE.format(
+        rows=rows_html, stats=stats, filters=filters, header_cells=header_cells,
+        generated_at=generated_at, nb_rows=len(rows), nb_sources=len(in_paths),
+    )
     with open(out_html, "w") as f:
         f.write(page)
-    print(f"wrote {out_html} ({total} rows, {sound} sound, {unsound} unsound)")
+    print(f"wrote {out_html} ({len(rows)} rows from {len(in_paths)} source(s), {len(columns)} columns)")
 
 
 if __name__ == "__main__":

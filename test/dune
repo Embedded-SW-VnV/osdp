@@ -2,6 +2,10 @@
  (names test_hermite test_sosbasis test_residuals test_compose_multiplier)
  (libraries osdp))
 
+(tests
+ (names test_trace)
+ (libraries osdp.trace unix))
+
 (executable
  (name matrix_runner)
- (libraries osdp unix))
+ (libraries osdp osdp.trace unix))

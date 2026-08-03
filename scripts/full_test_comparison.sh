@@ -1,7 +1,10 @@
 #!/bin/sh
 # Full solver x basis x padding comparison, across both osdp's own test
-# suite and a real downstream project (saimcop). Regenerates
-# report/full_matrix.csv and report/full_test_comparison.html.
+# suite and a real downstream project (saimcop). Both write rows to the
+# same accumulating osdp.trace log (report/trace.jsonl): nothing is ever
+# truncated, so re-running this script builds up history rather than
+# replacing it. Regenerates report/full_test_comparison.html from the
+# full accumulated log each time.
 #
 # Usage: scripts/full_test_comparison.sh   (or `make fulltest_comparison`)
 #
@@ -29,7 +32,7 @@ fi
 
 REPORT_DIR="$OSDP_DIR/report"
 mkdir -p "$REPORT_DIR"
-CSV="$REPORT_DIR/full_matrix.csv"
+LOG="$REPORT_DIR/trace.jsonl"
 
 echo "== [1/5] refreshing configure (solver autodetection) =="
 autoconf
@@ -44,9 +47,7 @@ dune build 2>&1 | tee "$REPORT_DIR/dune_build.log"
 rm -rf "$OSDP_LOCAL_INSTALL"
 dune install osdp --prefix="$OSDP_LOCAL_INSTALL" > "$REPORT_DIR/dune_install.log" 2>&1
 dune build test/matrix_runner.exe 2>&1 | tee -a "$REPORT_DIR/dune_build.log"
-
-echo "suite;solver;basis;pad;success;sdpret;max_residual;time_sec" > "$CSV"
-./_build/default/test/matrix_runner.exe | grep '^CSV;' | sed 's/^CSV;//' >> "$CSV"
+./_build/default/test/matrix_runner.exe "$LOG"
 
 echo "== [3/5] rebuilding saimcop's residual_probe against this osdp =="
 if [ -d "$SAIMCOP_DIR" ]; then
@@ -62,9 +63,8 @@ if [ -d "$SAIMCOP_DIR" ]; then
   for solver in csdp mosek sdpa sdpa_gmp sdpa_dd; do
     for basis in classical hermite hermite_normalized; do
       for pad in 2 0; do
-        PROBE_SOLVER="$solver" PROBE_BASIS="$basis" PROBE_PAD="$pad" \
-          "$SAIMCOP_DIR/residual_probe.native" 2>>"$REPORT_DIR/saimcop_run.log" \
-          | grep '^CSV;' | sed 's/^CSV;//' >> "$CSV"
+        PROBE_SOLVER="$solver" PROBE_BASIS="$basis" PROBE_PAD="$pad" PROBE_LOG="$LOG" \
+          "$SAIMCOP_DIR/residual_probe.native" 2>>"$REPORT_DIR/saimcop_run.log"
       done
     done
   done
@@ -72,9 +72,9 @@ else
   echo "SAIMCOP_DIR ($SAIMCOP_DIR) not found, skipping saimcop rows" >&2
 fi
 
-echo "== [5/5] generating HTML report =="
-python3 "$SCRIPT_DIR/gen_report.py" "$CSV" "$REPORT_DIR/full_test_comparison.html"
+echo "== [5/5] generating HTML report from the accumulated log =="
+python3 "$OSDP_LOCAL_INSTALL/share/osdp/gen_report.py" "$LOG" "$REPORT_DIR/full_test_comparison.html"
 
 echo "Done."
-echo "  CSV:  $CSV"
+echo "  Log:  $LOG (accumulates across runs)"
 echo "  HTML: $REPORT_DIR/full_test_comparison.html"

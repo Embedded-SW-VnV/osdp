@@ -3,8 +3,8 @@
    same six test polynomials and the same exact-coefficient residual
    technique as test_residuals.ml, but loops over every combination
    instead of a single fixed configuration, and times each solve.
-   Emits one CSV line per combination on stdout:
-     suite;solver;basis;pad;success;sdpret;max_residual;time_sec *)
+   Logs one row per combination via Osdp_trace.record, to the path
+   given as argv.(1) (default: report/trace.jsonl). *)
 
 module Sos = Osdp.Sos.Float
 module H   = Osdp.SosBasis.Hermite   (Osdp.Scalar.Q)
@@ -82,11 +82,13 @@ let test_polys () =
     "x^4+y^4+1",   x*x*x*x + y*y*y*y + !1.,
     [ M.of_list [], 1.; M.of_list [4], 1.; M.of_list [0;4], 1. ] ]
 
-let run_one (solver_name, solver) (basis_name, basis) pad =
+let run_one ~log (solver_name, solver) (basis_name, basis) pad =
   let open Sos in
   let options =
     { default with basis; pad; sdp = { Osdp.Sdp.default with verbose = 0 } } in
   let prod_to_classical = prod_to_classical_of_basis basis in
+  let common = [ "suite", "osdp"; "solver", solver_name; "basis", basis_name;
+                 "pad", Printf.sprintf "%g" pad ] in
   let t0 = Unix.gettimeofday () in
   try
     let worst_ret = ref Osdp.SdpRet.Success in
@@ -107,18 +109,26 @@ let run_one (solver_name, solver) (basis_name, basis) pad =
     let success =
       Osdp.SdpRet.is_success worst_ret.contents
       && Stdlib.(<=) worst_residual.contents tol in
-    Printf.printf "CSV;osdp;%s;%s;%g;%b;%s;%.3e;%.4f\n%!"
-      solver_name basis_name pad success
-      (Format.asprintf "%a" Osdp.SdpRet.pp worst_ret.contents)
-      worst_residual.contents (t1 -. t0)
+    Osdp_trace.record ~log (common @ [
+      "success", string_of_bool success;
+      "sdpret", Format.asprintf "%a" Osdp.SdpRet.pp worst_ret.contents;
+      "max_residual", Printf.sprintf "%.3e" worst_residual.contents;
+      "time_sec", Printf.sprintf "%.4f" (t1 -. t0) ])
   with e ->
     let t1 = Unix.gettimeofday () in
-    Printf.printf "CSV;osdp;%s;%s;%g;false;error(%s);nan;%.4f\n%!"
-      solver_name basis_name pad (Printexc.to_string e) (t1 -. t0)
+    Osdp_trace.record ~log (common @ [
+      "success", "false";
+      "sdpret", Printf.sprintf "error(%s)" (Printexc.to_string e);
+      "max_residual", "nan";
+      "time_sec", Printf.sprintf "%.4f" (t1 -. t0) ])
 
 let () =
+  let log = match Sys.argv with
+    | [| _; log |] -> log
+    | _ -> "report/trace.jsonl" in
   List.iter (fun s ->
     List.iter (fun b ->
-      List.iter (fun p -> run_one s b p) pads
+      List.iter (fun p -> run_one ~log s b p) pads
     ) bases
-  ) solvers
+  ) solvers;
+  Printf.printf "wrote %s\n%!" log

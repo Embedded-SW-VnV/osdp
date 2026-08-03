@@ -1,0 +1,9 @@
+; gen_report.py is schema-agnostic (see osdp.trace) and meant to be
+; reused by any project logging to an osdp.trace file, not just osdp
+; itself, so it is installed alongside the library rather than kept as
+; a purely internal dev script. Reachable from any consumer via
+; `opam var osdp:share`/gen_report.py once installed.
+(install
+ (section share)
+ (files gen_report.py)
+ (package osdp))
