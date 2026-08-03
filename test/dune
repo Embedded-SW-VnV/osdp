@@ -1,3 +1,7 @@
 (tests
  (names test_hermite test_sosbasis test_residuals test_compose_multiplier)
  (libraries osdp))
+
+(executable
+ (name matrix_runner)
+ (libraries osdp unix))

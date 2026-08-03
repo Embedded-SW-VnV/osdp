@@ -60,6 +60,10 @@ clean:
 distclean: clean
 	rm -f src/config.h src/csdp_path.ml src/sdpa_paths.ml src/sdp_default.ml src/dune
 	rm -rf Makefile autom4te.cache config.log config.status
+	rm -rf _local_install report
+
+fulltest_comparison:
+	./scripts/full_test_comparison.sh
 
 dist: doc distclean
 	rm -rf @PACKAGE_TARNAME@-@PACKAGE_VERSION@
@@ -68,4 +72,4 @@ dist: doc distclean
 	tar cvzf @PACKAGE_TARNAME@-@PACKAGE_VERSION@.tgz @PACKAGE_TARNAME@-@PACKAGE_VERSION@
 	rm -rf @PACKAGE_TARNAME@-@PACKAGE_VERSION@
 
-.PHONY: osdp doc install-deps install uninstall clean distclean dist
+.PHONY: osdp doc install-deps install uninstall clean distclean dist fulltest_comparison

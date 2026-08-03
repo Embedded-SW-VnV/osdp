@@ -26,3 +26,11 @@ src/csdp_path.ml
 src/sdpa_paths.ml
 src/sdp_default.ml
 src/dune
+
+# scripts/full_test_comparison.sh outputs
+_local_install/
+report/
+
+# sdpa_gmp/sdpa_dd write these unconditionally in the cwd they're run from
+sdpara.init
+thetaFP.txt
