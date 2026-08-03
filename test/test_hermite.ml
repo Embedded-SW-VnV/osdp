@@ -106,9 +106,9 @@ let check_witness label eval_mono witness pts poly_at =
 let () =
   let open Sos in
   let x = ??0 and y = ??1 in
-  let hermite   = { default with basis = Osdp.SosBasis.Hermite } in
-  let hermite_n = { default with basis = Osdp.SosBasis.HermiteNormalized } in
-  let classical = { default with basis = Osdp.SosBasis.Classical } in
+  let hermite   = Test_env.override { default with basis = Osdp.SosBasis.Hermite } in
+  let hermite_n = Test_env.override { default with basis = Osdp.SosBasis.HermiteNormalized } in
+  let classical = Test_env.override { default with basis = Osdp.SosBasis.Classical } in
 
   (* 1. x^2+1 is SOS (Hermite). *)
   let ret, _, _, _ = solve ~options:hermite Purefeas [x * x + !1.] in

@@ -57,7 +57,7 @@ let () =
   let f = [const Polynomial.(!1. + ??0 * ??0)] in (* f(x) = 1 + x^2 *)
   let vf = compose v f in
   List.iter (fun (label, basis) ->
-    let options = { default with basis } in
+    let options = Test_env.override { default with basis } in
     let ret, _, _, _ = solve ~options Purefeas [vf] in
     check_success (Printf.sprintf "Compose alone (%s)" label) ret
   ) bases
@@ -76,7 +76,7 @@ let () =
   let s = Polynomial.(!1. - ??0 * ??0 - ??1 * ??1) in (* unit disk *)
   let cons = Sos.(!3. - lambda * const s) in
   List.iter (fun (label, basis) ->
-    let options = { default with basis } in
+    let options = Test_env.override { default with basis } in
     let ret, _, _, _ = solve ~options Purefeas [cons; lambda] in
     check_success (Printf.sprintf "Multiplier alone (%s)" label) ret
   ) bases
@@ -94,17 +94,17 @@ let () =
   let vf = compose v f in
   let cons = Sos.(vf - lambda * const s) in
   let ret_classical, _, _, _ =
-    solve ~options:{ default with basis = Osdp.SosBasis.Classical }
+    solve ~options:(Test_env.override { default with basis = Osdp.SosBasis.Classical })
       Purefeas [cons; lambda] in
   check_success "Compose+multiplier combined (Classical)" ret_classical;
 
   let ret_hermite, _, _, _ =
-    solve ~options:{ default with basis = Osdp.SosBasis.Hermite }
+    solve ~options:(Test_env.override { default with basis = Osdp.SosBasis.Hermite })
       Purefeas [cons; lambda] in
   check_success "Compose+multiplier combined (Hermite)" ret_hermite;
 
   let ret_hermite_n, _, _, _ =
-    solve ~options:{ default with basis = Osdp.SosBasis.HermiteNormalized }
+    solve ~options:(Test_env.override { default with basis = Osdp.SosBasis.HermiteNormalized })
       Purefeas [cons; lambda] in
   check_success "Compose+multiplier combined (HermiteNormalized)" ret_hermite_n
 

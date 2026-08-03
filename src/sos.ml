@@ -553,14 +553,30 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       let pad_cstrs ((monoms, constraints), pad) =
         let pad = float_of_int (Array.length monoms) *. (pad *. perr) in
         if options.verbose > 1 then Format.printf "pad = %g@." pad;
-        let has_diag mat =
-          let diag (i, j, _) = i = j in
-          List.exists (fun (_, m) -> List.exists diag m) mat in
+        (* The uniform diagonal shift X' := X - pad I changes the value of
+           tr(A_m X) for a monomial m's constraint by pad times the sum of
+           the diagonal coefficients (i, i, c) appearing in A_m, not just
+           by pad: in the Classical basis v_i * v_i always lands on a
+           single classical monomial with coefficient 1, so that sum is
+           always 0 or 1 and the two coincide, but for Hermite (and any
+           other non-monomial basis) v_i * v_i spreads over several
+           monomials with coefficients that are neither unique nor equal
+           to 1 (e.g. He_2 * He_2 = x^4 - 2x^2 + 1), so assuming
+           coefficient 1 silently mis-pads those constraints. *)
+        let diag_coeff_sum mat =
+          List.fold_left
+            (fun acc (_, m) ->
+             List.fold_left
+               (fun acc (i, j, c) -> if i = j then Poly.Coeff.(acc + c) else acc)
+               acc m)
+            Poly.Coeff.zero mat in
         pad,
         List.map
           (fun ((vect, mat), b) ->
-           (* there is at most one diagonal coefficient in mat *)
-           let b = if has_diag mat then Poly.Coeff.(b - of_float pad) else b in
+           let d = diag_coeff_sum mat in
+           let b =
+             if Poly.Coeff.(d = zero) then b
+             else Poly.Coeff.(b - of_float pad * d) in
            vect, mat, b, b)
           constraints in
       List.split (List.map pad_cstrs monoms_cstrs_pad) in

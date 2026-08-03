@@ -61,6 +61,8 @@ let fail fmt = Format.kasprintf (fun s -> print_string s; exit 1) fmt
 let check_residual label expected_coeffs prod_to_classical witness =
   let computed  = gram_as_classical prod_to_classical witness in
   let residual  = max_coeff_residual (of_coeffs expected_coeffs) computed in
+  if Test_env.verbose then
+    Printf.printf "%-28s residual = %.3e\n%!" label residual;
   if residual > tol then
     fail "FAIL %s: coefficient residual = %.2e (tol = %.2e)\n"
       label residual tol
@@ -115,8 +117,8 @@ let p_x4y4_1_coeffs = [ M.of_list [],    1.;
 let () =
   let open Sos in
   let x = ??0 and y = ??1 in
-  let cl = { default with basis = Osdp.SosBasis.Classical } in
-  let hm = { default with basis = Osdp.SosBasis.Hermite   } in
+  let cl = Test_env.override { default with basis = Osdp.SosBasis.Classical } in
+  let hm = Test_env.override { default with basis = Osdp.SosBasis.Hermite   } in
 
   (* x^2 + 1 *)
   let p = x*x + !1. in
