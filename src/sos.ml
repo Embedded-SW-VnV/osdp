@@ -693,11 +693,21 @@ module Make (P : Polynomial.S) : S with module Poly = P = struct
       ret, obj, (vars, details), witnesses
 
   let value_poly e (m, _) =
+    (* A variable can be a legitimate member of a polynomial_expr (e.g. a
+       Gram-matrix entry from Sos.make) without ever becoming a decision
+       variable actually sent to the solver: if the monomial basis
+       refinement/pruning determines its block contributes to no
+       constraint, no var_idx entry -- and so no entry in [m] -- is ever
+       created for it. Such a variable is unconstrained by the problem
+       actually solved, so (matching PreSdp's identical convention for
+       eliminated variables, see preSdp.ml) any value is a valid witness
+       for it; default to 0 instead of raising. *)
+    let find id = try Ident.Map.find id m with Not_found -> Poly.Coeff.zero in
     let rec aux = function
       | Const p -> p
-      | Var (Vscalar id) -> Poly.const (Ident.Map.find id m)
+      | Var (Vscalar id) -> Poly.const (find id)
       | Var (Vpoly p) ->
-         List.map (fun (mon, id) -> mon, Ident.Map.find id m) p.poly
+         List.map (fun (mon, id) -> mon, find id) p.poly
          |> Poly.of_list
       | Mult_scalar (c, e) -> Poly.mult_scalar c (aux e)
       | Add (e1, e2) -> Poly.add (aux e1) (aux e2)
