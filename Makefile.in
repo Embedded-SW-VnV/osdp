@@ -58,7 +58,7 @@ clean:
 	rm -f *~
 
 distclean: clean
-	rm -f src/config.h src/csdp_path.ml src/sdpa_paths.ml src/sdp_default.ml
+	rm -f src/config.h src/csdp_path.ml src/sdpa_paths.ml src/sdp_default.ml src/dune
 	rm -rf Makefile autom4te.cache config.log config.status
 
 dist: doc distclean

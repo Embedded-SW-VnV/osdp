@@ -1,11 +1,13 @@
 (library
  (name osdp)
  (public_name osdp)
+ (modules (:standard \ myocamlbuild osdp_top))
  (libraries unix zarith ocplib-simplex)
  (foreign_stubs
   (language c)
   (names moseksdp_stubs posdef_stubs)
-  (flags -I @MOSEK_INCPATH@)))
+  (flags @MOSEK_C_FLAGS@))
+ (c_library_flags @MOSEK_C_LIBRARY_FLAGS@))
 (ocamllex csdp_lexer)
 (ocamlyacc csdp_parser)
 (ocamllex sdpa_lexer)

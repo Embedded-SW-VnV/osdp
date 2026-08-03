@@ -225,6 +225,21 @@ AC_SUBST(MOSEK_INCPATH)
 AC_SUBST(MOSEK_LIBPATH)
 AC_SUBST(MOSEK_LIB)
 
+# Flags to reach MOSEK's headers and to link against its shared library,
+# in a form directly splicable into src/dune.in. Left empty when MOSEK
+# support is disabled so src/dune stays valid (and mosek-free) either way.
+# The -rpath keeps the resulting binaries able to find libmosek*.{so,dylib}
+# at runtime without requiring the user to set LD_LIBRARY_PATH/DYLD_LIBRARY_PATH.
+if test "x$with_mosek" = xyes; then
+  MOSEK_C_FLAGS="-I ${MOSEK_INCPATH}"
+  MOSEK_C_LIBRARY_FLAGS="-L${MOSEK_LIBPATH} -l${MOSEK_LIB} -Wl,-rpath,${MOSEK_LIBPATH}"
+else
+  MOSEK_C_FLAGS=
+  MOSEK_C_LIBRARY_FLAGS=
+fi
+AC_SUBST(MOSEK_C_FLAGS)
+AC_SUBST(MOSEK_C_LIBRARY_FLAGS)
+
 if test "x$with_csdp" = xno -a "x$with_mosek" = xno -a "x$with_sdpa" = xno -a "x$with_sdpa_gmp" = xno; then
   AC_MSG_WARN($PACKAGE_NAME will be compiled without any SDP solver which is quite useless.)
   AC_MSG_WARN(You should at least install either CSDP or MOSEK or SDPA or SDPA-GMP.)

@@ -25,3 +25,4 @@ src/config.h
 src/csdp_path.ml
 src/sdpa_paths.ml
 src/sdp_default.ml
+src/dune
